@@ -43,6 +43,8 @@ export function DocumentForm({ docType, basePath, title }: DocumentFormProps) {
     clientFax: '',
     clientCP: '',
     clientEmail: '',
+    // Sales 품의서용 한 줄 필드 (매출처/담당/연락처)
+    salesContactLine: '',
     vendorCompany: '',
     vendorContact: '',
     vendorPhone: '',
@@ -287,72 +289,113 @@ export function DocumentForm({ docType, basePath, title }: DocumentFormProps) {
         {/* 고객 정보 */}
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
           <h2 className="text-xl font-bold text-gray-900 mb-6">고객 정보</h2>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {docType === 'SALES_APPROVAL' ? (
+            // Sales 품의서: 매출처/담당/연락처 한 줄 입력
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">회사</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  매출처 / 담당 / 연락처
+                </label>
                 <input
                   type="text"
-                  value={formData.clientCompany}
-                  onChange={(e) => handleInputChange('clientCompany', e.target.value)}
+                  value={formData.salesContactLine}
+                  onChange={(e) => handleInputChange('salesContactLine', e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                  placeholder="고객사명"
+                  placeholder="예: 서버메이트 / 김대훈 팀장 / 010-1234-5678"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">참조</label>
-                <input
-                  type="text"
-                  value={formData.clientContact}
-                  onChange={(e) => handleInputChange('clientContact', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                  placeholder="담당자명"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">전화</label>
-                <input
-                  type="tel"
-                  value={formData.clientPhone}
-                  onChange={(e) => handleInputChange('clientPhone', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                  placeholder="02-1234-5678"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Fax</label>
-                <input
-                  type="tel"
-                  value={formData.clientFax}
-                  onChange={(e) => handleInputChange('clientFax', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                  placeholder="02-1234-5679"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">C P</label>
-                <input
-                  type="tel"
-                  value={formData.clientCP}
-                  onChange={(e) => handleInputChange('clientCP', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                  placeholder="010-1234-5678"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">E-mail</label>
-                <input
-                  type="email"
-                  value={formData.clientEmail}
-                  onChange={(e) => handleInputChange('clientEmail', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                  placeholder="contact@company.com"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">End User</label>
+                  <input
+                    type="text"
+                    value={formData.projectName}
+                    onChange={(e) => handleInputChange('projectName', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+                    placeholder="End User 정보를 입력하세요"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">MT&S/N</label>
+                  <input
+                    type="text"
+                    value={formData.clientCompany}
+                    onChange={(e) => handleInputChange('clientCompany', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+                    placeholder="모델타입 / 시리얼넘버 등"
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            // 기본 견적서용 고객 정보
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">회사</label>
+                  <input
+                    type="text"
+                    value={formData.clientCompany}
+                    onChange={(e) => handleInputChange('clientCompany', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+                    placeholder="고객사명"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">참조</label>
+                  <input
+                    type="text"
+                    value={formData.clientContact}
+                    onChange={(e) => handleInputChange('clientContact', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+                    placeholder="담당자명"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">전화</label>
+                  <input
+                    type="tel"
+                    value={formData.clientPhone}
+                    onChange={(e) => handleInputChange('clientPhone', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+                    placeholder="02-1234-5678"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Fax</label>
+                  <input
+                    type="tel"
+                    value={formData.clientFax}
+                    onChange={(e) => handleInputChange('clientFax', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+                    placeholder="02-1234-5679"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">C P</label>
+                  <input
+                    type="tel"
+                    value={formData.clientCP}
+                    onChange={(e) => handleInputChange('clientCP', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+                    placeholder="010-1234-5678"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">E-mail</label>
+                  <input
+                    type="email"
+                    value={formData.clientEmail}
+                    onChange={(e) => handleInputChange('clientEmail', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+                    placeholder="contact@company.com"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 견적 정보 */}
