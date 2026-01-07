@@ -69,30 +69,30 @@ export default function DocumentList({ docType, basePath, title }: DocumentListP
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
         <Link
           href={`${basePath}/new`}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg"
         >
           + 새 문서
         </Link>
       </div>
 
       {/* 검색 */}
-      <form onSubmit={handleSearch} className="mb-4">
-        <div className="flex gap-2">
+      <form onSubmit={handleSearch} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+        <div className="flex gap-3">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="문서번호, 고객사, 프로젝트명 검색..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="flex-1 px-5 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
           />
           <button
             type="submit"
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+            className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors"
           >
             검색
           </button>
@@ -100,55 +100,55 @@ export default function DocumentList({ docType, basePath, title }: DocumentListP
       </form>
 
       {/* 테이블 */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">문서번호</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">고객사</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">제목</th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">금액</th>
-              <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">상태</th>
-              <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">작성자</th>
-              <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">작성일</th>
+              <th className="px-6 py-4 text-left text-base font-bold text-gray-700">문서번호</th>
+              <th className="px-6 py-4 text-left text-base font-bold text-gray-700">고객사</th>
+              <th className="px-6 py-4 text-left text-base font-bold text-gray-700">제목</th>
+              <th className="px-6 py-4 text-right text-base font-bold text-gray-700">금액</th>
+              <th className="px-6 py-4 text-center text-base font-bold text-gray-700">상태</th>
+              <th className="px-6 py-4 text-center text-base font-bold text-gray-700">작성자</th>
+              <th className="px-6 py-4 text-center text-base font-bold text-gray-700">작성일</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={7} className="px-6 py-12 text-center text-gray-500 text-base">
                   로딩 중...
                 </td>
               </tr>
             ) : documents.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={7} className="px-6 py-12 text-center text-gray-500 text-base">
                   문서가 없습니다
                 </td>
               </tr>
             ) : (
               documents.map((doc) => (
-                <tr key={doc.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
+                <tr key={doc.id} className="hover:bg-blue-50 transition-colors">
+                  <td className="px-6 py-4">
                     <Link
                       href={`${basePath}/${doc.id}`}
-                      className="text-blue-600 hover:underline font-medium"
+                      className="text-blue-600 hover:text-blue-700 hover:underline font-semibold text-base"
                     >
                       {doc.docNumber}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-sm">{doc.clientCompany || '-'}</td>
-                  <td className="px-4 py-3 text-sm">{doc.title || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-right">
+                  <td className="px-6 py-4 text-base font-medium text-gray-900">{doc.clientCompany || '-'}</td>
+                  <td className="px-6 py-4 text-base text-gray-700">{doc.title || '-'}</td>
+                  <td className="px-6 py-4 text-base text-right font-semibold text-gray-900">
                     {doc.totalAmount ? `${doc.totalAmount.toLocaleString()}원` : '-'}
                   </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`inline-block px-2 py-1 text-xs rounded-full ${statusLabels[doc.status]?.color || 'bg-gray-100'}`}>
+                  <td className="px-6 py-4 text-center">
+                    <span className={`inline-block px-3 py-1.5 text-sm font-semibold rounded-full ${statusLabels[doc.status]?.color || 'bg-gray-100 text-gray-700'}`}>
                       {statusLabels[doc.status]?.label || doc.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-center">{doc.createdBy?.name || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-center text-gray-500">
+                  <td className="px-6 py-4 text-base text-center text-gray-700">{doc.createdBy?.name || '-'}</td>
+                  <td className="px-6 py-4 text-base text-center text-gray-600">
                     {new Date(doc.createdAt).toLocaleDateString('ko-KR')}
                   </td>
                 </tr>
@@ -160,21 +160,21 @@ export default function DocumentList({ docType, basePath, title }: DocumentListP
 
       {/* 페이지네이션 */}
       {totalPages > 1 && (
-        <div className="flex justify-center gap-2 mt-4">
+        <div className="flex justify-center items-center gap-3 mt-6">
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="px-3 py-1 rounded border border-gray-300 disabled:opacity-50"
+            className="px-5 py-2.5 rounded-lg border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all"
           >
             이전
           </button>
-          <span className="px-3 py-1">
+          <span className="px-5 py-2.5 text-base font-semibold text-gray-700">
             {page} / {totalPages}
           </span>
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="px-3 py-1 rounded border border-gray-300 disabled:opacity-50"
+            className="px-5 py-2.5 rounded-lg border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all"
           >
             다음
           </button>
