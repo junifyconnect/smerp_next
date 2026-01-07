@@ -1,0 +1,3013 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ERP 시스템 - 견적/품의/발주 관리</title>
+  <link href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #f5f7fa;
+      --bg-card: #ffffff;
+      --bg-card-alt: #f8f9fb;
+      --bg-hover: #f0f2f5;
+      --border: #e2e8f0;
+      --border-light: #cbd5e1;
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --text-muted: #94a3b8;
+      --accent-blue: #3b82f6;
+      --accent-blue-dim: rgba(59, 130, 246, 0.1);
+      --accent-green: #22c55e;
+      --accent-green-dim: rgba(34, 197, 94, 0.1);
+      --accent-yellow: #f59e0b;
+      --accent-yellow-dim: rgba(245, 158, 11, 0.1);
+      --accent-red: #ef4444;
+      --accent-red-dim: rgba(239, 68, 68, 0.1);
+      --accent-purple: #a855f7;
+      --accent-purple-dim: rgba(168, 85, 247, 0.1);
+    }
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+    
+    .app { display: flex; min-height: 100vh; }
+    
+    .sidebar {
+      width: 240px;
+      background: var(--bg-card);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      height: 100vh;
+      z-index: 100;
+      box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    }
+    
+    .logo {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      color: white;
+    }
+    
+    .logo-text { font-size: 16px; font-weight: 700; }
+    .logo-text span { color: var(--accent-blue); }
+    
+    .nav { flex: 1; overflow-y: auto; padding: 12px; }
+    .nav-section { margin-bottom: 20px; }
+    
+    .nav-section-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 0 12px;
+      margin-bottom: 6px;
+    }
+    
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: all 0.15s;
+      margin-bottom: 2px;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      font-size: 13px;
+    }
+    
+    .nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .nav-item.active { background: var(--accent-blue-dim); color: var(--accent-blue); font-weight: 500; }
+    .nav-icon { width: 18px; text-align: center; }
+    
+    .main {
+      flex: 1;
+      margin-left: 240px;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    
+    .header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    
+    .back-btn {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      cursor: pointer;
+    }
+    
+    .back-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .back-btn.show { display: flex; }
+    
+    .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .breadcrumb-item { color: var(--text-secondary); cursor: pointer; }
+    .breadcrumb-sep { color: var(--text-muted); }
+    .breadcrumb-current { color: var(--text-primary); font-weight: 500; }
+    
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    
+    .user-menu {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 12px 6px 6px;
+      background: var(--bg-card-alt);
+      border-radius: 20px;
+      border: 1px solid var(--border);
+    }
+    
+    .user-avatar {
+      width: 30px;
+      height: 30px;
+      background: linear-gradient(135deg, var(--accent-green), #06b6d4);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 11px;
+      color: white;
+    }
+    
+    .user-name { font-size: 13px; font-weight: 500; }
+    
+    .content { flex: 1; padding: 24px; overflow-y: auto; }
+    
+    .btn {
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+    
+    .btn-primary { background: var(--accent-blue); color: white; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-secondary { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--bg-hover); }
+    .btn-success { background: var(--accent-green); color: white; }
+    .btn-sm { padding: 7px 12px; font-size: 12px; }
+    .btn-lg { padding: 12px 24px; font-size: 14px; }
+    
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 24px;
+    }
+    
+    .page-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .page-desc { font-size: 13px; color: var(--text-secondary); }
+    .page-actions { display: flex; gap: 10px; }
+    
+    .mode-toggle-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 6px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+    }
+    
+    .mode-toggle-btn {
+      flex: 1;
+      max-width: 200px;
+      padding: 12px 24px;
+      border: none;
+      background: none;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .mode-toggle-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
+    .mode-toggle-btn.active { background: var(--accent-blue); color: white; }
+    .mode-toggle-btn.active.form-mode { background: var(--accent-green); }
+    
+    .table-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    
+    .table-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-card-alt);
+    }
+    
+    .table-title { font-size: 15px; font-weight: 600; }
+    .table-tools { display: flex; gap: 10px; align-items: center; }
+    
+    .search-box {
+      display: flex;
+      align-items: center;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0 12px;
+    }
+    
+    .search-box input {
+      background: none;
+      border: none;
+      color: var(--text-primary);
+      padding: 9px 10px;
+      font-size: 13px;
+      width: 200px;
+      outline: none;
+    }
+    
+    table { width: 100%; border-collapse: collapse; }
+    
+    th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      background: var(--bg-card-alt);
+      border-bottom: 1px solid var(--border);
+    }
+    
+    td {
+      padding: 14px 16px;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    tbody tr { cursor: pointer; transition: background 0.1s; }
+    tbody tr:hover { background: var(--bg-hover); }
+    
+    .cell-id { font-family: 'SF Mono', monospace; font-size: 12px; color: var(--accent-blue); font-weight: 500; }
+    .cell-company { font-weight: 500; }
+    .cell-amount { font-family: 'SF Mono', monospace; font-weight: 600; text-align: right; }
+    .cell-date { color: var(--text-secondary); font-size: 12px; }
+    
+    .badge { padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 500; }
+    .badge-complete { background: var(--accent-green-dim); color: var(--accent-green); }
+    .badge-progress { background: var(--accent-yellow-dim); color: var(--accent-yellow); }
+    .badge-pending { background: var(--accent-purple-dim); color: var(--accent-purple); }
+    .badge-new { background: var(--accent-blue-dim); color: var(--accent-blue); }
+    
+    .form-container { display: grid; grid-template-columns: 1fr; gap: 24px; }
+    
+    .form-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    
+    .form-card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-card-alt);
+    }
+    
+    .form-card-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .form-card-body { padding: 20px; }
+    
+    .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .form-grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .form-grid-2 { grid-template-columns: repeat(2, 1fr); }
+    
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.span-2 { grid-column: span 2; }
+    .form-group.span-3 { grid-column: span 3; }
+    .form-group.span-4 { grid-column: span 4; }
+    
+    .form-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+    .form-label .required { color: var(--accent-red); }
+    
+    .form-input {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--text-primary);
+      outline: none;
+    }
+    
+    .form-input:focus { border-color: var(--accent-blue); }
+    .form-input:disabled { background: var(--bg-card-alt); color: var(--text-secondary); }
+    
+    textarea.form-input { resize: vertical; min-height: 80px; }
+    
+    .items-table-wrap {
+      background: var(--bg-card-alt);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    
+    .items-table { width: 100%; border-collapse: collapse; }
+    .items-table th { background: var(--bg-hover); padding: 10px 12px; font-size: 11px; }
+    .items-table td { padding: 8px 10px; font-size: 13px; border-bottom: 1px solid var(--border); background: var(--bg-card); }
+    
+    .items-table input {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 12px;
+      color: var(--text-primary);
+      width: 100%;
+      outline: none;
+    }
+    
+    .items-table .num-input { text-align: right; font-family: 'SF Mono', monospace; }
+    
+    .items-table .del-btn {
+      background: var(--accent-red-dim);
+      border: none;
+      color: var(--accent-red);
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    
+    .items-summary {
+      display: flex;
+      justify-content: flex-end;
+      padding: 16px 20px;
+      background: var(--bg-card-alt);
+      border-top: 1px solid var(--border);
+    }
+    
+    .summary-grid { display: grid; grid-template-columns: auto auto; gap: 8px 32px; font-size: 13px; }
+    .summary-label { color: var(--text-secondary); text-align: right; }
+    .summary-value { font-family: 'SF Mono', monospace; font-weight: 600; text-align: right; min-width: 120px; }
+    .summary-value.total { font-size: 16px; color: var(--accent-blue); }
+    .summary-value.gp { color: var(--accent-green); }
+    
+    .approval-line { display: flex; gap: 12px; }
+    
+    .approval-box {
+      flex: 1;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .approval-box-header {
+      background: var(--bg-hover);
+      padding: 10px;
+      font-size: 12px;
+      font-weight: 500;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .approval-box-body {
+      padding: 20px;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-card);
+    }
+    
+    .approval-status { font-size: 12px; padding: 6px 12px; border-radius: 6px; }
+    .approval-status.waiting { background: var(--accent-yellow-dim); color: var(--accent-yellow); }
+    .approval-signature { font-size: 20px; color: var(--accent-blue); font-style: italic; font-family: 'Brush Script MT', cursive; }
+    
+    /* 실제 양식 스타일 */
+    .document-preview {
+      background: #e8e8e8;
+      padding: 30px;
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+    }
+    
+    .form-document {
+      background: white;
+      color: #000;
+      padding: 50px;
+      font-family: '맑은 고딕', 'Malgun Gothic', sans-serif;
+      font-size: 11px;
+      line-height: 1.4;
+      width: 210mm;
+      min-height: 297mm;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    
+    .form-document * { color: #000; }
+    
+    .doc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #000;
+    }
+    
+    .doc-logo { display: flex; align-items: center; gap: 15px; }
+    
+    .doc-logo-img {
+      width: 120px;
+      height: 45px;
+      background: linear-gradient(135deg, #1e3a5f, #2d5a87);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    
+    .doc-partner-logos { display: flex; gap: 10px; }
+    
+    .partner-logo {
+      width: 60px;
+      height: 30px;
+      background: #f0f0f0;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      color: #666;
+    }
+    
+    .doc-title-area { text-align: center; flex: 1; }
+    .doc-title { font-size: 22px; font-weight: bold; letter-spacing: 8px; }
+    .doc-company-info { text-align: right; font-size: 10px; line-height: 1.5; }
+    
+    .doc-seal {
+      width: 60px;
+      height: 60px;
+      border: 2px solid #c00;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #c00;
+      font-size: 10px;
+      text-align: center;
+      margin-left: auto;
+      margin-top: 5px;
+    }
+    
+    .doc-info-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .doc-info-table th, .doc-info-table td { border: 1px solid #000; padding: 6px 10px; font-size: 11px; }
+    .doc-info-table th { background: #f5f5f5; font-weight: 600; width: 80px; text-align: left; }
+    
+    /* 편집 가능한 셀 */
+    .editable { cursor: text; transition: background 0.15s; min-height: 1.2em; }
+    .editable:hover { background: #fffef0 !important; }
+    .editable:focus { background: #fffde7 !important; outline: 2px solid #ffc107; outline-offset: -2px; }
+    .editable:empty::before { content: attr(data-placeholder); color: #bbb; font-style: italic; }
+    
+    .editable-hint {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 12px;
+      z-index: 1000;
+      display: none;
+    }
+    .editable-hint.show { display: block; }
+    
+    .doc-items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    .doc-items-table th, .doc-items-table td { border: 1px solid #000; padding: 8px 10px; font-size: 10px; text-align: center; }
+    .doc-items-table th { background: #e8e8e8; font-weight: 600; }
+    .doc-items-table td.left { text-align: left; }
+    .doc-items-table td.right { text-align: right; font-family: 'Consolas', monospace; }
+    .doc-items-table .desc-cell { text-align: left; font-size: 9px; line-height: 1.4; white-space: pre-line; }
+    
+    .doc-summary { display: flex; justify-content: flex-end; margin: 20px 0; }
+    .doc-summary-table { border-collapse: collapse; min-width: 300px; }
+    .doc-summary-table th, .doc-summary-table td { border: 1px solid #000; padding: 8px 15px; font-size: 12px; }
+    .doc-summary-table th { background: #f0f0f0; font-weight: 600; text-align: center; }
+    .doc-summary-table td { text-align: right; font-family: 'Consolas', monospace; font-weight: bold; }
+    .doc-summary-table .total td { background: #fffde7; font-size: 14px; color: #1565c0; }
+    
+    .doc-notes { margin: 20px 0; padding: 15px; background: #fafafa; border: 1px solid #ddd; font-size: 10px; line-height: 1.6; }
+    .doc-notes-title { font-weight: bold; margin-bottom: 8px; }
+    
+    .doc-buyer-confirm { margin-top: 30px; padding: 15px; border: 1px solid #000; font-size: 10px; }
+    .doc-buyer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .doc-buyer-item { display: flex; gap: 10px; align-items: center; }
+    .doc-buyer-label { min-width: 70px; }
+    .doc-buyer-value { flex: 1; border-bottom: 1px solid #000; min-height: 20px; }
+    
+    .doc-approval { margin-top: 40px; }
+    .doc-approval-table { border-collapse: collapse; margin-left: auto; }
+    .doc-approval-table th, .doc-approval-table td { border: 1px solid #000; padding: 5px 20px; font-size: 11px; text-align: center; min-width: 80px; }
+    .doc-approval-table th { background: #f5f5f5; font-weight: 600; }
+    .doc-approval-table .sign-cell { height: 50px; vertical-align: middle; }
+    .doc-signature { font-family: 'Brush Script MT', cursive; font-size: 18px; color: #1565c0; }
+    .doc-gp-highlight { background: #e8f5e9 !important; font-weight: bold; color: #2e7d32 !important; }
+    
+    .action-bar {
+      position: sticky;
+      bottom: 0;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 24px -24px -24px -24px;
+    }
+    
+    .action-bar-left, .action-bar-right { display: flex; gap: 10px; }
+    
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .view-mode { display: none; }
+    .view-mode.active { display: block; }
+    
+    /* 대시보드 스타일 */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .stat-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    
+    .stat-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    
+    .stat-icon.blue { background: var(--accent-blue-dim); }
+    .stat-icon.green { background: var(--accent-green-dim); }
+    .stat-icon.yellow { background: var(--accent-yellow-dim); }
+    .stat-icon.purple { background: var(--accent-purple-dim); }
+    
+    .stat-trend {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-weight: 500;
+    }
+    
+    .stat-trend.up { background: var(--accent-green-dim); color: var(--accent-green); }
+    .stat-trend.down { background: var(--accent-red-dim); color: var(--accent-red); }
+    
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      font-family: 'SF Mono', monospace;
+    }
+    
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    
+    .dashboard-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    
+    .dashboard-row.equal {
+      grid-template-columns: 1fr 1fr;
+    }
+    
+    .chart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    
+    .chart-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .chart-title { font-size: 15px; font-weight: 600; }
+    
+    .chart-body {
+      padding: 20px;
+    }
+    
+    .chart-placeholder {
+      height: 200px;
+      background: linear-gradient(180deg, var(--bg-card-alt) 0%, var(--bg-card) 100%);
+      border-radius: 8px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-around;
+      padding: 20px;
+      gap: 8px;
+    }
+    
+    .chart-bar {
+      width: 100%;
+      max-width: 40px;
+      border-radius: 4px 4px 0 0;
+      transition: all 0.3s;
+    }
+    
+    .chart-bar.sales { background: var(--accent-blue); }
+    .chart-bar.purchase { background: var(--accent-purple); opacity: 0.6; }
+    .chart-bar:hover { opacity: 0.8; transform: scaleY(1.05); transform-origin: bottom; }
+    
+    .chart-legend {
+      display: flex;
+      gap: 20px;
+      margin-top: 16px;
+      justify-content: center;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+    
+    .legend-dot.sales { background: var(--accent-blue); }
+    .legend-dot.purchase { background: var(--accent-purple); }
+    .legend-dot.gp { background: var(--accent-green); }
+    
+    .activity-list {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .activity-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    
+    .activity-item:hover { background: var(--bg-hover); }
+    .activity-item:last-child { border-bottom: none; }
+    
+    .activity-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    
+    .activity-icon.quote { background: var(--accent-blue-dim); }
+    .activity-icon.approval { background: var(--accent-purple-dim); }
+    .activity-icon.order { background: var(--accent-green-dim); }
+    .activity-icon.ma { background: var(--accent-yellow-dim); }
+    
+    .activity-content { flex: 1; min-width: 0; }
+    .activity-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+    .activity-meta { font-size: 11px; color: var(--text-muted); }
+    .activity-amount { font-family: 'SF Mono', monospace; font-size: 13px; font-weight: 600; text-align: right; }
+    
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      padding: 20px;
+    }
+    
+    .quick-action-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 16px;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-decoration: none;
+      color: var(--text-primary);
+    }
+    
+    .quick-action-btn:hover {
+      background: var(--bg-hover);
+      border-color: var(--accent-blue);
+      transform: translateY(-2px);
+    }
+    
+    .quick-action-icon { font-size: 24px; }
+    .quick-action-label { font-size: 12px; font-weight: 500; }
+    
+    .pending-list { padding: 0; }
+    
+    .pending-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .pending-item:last-child { border-bottom: none; }
+    
+    .pending-info { display: flex; align-items: center; gap: 12px; }
+    .pending-badge { font-size: 11px; padding: 4px 10px; border-radius: 6px; font-weight: 500; }
+    .pending-badge.urgent { background: var(--accent-red-dim); color: var(--accent-red); }
+    .pending-badge.normal { background: var(--accent-yellow-dim); color: var(--accent-yellow); }
+    .pending-text { font-size: 13px; }
+    .pending-action { font-size: 12px; color: var(--accent-blue); cursor: pointer; }
+    
+    .gp-chart {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 10px 0;
+    }
+    
+    .gp-donut {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: conic-gradient(var(--accent-green) 0% 18%, var(--accent-blue) 18% 65%, var(--accent-purple) 65% 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    
+    .gp-donut::before {
+      content: '';
+      width: 70px;
+      height: 70px;
+      background: var(--bg-card);
+      border-radius: 50%;
+      position: absolute;
+    }
+    
+    .gp-donut-center {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+    }
+    
+    .gp-donut-value { font-size: 20px; font-weight: 700; color: var(--accent-green); }
+    .gp-donut-label { font-size: 10px; color: var(--text-muted); }
+    
+    .gp-details { flex: 1; }
+    
+    .gp-detail-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .gp-detail-item:last-child { border-bottom: none; }
+    
+    .gp-detail-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    
+    .gp-detail-value {
+      font-family: 'SF Mono', monospace;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    
+    @media (max-width: 1400px) {
+      .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
+      .dashboard-row { grid-template-columns: 1fr; }
+    }
+    
+    /* 파일 업로드 영역 */
+    .file-upload-area {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      background: var(--bg-card-alt);
+      transition: all 0.2s;
+    }
+    
+    .file-upload-area:hover {
+      border-color: var(--accent-blue);
+      background: var(--accent-blue-dim);
+    }
+    
+    .file-upload-empty {
+      padding: 40px;
+      text-align: center;
+    }
+    
+    .file-upload-preview {
+      padding: 16px;
+    }
+    
+    .uploaded-file {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: var(--bg-card);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    
+    .uploaded-file-icon {
+      font-size: 32px;
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-card-alt);
+      border-radius: 8px;
+    }
+    
+    .uploaded-file-info {
+      flex: 1;
+    }
+    
+    .uploaded-file-name {
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    
+    .uploaded-file-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    
+    .uploaded-file-actions {
+      display: flex;
+      gap: 8px;
+    }
+    
+    /* 연결된 품의서 카드 */
+    .linked-approval-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    
+    .linked-approval-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .linked-approval-code {
+      font-family: 'SF Mono', monospace;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--accent-blue);
+    }
+    
+    .linked-approval-details {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    
+    .linked-detail-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .linked-detail-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    
+    .linked-detail-value {
+      font-size: 14px;
+    }
+    
+    .linked-approval-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    
+    /* 모달 */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s;
+    }
+    
+    .modal-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    .modal {
+      background: var(--bg-card);
+      border-radius: 16px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow: hidden;
+      transform: translateY(20px);
+      transition: transform 0.2s;
+    }
+    
+    .modal-overlay.show .modal {
+      transform: translateY(0);
+    }
+    
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: var(--bg-card-alt);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 18px;
+      color: var(--text-secondary);
+    }
+    
+    .modal-close:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    
+    .modal-body {
+      padding: 24px;
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+    
+    .approval-select-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .approval-select-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: var(--bg-card-alt);
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    
+    .approval-select-item:hover {
+      border-color: var(--accent-blue);
+      background: var(--accent-blue-dim);
+    }
+    
+    .approval-select-item.selected {
+      border-color: var(--accent-green);
+      background: var(--accent-green-dim);
+    }
+    
+    .approval-select-check {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    
+    .approval-select-item.selected .approval-select-check {
+      background: var(--accent-green);
+      border-color: var(--accent-green);
+      color: white;
+    }
+    
+    .approval-select-content {
+      flex: 1;
+    }
+    
+    .approval-select-title {
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    
+    .approval-select-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    
+    .approval-select-amount {
+      font-family: 'SF Mono', monospace;
+      font-size: 14px;
+      font-weight: 600;
+      text-align: right;
+    }
+    
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    
+    .filter-select {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      padding: 9px 12px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    
+    @media print {
+      body { background: white; }
+      .sidebar, .header, .action-bar, .mode-toggle-bar, .page-header { display: none !important; }
+      .main { margin-left: 0; }
+      .content { padding: 0; }
+      .document-preview { background: none; padding: 0; }
+      .form-document { box-shadow: none; padding: 20mm; width: 100%; }
+      .editable { background: transparent !important; outline: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">SM</div>
+        <div class="logo-text">Server<span>Mate</span></div>
+      </div>
+      
+      <nav class="nav">
+        <div class="nav-section">
+          <div class="nav-section-title">Overview</div>
+          <button class="nav-item active" data-screen="dashboard">
+            <span class="nav-icon">📊</span> 대시보드
+          </button>
+        </div>
+        
+        <div class="nav-section">
+          <div class="nav-section-title">Sales (물품)</div>
+          <button class="nav-item" data-screen="sales-quote-list">
+            <span class="nav-icon">📄</span> 견적서 관리
+          </button>
+          <button class="nav-item" data-screen="sales-approval-list">
+            <span class="nav-icon">✅</span> 품의서 관리
+          </button>
+          <button class="nav-item" data-screen="sales-order-list">
+            <span class="nav-icon">🚚</span> 발주서 관리
+          </button>
+        </div>
+        
+        <div class="nav-section">
+          <div class="nav-section-title">MA (유지보수)</div>
+          <button class="nav-item" data-screen="ma-quote-list">
+            <span class="nav-icon">🔧</span> 유지보수 견적서
+          </button>
+          <button class="nav-item" data-screen="ma-approval-list">
+            <span class="nav-icon">📋</span> 유지보수 품의서
+          </button>
+        </div>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header class="header">
+        <div class="header-left">
+          <button class="back-btn" id="backBtn" onclick="goBack()">← 목록으로</button>
+          <div class="breadcrumb">
+            <span class="breadcrumb-item" onclick="showListPage('dashboard')">Home</span>
+            <span class="breadcrumb-sep">/</span>
+            <span class="breadcrumb-current" id="pageTitle">대시보드</span>
+          </div>
+        </div>
+        <div class="header-right">
+          <div class="user-menu">
+            <div class="user-avatar">김</div>
+            <span class="user-name">김대훈</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="content">
+        <div class="editable-hint" id="editHint">💡 노란색 영역을 클릭하면 직접 수정할 수 있습니다</div>
+
+        <!-- 대시보드 -->
+        <div class="screen active" id="dashboard">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">대시보드</h1>
+              <p class="page-desc">2025년 12월 실적 현황</p>
+            </div>
+            <div class="page-actions">
+              <select class="filter-select" style="background:var(--bg-card); border:1px solid var(--border); padding:10px 14px; border-radius:8px; font-size:13px; color:var(--text-primary);">
+                <option>2025년 12월</option>
+                <option>2025년 11월</option>
+                <option>2025년 10월</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- KPI 카드 -->
+          <div class="dashboard-grid">
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <div class="stat-icon blue">💰</div>
+                <span class="stat-trend up">▲ 12%</span>
+              </div>
+              <div class="stat-value">127,500,000</div>
+              <div class="stat-label">이번 달 매출</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <div class="stat-icon purple">📦</div>
+                <span class="stat-trend up">▲ 8%</span>
+              </div>
+              <div class="stat-value">98,200,000</div>
+              <div class="stat-label">이번 달 매입</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <div class="stat-icon green">📈</div>
+                <span class="stat-trend up">▲ 23%</span>
+              </div>
+              <div class="stat-value">29,300,000</div>
+              <div class="stat-label">GP (Gross Profit)</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <div class="stat-icon yellow">⏳</div>
+              </div>
+              <div class="stat-value">12</div>
+              <div class="stat-label">진행중인 건</div>
+            </div>
+          </div>
+          
+          <!-- 차트 & 빠른 작성 -->
+          <div class="dashboard-row">
+            <div class="chart-card">
+              <div class="chart-header">
+                <span class="chart-title">월별 매출/매입 추이</span>
+                <select style="background:var(--bg-card-alt); border:1px solid var(--border); padding:6px 10px; border-radius:6px; font-size:12px; color:var(--text-secondary);">
+                  <option>최근 6개월</option>
+                  <option>최근 12개월</option>
+                </select>
+              </div>
+              <div class="chart-body">
+                <div class="chart-placeholder">
+                  <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                    <div class="chart-bar sales" style="height:80px;"></div>
+                    <div class="chart-bar purchase" style="height:65px;"></div>
+                    <span style="font-size:10px; color:var(--text-muted);">7월</span>
+                  </div>
+                  <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                    <div class="chart-bar sales" style="height:95px;"></div>
+                    <div class="chart-bar purchase" style="height:75px;"></div>
+                    <span style="font-size:10px; color:var(--text-muted);">8월</span>
+                  </div>
+                  <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                    <div class="chart-bar sales" style="height:70px;"></div>
+                    <div class="chart-bar purchase" style="height:55px;"></div>
+                    <span style="font-size:10px; color:var(--text-muted);">9월</span>
+                  </div>
+                  <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                    <div class="chart-bar sales" style="height:110px;"></div>
+                    <div class="chart-bar purchase" style="height:85px;"></div>
+                    <span style="font-size:10px; color:var(--text-muted);">10월</span>
+                  </div>
+                  <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                    <div class="chart-bar sales" style="height:130px;"></div>
+                    <div class="chart-bar purchase" style="height:100px;"></div>
+                    <span style="font-size:10px; color:var(--text-muted);">11월</span>
+                  </div>
+                  <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                    <div class="chart-bar sales" style="height:150px;"></div>
+                    <div class="chart-bar purchase" style="height:115px;"></div>
+                    <span style="font-size:10px; color:var(--text-muted);">12월</span>
+                  </div>
+                </div>
+                <div class="chart-legend">
+                  <div class="legend-item"><div class="legend-dot sales"></div>매출</div>
+                  <div class="legend-item"><div class="legend-dot purchase"></div>매입</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="chart-card">
+              <div class="chart-header">
+                <span class="chart-title">빠른 작성</span>
+              </div>
+              <div class="quick-actions">
+                <div class="quick-action-btn" onclick="showPage('sales-quote-form', '견적서 작성')">
+                  <span class="quick-action-icon">📄</span>
+                  <span class="quick-action-label">견적서</span>
+                </div>
+                <div class="quick-action-btn" onclick="showPage('sales-approval-form', '품의서 작성')">
+                  <span class="quick-action-icon">✅</span>
+                  <span class="quick-action-label">품의서</span>
+                </div>
+                <div class="quick-action-btn" onclick="showPage('sales-order-form', '발주서 작성')">
+                  <span class="quick-action-icon">🚚</span>
+                  <span class="quick-action-label">발주서</span>
+                </div>
+                <div class="quick-action-btn" onclick="showPage('ma-quote-form', 'MA 견적서 작성')">
+                  <span class="quick-action-icon">🔧</span>
+                  <span class="quick-action-label">MA 견적</span>
+                </div>
+                <div class="quick-action-btn" onclick="showPage('ma-approval-form', 'MA 품의서 작성')">
+                  <span class="quick-action-icon">📋</span>
+                  <span class="quick-action-label">MA 품의</span>
+                </div>
+                <div class="quick-action-btn">
+                  <span class="quick-action-icon">📊</span>
+                  <span class="quick-action-label">리포트</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 결재대기 & GP 현황 -->
+          <div class="dashboard-row equal">
+            <div class="chart-card">
+              <div class="chart-header">
+                <span class="chart-title">⏰ 결재 대기</span>
+                <span style="font-size:12px; color:var(--accent-blue); cursor:pointer;">전체보기 →</span>
+              </div>
+              <div class="pending-list">
+                <div class="pending-item">
+                  <div class="pending-info">
+                    <span class="pending-badge urgent">긴급</span>
+                    <span class="pending-text">[품의] 삼성전자 서버랙 42U 외 2건</span>
+                  </div>
+                  <span class="pending-action" onclick="showPage('sales-approval-form', '품의서 상세')">결재하기</span>
+                </div>
+                <div class="pending-item">
+                  <div class="pending-info">
+                    <span class="pending-badge normal">일반</span>
+                    <span class="pending-text">[품의] LG CNS 네트워크 장비</span>
+                  </div>
+                  <span class="pending-action" onclick="showPage('sales-approval-form', '품의서 상세')">결재하기</span>
+                </div>
+                <div class="pending-item">
+                  <div class="pending-info">
+                    <span class="pending-badge normal">일반</span>
+                    <span class="pending-text">[MA품의] 현대모비스 유지보수 계약</span>
+                  </div>
+                  <span class="pending-action" onclick="showPage('ma-approval-form', 'MA 품의서 상세')">결재하기</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="chart-card">
+              <div class="chart-header">
+                <span class="chart-title">📊 GP 현황</span>
+              </div>
+              <div class="chart-body">
+                <div class="gp-chart">
+                  <div class="gp-donut">
+                    <div class="gp-donut-center">
+                      <div class="gp-donut-value">23%</div>
+                      <div class="gp-donut-label">GP율</div>
+                    </div>
+                  </div>
+                  <div class="gp-details">
+                    <div class="gp-detail-item">
+                      <span class="gp-detail-label"><div class="legend-dot sales"></div>매출</span>
+                      <span class="gp-detail-value">127,500,000</span>
+                    </div>
+                    <div class="gp-detail-item">
+                      <span class="gp-detail-label"><div class="legend-dot purchase"></div>매입</span>
+                      <span class="gp-detail-value">98,200,000</span>
+                    </div>
+                    <div class="gp-detail-item">
+                      <span class="gp-detail-label"><div class="legend-dot gp"></div>GP</span>
+                      <span class="gp-detail-value" style="color:var(--accent-green)">29,300,000</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 최근 활동 & 납품 예정 -->
+          <div class="dashboard-row equal">
+            <div class="chart-card">
+              <div class="chart-header">
+                <span class="chart-title">📝 최근 활동</span>
+                <span style="font-size:12px; color:var(--accent-blue); cursor:pointer;">전체보기 →</span>
+              </div>
+              <div class="activity-list">
+                <div class="activity-item" onclick="showPage('sales-quote-form', '견적서 상세')">
+                  <div class="activity-icon quote">📄</div>
+                  <div class="activity-content">
+                    <div class="activity-title">견적서 발송완료 - (주)ABC테크</div>
+                    <div class="activity-meta">Q-2025-0115 · 방금 전</div>
+                  </div>
+                  <div class="activity-amount">3,000,000</div>
+                </div>
+                <div class="activity-item" onclick="showPage('sales-approval-form', '품의서 상세')">
+                  <div class="activity-icon approval">✅</div>
+                  <div class="activity-content">
+                    <div class="activity-title">품의서 결재요청 - 삼성전자</div>
+                    <div class="activity-meta">D251202-01 · 2시간 전</div>
+                  </div>
+                  <div class="activity-amount">45,000,000</div>
+                </div>
+                <div class="activity-item" onclick="showPage('sales-order-form', '발주서 상세')">
+                  <div class="activity-icon order">🚚</div>
+                  <div class="activity-content">
+                    <div class="activity-title">발주서 발송 - RACK 코리아</div>
+                    <div class="activity-meta">PO-2025-042 · 3시간 전</div>
+                  </div>
+                  <div class="activity-amount">2,970,000</div>
+                </div>
+                <div class="activity-item" onclick="showPage('ma-quote-form', 'MA 견적서 상세')">
+                  <div class="activity-icon ma">🔧</div>
+                  <div class="activity-content">
+                    <div class="activity-title">MA 견적서 발송 - 현대모비스</div>
+                    <div class="activity-meta">MA-2025-008 · 어제</div>
+                  </div>
+                  <div class="activity-amount">1,160,000</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="chart-card">
+              <div class="chart-header">
+                <span class="chart-title">📦 이번 주 납품 예정</span>
+              </div>
+              <div class="activity-list">
+                <div class="activity-item">
+                  <div class="activity-icon order">📦</div>
+                  <div class="activity-content">
+                    <div class="activity-title">삼성전자 - 서버랙 외 3건</div>
+                    <div class="activity-meta">12월 5일 (목) · 서울 강남구</div>
+                  </div>
+                  <span class="badge badge-progress">D-2</span>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-icon order">📦</div>
+                  <div class="activity-content">
+                    <div class="activity-title">LG CNS - 네트워크 스위치</div>
+                    <div class="activity-meta">12월 6일 (금) · 경기 판교</div>
+                  </div>
+                  <span class="badge badge-new">D-3</span>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-icon order">📦</div>
+                  <div class="activity-content">
+                    <div class="activity-title">(주)ABC테크 - 서버랙 42U</div>
+                    <div class="activity-meta">12월 9일 (월) · 서울 금천구</div>
+                  </div>
+                  <span class="badge badge-new">D-6</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sales 견적서 목록 -->
+        <div class="screen" id="sales-quote-list">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">견적서 관리</h1>
+              <p class="page-desc">고객사에게 발송한 물품 견적서를 관리합니다</p>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-secondary">📥 엑셀</button>
+              <button class="btn btn-primary" onclick="showPage('sales-quote-form', '견적서 작성')">+ 견적서 작성</button>
+            </div>
+          </div>
+          
+          <div class="table-card">
+            <div class="table-header">
+              <span class="table-title">견적서 목록</span>
+              <div class="table-tools">
+                <div class="search-box">
+                  <span>🔍</span>
+                  <input type="text" placeholder="검색...">
+                </div>
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr><th>견적번호</th><th>견적일</th><th>고객사</th><th>프로젝트명</th><th>금액(VAT별도)</th><th>상태</th></tr>
+              </thead>
+              <tbody>
+                <tr onclick="showPage('sales-quote-form', '견적서 상세')">
+                  <td class="cell-id">Q-2025-0115</td>
+                  <td class="cell-date">2025-12-02</td>
+                  <td class="cell-company">(주)ABC테크</td>
+                  <td>BYC 통합서버 관리 건</td>
+                  <td class="cell-amount">3,000,000</td>
+                  <td><span class="badge badge-complete">발송완료</span></td>
+                </tr>
+                <tr onclick="showPage('sales-quote-form', '견적서 상세')">
+                  <td class="cell-id">Q-2025-0114</td>
+                  <td class="cell-date">2025-12-01</td>
+                  <td class="cell-company">삼성전자</td>
+                  <td>데이터센터 인프라 구축</td>
+                  <td class="cell-amount">45,000,000</td>
+                  <td><span class="badge badge-progress">수주확정</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Sales 품의서 목록 -->
+        <div class="screen" id="sales-approval-list">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">품의서 관리</h1>
+              <p class="page-desc">물품 구매 품의서를 관리합니다</p>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-primary" onclick="showPage('sales-approval-form', '품의서 작성')">+ 품의서 작성</button>
+            </div>
+          </div>
+          
+          <div class="table-card">
+            <div class="table-header"><span class="table-title">품의서 목록</span></div>
+            <table>
+              <thead>
+                <tr><th>품의코드</th><th>품의일자</th><th>매출처</th><th>매출금액</th><th>매입금액</th><th>GP</th><th>결재상태</th><th>액션</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="cell-id" style="cursor:pointer;" onclick="showPage('sales-approval-form', '품의서 상세')">D251202-01</td>
+                  <td class="cell-date">2025-12-02</td>
+                  <td class="cell-company">삼성전자</td>
+                  <td class="cell-amount">3,000,000</td>
+                  <td class="cell-amount">2,700,000</td>
+                  <td class="cell-amount" style="color:var(--accent-green)">300,000</td>
+                  <td><span class="badge badge-complete">승인완료</span></td>
+                  <td>
+                    <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); createPOFromApproval('D251202-01', '삼성전자', 'RACK 코리아', '2,700,000')">🚚 발주서 작성</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="cell-id" style="cursor:pointer;" onclick="showPage('sales-approval-form', '품의서 상세')">D251201-03</td>
+                  <td class="cell-date">2025-12-01</td>
+                  <td class="cell-company">LG CNS</td>
+                  <td class="cell-amount">9,700,000</td>
+                  <td class="cell-amount">8,500,000</td>
+                  <td class="cell-amount" style="color:var(--accent-green)">1,200,000</td>
+                  <td><span class="badge badge-complete">승인완료</span></td>
+                  <td>
+                    <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); createPOFromApproval('D251201-03', 'LG CNS', '인프라텍', '8,500,000')">🚚 발주서 작성</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="cell-id" style="cursor:pointer;" onclick="showPage('sales-approval-form', '품의서 상세')">D251130-01</td>
+                  <td class="cell-date">2025-11-30</td>
+                  <td class="cell-company">현대오토에버</td>
+                  <td class="cell-amount">5,500,000</td>
+                  <td class="cell-amount">4,800,000</td>
+                  <td class="cell-amount" style="color:var(--accent-green)">700,000</td>
+                  <td><span class="badge badge-pending">결재중</span></td>
+                  <td>
+                    <button class="btn btn-sm btn-secondary" disabled>승인 대기</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Sales 발주서 목록 -->
+        <div class="screen" id="sales-order-list">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">발주서 관리</h1>
+              <p class="page-desc">매입처에게 발송하는 발주서를 관리합니다</p>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-primary" onclick="showPage('sales-order-form', '발주서 작성')">+ 발주서 작성</button>
+            </div>
+          </div>
+          
+          <div class="table-card">
+            <div class="table-header"><span class="table-title">발주서 목록</span></div>
+            <table>
+              <thead>
+                <tr><th>발주번호</th><th>발주일</th><th>매입처</th><th>납품장소</th><th>금액(VAT포함)</th><th>상태</th></tr>
+              </thead>
+              <tbody>
+                <tr onclick="showPage('sales-order-form', '발주서 상세')">
+                  <td class="cell-id">PO-2025-042</td>
+                  <td class="cell-date">2025-12-02</td>
+                  <td class="cell-company">RACK 코리아</td>
+                  <td>BYC하이시티 B동 1201호</td>
+                  <td class="cell-amount">2,970,000</td>
+                  <td><span class="badge badge-complete">발송완료</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- MA 견적서 목록 -->
+        <div class="screen" id="ma-quote-list">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">유지보수 견적서</h1>
+              <p class="page-desc">시스템 유지정비 서비스 견적서를 관리합니다</p>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-primary" onclick="showPage('ma-quote-form', '유지보수 견적서 작성')">+ 견적서 작성</button>
+            </div>
+          </div>
+          
+          <div class="table-card">
+            <div class="table-header"><span class="table-title">유지보수 견적서 목록</span></div>
+            <table>
+              <thead>
+                <tr><th>견적번호</th><th>발신일</th><th>고객명</th><th>서비스기간</th><th>총계(VAT별도)</th><th>상태</th></tr>
+              </thead>
+              <tbody>
+                <tr onclick="showPage('ma-quote-form', '유지보수 견적서 상세')">
+                  <td class="cell-id">MA-2025-008</td>
+                  <td class="cell-date">2025-12-02</td>
+                  <td class="cell-company">현대모비스</td>
+                  <td class="cell-date">2025-12-23 ~ 2026-12-22</td>
+                  <td class="cell-amount">1,160,000</td>
+                  <td><span class="badge badge-complete">발송완료</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- MA 품의서 목록 -->
+        <div class="screen" id="ma-approval-list">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">유지보수 품의서</h1>
+              <p class="page-desc">유지보수 계약 품의서를 관리합니다</p>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-primary" onclick="showPage('ma-approval-form', '유지보수 품의서 작성')">+ 품의서 작성</button>
+            </div>
+          </div>
+          
+          <div class="table-card">
+            <div class="table-header"><span class="table-title">유지보수 품의서 목록</span></div>
+            <table>
+              <thead>
+                <tr><th>품의일자</th><th>고객사</th><th>매출가</th><th>매입가</th><th>총GP</th><th>GP율</th><th>결재상태</th></tr>
+              </thead>
+              <tbody>
+                <tr onclick="showPage('ma-approval-form', '유지보수 품의서 상세')">
+                  <td class="cell-date">2025-12-02</td>
+                  <td class="cell-company">[고객사명]</td>
+                  <td class="cell-amount">1,000,000</td>
+                  <td class="cell-amount">800,000</td>
+                  <td class="cell-amount" style="color:var(--accent-green)">200,000</td>
+                  <td style="color:var(--accent-green)">20%</td>
+                  <td><span class="badge badge-pending">결재중</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ========== Sales 견적서 폼 ========== -->
+        <div class="screen" id="sales-quote-form">
+          <div class="mode-toggle-bar">
+            <button class="mode-toggle-btn active" onclick="switchMode('sales-quote-form', 'web')">📊 웹 모드</button>
+            <button class="mode-toggle-btn" onclick="switchMode('sales-quote-form', 'form')">📄 양식 모드 (인쇄/발송용)</button>
+          </div>
+
+          <div class="view-mode active" id="sales-quote-form-web">
+            <div class="form-container">
+              <!-- 기본 정보 (수신처) -->
+              <div class="form-card">
+                <div class="form-card-header"><span class="form-card-title">🏢 기본 정보 (수신처)</span></div>
+                <div class="form-card-body">
+                  <div class="form-grid">
+                    <div class="form-group span-2">
+                      <label class="form-label">회사 (수신)<span class="required">*</span></label>
+                      <input type="text" class="form-input" value="(주)ABC테크">
+                    </div>
+                    <div class="form-group span-2">
+                      <label class="form-label">참조 (담당자)</label>
+                      <input type="text" class="form-input" value="홍길동">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">전화</label>
+                      <input type="text" class="form-input" value="02-1234-5678">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Fax</label>
+                      <input type="text" class="form-input" value="070-1234-5678">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">C.P (휴대폰)</label>
+                      <input type="text" class="form-input" value="010-1234-5678">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">E-mail</label>
+                      <input type="email" class="form-input" value="hong@abctech.co.kr">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 견적 정보 -->
+              <div class="form-card">
+                <div class="form-card-header"><span class="form-card-title">📋 견적 정보</span></div>
+                <div class="form-card-body">
+                  <div class="form-grid">
+                    <div class="form-group">
+                      <label class="form-label">견적번호</label>
+                      <input type="text" class="form-input" value="Q-2025-0115" disabled>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">견적일<span class="required">*</span></label>
+                      <input type="date" class="form-input" value="2025-12-02">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">납기일</label>
+                      <input type="text" class="form-input" value="별도협의" placeholder="예: 발주 후 2주">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">유효기간</label>
+                      <input type="text" class="form-input" value="견적일로부터 15일">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">결제조건</label>
+                      <input type="text" class="form-input" value="계산서 발행 후 익월 말">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">견적담당</label>
+                      <input type="text" class="form-input" value="김대훈" disabled>
+                    </div>
+                    <div class="form-group span-4">
+                      <label class="form-label">프로젝트명</label>
+                      <input type="text" class="form-input" value="BYC 통합서버 관리 건">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 품목 정보 -->
+              <div class="form-card">
+                <div class="form-card-header">
+                  <span class="form-card-title">📦 품목 정보</span>
+                  <button class="btn btn-sm btn-secondary" onclick="addQuoteItem()">+ 품목 추가</button>
+                </div>
+                <div class="form-card-body" style="padding:0;">
+                  <div class="items-table-wrap" style="border:none; border-radius:0;">
+                    <table class="items-table" id="quoteItemsTable">
+                      <thead>
+                        <tr>
+                          <th style="width:100px">P/N</th>
+                          <th>Description</th>
+                          <th style="width:60px">Q'ty</th>
+                          <th style="width:100px">SRP</th>
+                          <th style="width:100px">Price</th>
+                          <th style="width:110px">Sum</th>
+                          <th style="width:40px"></th>
+                        </tr>
+                      </thead>
+                      <tbody id="quoteItemsBody">
+                        <tr>
+                          <td><input type="text" value="[제품명]"></td>
+                          <td><input type="text" value="서버랙 42U -19인치표준랙"></td>
+                          <td><input type="number" class="num-input" value="1" onchange="calcQuoteRow(this)"></td>
+                          <td><input type="text" class="num-input" value="4,000,000" placeholder="정가"></td>
+                          <td><input type="text" class="num-input" value="3,000,000" onchange="calcQuoteRow(this)"></td>
+                          <td><input type="text" class="num-input" value="3,000,000" disabled></td>
+                          <td><button class="del-btn" onclick="removeQuoteItem(this)">×</button></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <div class="items-summary">
+                      <div class="summary-grid">
+                        <span class="summary-label">제안금액 (VAT별도)</span>
+                        <span class="summary-value" id="quoteTotalExVat">3,000,000</span>
+                        <span class="summary-label">제안금액 (VAT포함)</span>
+                        <span class="summary-value total" id="quoteTotalInVat">3,300,000</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 기타사항 -->
+              <div class="form-card">
+                <div class="form-card-header"><span class="form-card-title">📝 기타사항</span></div>
+                <div class="form-card-body">
+                  <textarea class="form-input" rows="4" placeholder="추가 안내사항, 특이사항 등을 입력하세요">- 본 견적은 견적일로부터 15일간 유효합니다.
+- 설치비는 별도입니다.
+- 제품 사양은 제조사 사정에 따라 변경될 수 있습니다.</textarea>
+                </div>
+              </div>
+            </div>
+
+            <div class="action-bar">
+              <div class="action-bar-left"><button class="btn btn-secondary" onclick="goBack()">취소</button></div>
+              <div class="action-bar-right">
+                <button class="btn btn-secondary" onclick="exportToExcel('quote')">📥 엑셀 저장</button>
+                <button class="btn btn-secondary" onclick="switchMode('sales-quote-form', 'form')">📄 양식 미리보기</button>
+                <button class="btn btn-primary btn-lg">📧 견적서 발송</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="view-mode" id="sales-quote-form-form">
+            <div class="document-preview">
+              <div class="form-document">
+                <div class="doc-header">
+                  <div class="doc-logo">
+                    <div class="doc-logo-img">㈜서버메이트</div>
+                  </div>
+                  <div class="doc-title-area"><div class="doc-title">Quotation</div></div>
+                  <div class="doc-company-info">
+                    <div>서울시 금천구 가산디지털1로 131</div>
+                    <div>(BYC하이시티 B동 1201호)</div>
+                    <div class="doc-seal">대표<br>서 서 형<br>(인)</div>
+                  </div>
+                </div>
+
+                <!-- 기본정보 + 견적정보 -->
+                <table class="doc-info-table">
+                  <tr>
+                    <th>회 사</th>
+                    <td colspan="3" contenteditable="true" class="editable"><strong>(주)ABC테크</strong> 귀중</td>
+                  </tr>
+                  <tr>
+                    <th>참 조</th>
+                    <td contenteditable="true" class="editable">홍길동</td>
+                    <th>전 화</th>
+                    <td contenteditable="true" class="editable">02-1234-5678</td>
+                  </tr>
+                  <tr>
+                    <th>Fax</th>
+                    <td contenteditable="true" class="editable">070-1234-5678</td>
+                    <th>C.P</th>
+                    <td contenteditable="true" class="editable">010-1234-5678</td>
+                  </tr>
+                  <tr>
+                    <th>E-mail</th>
+                    <td colspan="3" contenteditable="true" class="editable">hong@abctech.co.kr</td>
+                  </tr>
+                </table>
+
+                <table class="doc-info-table" style="margin-top:15px;">
+                  <tr>
+                    <th>견 적 일</th>
+                    <td contenteditable="true" class="editable">2025년 12월 2일</td>
+                    <th>납 기 일</th>
+                    <td contenteditable="true" class="editable">별도협의</td>
+                  </tr>
+                  <tr>
+                    <th>유효기간</th>
+                    <td contenteditable="true" class="editable">견적일로부터 15일</td>
+                    <th>결제조건</th>
+                    <td contenteditable="true" class="editable">계산서 발행 후 익월 말</td>
+                  </tr>
+                  <tr>
+                    <th>견적담당</th>
+                    <td contenteditable="true" class="editable">김대훈 (070-8892-1455)</td>
+                    <th>견적번호</th>
+                    <td>Q-2025-0115</td>
+                  </tr>
+                  <tr>
+                    <th>프로젝트명</th>
+                    <td colspan="3" contenteditable="true" class="editable">BYC 통합서버 관리 건</td>
+                  </tr>
+                </table>
+
+                <!-- 품목 테이블 (SRP 포함) -->
+                <table class="doc-items-table">
+                  <thead>
+                    <tr>
+                      <th style="width:80px;">P/N</th>
+                      <th>Description</th>
+                      <th style="width:45px;">Q'ty</th>
+                      <th style="width:80px;">SRP</th>
+                      <th style="width:80px;">Price</th>
+                      <th style="width:90px;">Sum</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td contenteditable="true" class="editable">[제품명]</td>
+                      <td class="desc-cell editable" contenteditable="true">서버랙 42U -19인치표준랙<br>-(H)2,000*(W)600*(D)1,070 mm</td>
+                      <td contenteditable="true" class="editable">1</td>
+                      <td class="right editable" contenteditable="true">4,000,000</td>
+                      <td class="right editable" contenteditable="true">3,000,000</td>
+                      <td class="right editable" contenteditable="true">3,000,000</td>
+                    </tr>
+                    <tr>
+                      <td contenteditable="true" class="editable" data-placeholder="P/N"></td>
+                      <td class="desc-cell editable" contenteditable="true" data-placeholder="품목 설명"></td>
+                      <td contenteditable="true" class="editable" data-placeholder=""></td>
+                      <td class="right editable" contenteditable="true" data-placeholder=""></td>
+                      <td class="right editable" contenteditable="true" data-placeholder=""></td>
+                      <td class="right editable" contenteditable="true" data-placeholder=""></td>
+                    </tr>
+                    <tr>
+                      <td contenteditable="true" class="editable"></td>
+                      <td class="desc-cell editable" contenteditable="true"></td>
+                      <td contenteditable="true" class="editable"></td>
+                      <td class="right editable" contenteditable="true"></td>
+                      <td class="right editable" contenteditable="true"></td>
+                      <td class="right editable" contenteditable="true"></td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <!-- 합계 -->
+                <div class="doc-summary">
+                  <table class="doc-summary-table">
+                    <tr>
+                      <th>제안금액(VAT별도)</th>
+                      <td contenteditable="true" class="editable">3,000,000</td>
+                    </tr>
+                    <tr class="total">
+                      <th>제안금액(VAT포함)</th>
+                      <td contenteditable="true" class="editable">3,300,000</td>
+                    </tr>
+                  </table>
+                </div>
+
+                <!-- 기타사항 -->
+                <div class="doc-notes">
+                  <div class="doc-notes-title">기타사항</div>
+                  <div contenteditable="true" class="editable" style="min-height:60px; white-space:pre-line;">- 본 견적은 견적일로부터 15일간 유효합니다.
+- 설치비는 별도입니다.
+- 제품 사양은 제조사 사정에 따라 변경될 수 있습니다.</div>
+                </div>
+
+                <!-- 구매자 확인란 -->
+                <div class="doc-buyer-confirm">
+                  <div style="font-weight:bold; margin-bottom:10px;">구매자 확인란</div>
+                  <div class="doc-buyer-grid">
+                    <div class="doc-buyer-item">
+                      <span class="doc-buyer-label">회사명:</span>
+                      <span class="doc-buyer-value editable" contenteditable="true"></span>
+                    </div>
+                    <div class="doc-buyer-item">
+                      <span class="doc-buyer-label">담당자:</span>
+                      <span class="doc-buyer-value editable" contenteditable="true"></span>
+                    </div>
+                    <div class="doc-buyer-item">
+                      <span class="doc-buyer-label">전화번호:</span>
+                      <span class="doc-buyer-value editable" contenteditable="true"></span>
+                    </div>
+                    <div class="doc-buyer-item">
+                      <span class="doc-buyer-label">서명:</span>
+                      <span class="doc-buyer-value editable" contenteditable="true"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="action-bar">
+              <div class="action-bar-left"><button class="btn btn-secondary" onclick="switchMode('sales-quote-form', 'web')">← 웹 모드</button></div>
+              <div class="action-bar-right">
+                <button class="btn btn-secondary" onclick="window.print()">🖨️ 인쇄</button>
+                <button class="btn btn-secondary">📥 PDF 다운로드</button>
+                <button class="btn btn-primary btn-lg">📧 이메일 발송</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== Sales 품의서 폼 ========== -->
+        <div class="screen" id="sales-approval-form">
+          <div class="mode-toggle-bar">
+            <button class="mode-toggle-btn active" onclick="switchMode('sales-approval-form', 'web')">📊 웹 모드</button>
+            <button class="mode-toggle-btn" onclick="switchMode('sales-approval-form', 'form')">📄 양식 모드</button>
+          </div>
+
+          <div class="view-mode active" id="sales-approval-form-web">
+            <div class="form-container">
+              <!-- 클라이언트 발주서 첨부 -->
+              <div class="form-card" style="border: 2px dashed var(--accent-blue); background: var(--accent-blue-dim);">
+                <div class="form-card-header" style="background: transparent; border-bottom: 1px dashed var(--accent-blue);">
+                  <span class="form-card-title">📎 클라이언트 발주서 (수신)</span>
+                  <span style="font-size:12px; color:var(--text-secondary);">고객사로부터 받은 발주서를 첨부하세요</span>
+                </div>
+                <div class="form-card-body">
+                  <div class="file-upload-area" id="poUploadArea">
+                    <div class="file-upload-empty" id="poUploadEmpty">
+                      <div style="font-size:40px; margin-bottom:12px;">📄</div>
+                      <div style="font-size:14px; font-weight:500; margin-bottom:4px;">클라이언트 발주서 첨부</div>
+                      <div style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">PDF, 이미지, 엑셀 파일 등</div>
+                      <label class="btn btn-secondary" style="cursor:pointer;">
+                        <input type="file" id="poFileInput" style="display:none;" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls" onchange="handlePOUpload(this)">
+                        파일 선택
+                      </label>
+                    </div>
+                    <div class="file-upload-preview" id="poUploadPreview" style="display:none;">
+                      <div class="uploaded-file">
+                        <div class="uploaded-file-icon">📄</div>
+                        <div class="uploaded-file-info">
+                          <div class="uploaded-file-name" id="poFileName">삼성전자_발주서_2025120201.pdf</div>
+                          <div class="uploaded-file-meta" id="poFileMeta">PDF · 245KB · 2025-12-02 업로드</div>
+                        </div>
+                        <div class="uploaded-file-actions">
+                          <button class="btn btn-sm btn-secondary" onclick="downloadPO()">📥 다운로드</button>
+                          <button class="btn btn-sm btn-secondary" onclick="previewPO()">👁️ 미리보기</button>
+                          <button class="btn btn-sm" style="color:var(--accent-red);" onclick="removePO()">🗑️</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-card">
+                <div class="form-card-header"><span class="form-card-title">📋 품의 기본 정보</span></div>
+                <div class="form-card-body">
+                  <div class="form-grid">
+                    <div class="form-group"><label class="form-label">품의코드</label><input type="text" class="form-input" value="D251202-01"></div>
+                    <div class="form-group"><label class="form-label">품의일자</label><input type="date" class="form-input" value="2025-12-02"></div>
+                    <div class="form-group"><label class="form-label">품의담당</label><input type="text" class="form-input" value="김대훈" disabled></div>
+                    <div class="form-group"><label class="form-label">매출처</label><input type="text" class="form-input" value="삼성전자"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-card">
+                <div class="form-card-header"><span class="form-card-title">📦 매출/매입 품목</span></div>
+                <div class="form-card-body" style="padding:0;">
+                  <div class="items-table-wrap" style="border:none;">
+                    <table class="items-table">
+                      <thead><tr><th>품목</th><th>수량</th><th>매출단가</th><th>매출합계</th><th>매입처</th><th>매입단가</th><th>매입합계</th></tr></thead>
+                      <tbody>
+                        <tr>
+                          <td><input type="text" value="서버랙 42U"></td>
+                          <td><input type="number" class="num-input" value="1"></td>
+                          <td><input type="text" class="num-input" value="3,000,000"></td>
+                          <td><input type="text" class="num-input" value="3,000,000" disabled></td>
+                          <td><input type="text" value="RACK 코리아"></td>
+                          <td><input type="text" class="num-input" value="2,700,000"></td>
+                          <td><input type="text" class="num-input" value="2,700,000" disabled></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <div class="items-summary">
+                      <div class="summary-grid">
+                        <span class="summary-label">매출금액 합계</span><span class="summary-value">3,000,000</span>
+                        <span class="summary-label">매입금액 합계</span><span class="summary-value">2,700,000</span>
+                        <span class="summary-label">GP</span><span class="summary-value gp">300,000 (10%)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-card">
+                <div class="form-card-header"><span class="form-card-title">✅ 결재</span></div>
+                <div class="form-card-body">
+                  <div class="approval-line">
+                    <div class="approval-box"><div class="approval-box-header">대표이사</div><div class="approval-box-body"><span class="approval-status waiting">대기</span></div></div>
+                    <div class="approval-box"><div class="approval-box-header">영업팀장</div><div class="approval-box-body"><span class="approval-status waiting">대기</span></div></div>
+                    <div class="approval-box"><div class="approval-box-header">영업담당</div><div class="approval-box-body"><span class="approval-signature">김대훈</span></div></div>
+                    <div class="approval-box"><div class="approval-box-header">출고</div><div class="approval-box-body"><span class="approval-status waiting">대기</span></div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="action-bar">
+              <div class="action-bar-left"><button class="btn btn-secondary" onclick="goBack()">취소</button></div>
+              <div class="action-bar-right">
+                <button class="btn btn-secondary" onclick="switchMode('sales-approval-form', 'form')">📄 양식 미리보기</button>
+                <button class="btn btn-success btn-lg">✅ 품의 상신</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="view-mode" id="sales-approval-form-form">
+            <div class="document-preview">
+              <div class="form-document">
+                <div style="text-align:center; margin-bottom:30px;"><div class="doc-title">SALES 통합 품의서</div></div>
+                <table class="doc-info-table">
+                  <tr><th>품의 코드</th><td contenteditable="true" class="editable">D251202-01</td><th>품의 일자</th><td contenteditable="true" class="editable">2025-12-02</td></tr>
+                  <tr><th>품의 담당</th><td contenteditable="true" class="editable">김대훈</td><th>매출처</th><td contenteditable="true" class="editable">삼성전자</td></tr>
+                </table>
+                <table class="doc-items-table">
+                  <thead><tr><th>품목</th><th>수량</th><th>매출단가</th><th>매출합계</th><th>매입처</th><th>매입단가</th><th>매입합계</th></tr></thead>
+                  <tbody>
+                    <tr>
+                      <td contenteditable="true" class="editable">서버랙 42U</td>
+                      <td contenteditable="true" class="editable">1</td>
+                      <td class="right editable" contenteditable="true">3,000,000</td>
+                      <td class="right editable" contenteditable="true">3,000,000</td>
+                      <td contenteditable="true" class="editable">RACK 코리아</td>
+                      <td class="right editable" contenteditable="true">2,700,000</td>
+                      <td class="right editable" contenteditable="true">2,700,000</td>
+                    </tr>
+                    <tr>
+                      <td contenteditable="true" class="editable"></td>
+                      <td contenteditable="true" class="editable"></td>
+                      <td class="right editable" contenteditable="true"></td>
+                      <td class="right editable" contenteditable="true"></td>
+                      <td contenteditable="true" class="editable"></td>
+                      <td class="right editable" contenteditable="true"></td>
+                      <td class="right editable" contenteditable="true"></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <table class="doc-info-table" style="margin-top:15px;">
+                  <tr><th>매출금액 합계</th><td class="right editable" contenteditable="true" style="font-weight:bold;">3,000,000</td><th>매입금액 합계</th><td class="right editable" contenteditable="true" style="font-weight:bold;">2,700,000</td></tr>
+                  <tr><th colspan="2" style="text-align:center; background:#e8f5e9;">GP</th><td colspan="2" class="right doc-gp-highlight editable" contenteditable="true">300,000 (10%)</td></tr>
+                </table>
+                <div class="doc-approval">
+                  <table class="doc-approval-table">
+                    <tr><th></th><th>대표이사</th><th>영업팀장</th><th>영업담당</th><th>출고</th></tr>
+                    <tr><th>서명</th><td class="sign-cell"></td><td class="sign-cell"></td><td class="sign-cell"><span class="doc-signature">김대훈</span></td><td class="sign-cell"></td></tr>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="action-bar">
+              <div class="action-bar-left"><button class="btn btn-secondary" onclick="switchMode('sales-approval-form', 'web')">← 웹 모드</button></div>
+              <div class="action-bar-right">
+                <button class="btn btn-secondary" onclick="window.print()">🖨️ 인쇄</button>
+                <button class="btn btn-success btn-lg">✅ 결재 요청</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== Sales 발주서 폼 ========== -->
+        <div class="screen" id="sales-order-form">
+          <div class="mode-toggle-bar">
+            <button class="mode-toggle-btn active" onclick="switchMode('sales-order-form', 'web')">📊 웹 모드</button>
+            <button class="mode-toggle-btn" onclick="switchMode('sales-order-form', 'form')">📄 양식 모드 (인쇄/발송용)</button>
+          </div>
+
+          <div class="view-mode active" id="sales-order-form-web">
+            <div class="form-container">
+              <!-- 품의서 불러오기 -->
+              <div class="form-card" style="border: 2px solid var(--accent-green); background: var(--accent-green-dim);">
+                <div class="form-card-header" style="background: transparent; border-bottom: 1px solid var(--accent-green);">
+                  <span class="form-card-title">⚡ 품의서에서 불러오기</span>
+                  <button class="btn btn-sm btn-success" onclick="openApprovalSelector()">품의서 선택</button>
+                </div>
+                <div class="form-card-body">
+                  <div id="linkedApprovalEmpty" style="text-align:center; padding:20px; color:var(--text-secondary);">
+                    <div style="font-size:14px;">승인된 품의서를 선택하면 발주서가 자동으로 작성됩니다</div>
+                    <div style="font-size:12px; margin-top:8px; color:var(--text-muted);">매입처, 품목, 금액 정보가 자동으로 채워집니다</div>
+                  </div>
+                  <div id="linkedApprovalInfo" style="display:none;">
+                    <div class="linked-approval-card">
+                      <div class="linked-approval-header">
+                        <span class="badge badge-complete">승인완료</span>
+                        <span class="linked-approval-code" id="linkedApprovalCode">D251202-01</span>
+                      </div>
+                      <div class="linked-approval-details">
+                        <div class="linked-detail-row">
+                          <span class="linked-detail-label">매출처</span>
+                          <span class="linked-detail-value" id="linkedSalesTo">삼성전자</span>
+                        </div>
+                        <div class="linked-detail-row">
+                          <span class="linked-detail-label">매입처</span>
+                          <span class="linked-detail-value" id="linkedPurchaseFrom">RACK 코리아</span>
+                        </div>
+                        <div class="linked-detail-row">
+                          <span class="linked-detail-label">매입금액</span>
+                          <span class="linked-detail-value" id="linkedPurchaseAmount" style="font-weight:600;">2,700,000</span>
+                        </div>
+                      </div>
+                      <div class="linked-approval-actions">
+                        <button class="btn btn-sm btn-secondary" onclick="viewLinkedApproval()">품의서 보기</button>
+                        <button class="btn btn-sm" style="color:var(--accent-red);" onclick="unlinkApproval()">연결 해제</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-card">
+                <div class="form-card-header"><span class="form-card-title">📋 발주 기본 정보</span></div>
+                <div class="form-card-body">
+                  <div class="form-grid">
+                    <div class="form-group"><label class="form-label">발주번호</label><input type="text" class="form-input" value="PO-2025-042" disabled></div>
+                    <div class="form-group"><label class="form-label">발주일자</label><input type="date" class="form-input" value="2025-12-02"></div>
+                    <div class="form-group"><label class="form-label">발주담당</label><input type="text" class="form-input" value="김대훈" disabled></div>
+                    <div class="form-group"><label class="form-label">결제조건</label><input type="text" class="form-input" value="계산서 발행 후 익월 말 현금"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-card">
+                <div class="form-card-header"><span class="form-card-title">🏭 수신처 (매입처)</span></div>
+                <div class="form-card-body">
+                  <div class="form-grid">
+                    <div class="form-group"><label class="form-label">매입처명<span class="required">*</span></label><input type="text" class="form-input" value="RACK 코리아"></div>
+                    <div class="form-group"><label class="form-label">담당자</label><input type="text" class="form-input" placeholder="담당자명"></div>
+                    <div class="form-group"><label class="form-label">연락처</label><input type="text" class="form-input" placeholder="연락처"></div>
+                    <div class="form-group"><label class="form-label">이메일</label><input type="email" class="form-input" placeholder="이메일"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-card">
+                <div class="form-card-header"><span class="form-card-title">🚚 납품 정보</span></div>
+                <div class="form-card-body">
+                  <div class="form-grid form-grid-2">
+                    <div class="form-group"><label class="form-label">납품장소</label><input type="text" class="form-input" value="서울시 금천구 가산디지털1로 131 BYC하이시티 B동 1201호"></div>
+                    <div class="form-group"><label class="form-label">납품요청일</label><input type="text" class="form-input" value="별도협의"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-card">
+                <div class="form-card-header"><span class="form-card-title">📦 발주 품목</span><button class="btn btn-sm btn-secondary">+ 품목 추가</button></div>
+                <div class="form-card-body" style="padding:0;">
+                  <div class="items-table-wrap" style="border:none;">
+                    <table class="items-table">
+                      <thead><tr><th>Part No.</th><th>품 목</th><th>수량</th><th>공급단가</th><th>금액</th><th></th></tr></thead>
+                      <tbody>
+                        <tr>
+                          <td><input type="text" value="[품목명]"></td>
+                          <td><input type="text" value="서버랙 42U"></td>
+                          <td><input type="number" class="num-input" value="1"></td>
+                          <td><input type="text" class="num-input" value="2,400,000"></td>
+                          <td><input type="text" class="num-input" value="2,400,000" disabled></td>
+                          <td><button class="del-btn">×</button></td>
+                        </tr>
+                        <tr>
+                          <td><input type="text" value="[품목명]"></td>
+                          <td><input type="text" value="AL 10구 16A MCCB 랙전원"></td>
+                          <td><input type="number" class="num-input" value="2"></td>
+                          <td><input type="text" class="num-input" value="100,000"></td>
+                          <td><input type="text" class="num-input" value="200,000" disabled></td>
+                          <td><button class="del-btn">×</button></td>
+                        </tr>
+                        <tr>
+                          <td><input type="text" value="[품목명]"></td>
+                          <td><input type="text" value="배송비"></td>
+                          <td><input type="number" class="num-input" value="1"></td>
+                          <td><input type="text" class="num-input" value="100,000"></td>
+                          <td><input type="text" class="num-input" value="100,000" disabled></td>
+                          <td><button class="del-btn">×</button></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <div class="items-summary">
+                      <div class="summary-grid">
+                        <span class="summary-label">합 계</span><span class="summary-value">2,700,000</span>
+                        <span class="summary-label">V.A.T</span><span class="summary-value">270,000</span>
+                        <span class="summary-label">총합계 (VAT포함)</span><span class="summary-value total">2,970,000</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-card">
+                <div class="form-card-header"><span class="form-card-title">📝 비고</span></div>
+                <div class="form-card-body">
+                  <textarea class="form-input" rows="2">서버메이트->매입처 결제조건과 매출처->서버메이트의 결제조건이 다를 수 있음</textarea>
+                </div>
+              </div>
+            </div>
+            <div class="action-bar">
+              <div class="action-bar-left"><button class="btn btn-secondary" onclick="goBack()">취소</button></div>
+              <div class="action-bar-right">
+                <button class="btn btn-secondary" onclick="switchMode('sales-order-form', 'form')">📄 양식 미리보기</button>
+                <button class="btn btn-primary btn-lg">📧 발주서 발송</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="view-mode" id="sales-order-form-form">
+            <div class="document-preview">
+              <div class="form-document">
+                <div class="doc-header">
+                  <div class="doc-logo"><div class="doc-logo-img">㈜서버메이트</div></div>
+                  <div class="doc-title-area">
+                    <div style="font-size:11px;">㈜서버메이트 (ServerMate Co.,Ltd)</div>
+                    <div style="font-size:9px; color:#666;">서울시 금천구 가산디지털단지1로 131 (BYC하이시티 B동 1201호)</div>
+                  </div>
+                  <div class="doc-company-info"><div class="doc-seal">대표<br>서 서 형<br>(인)</div></div>
+                </div>
+                <div style="text-align:center; margin:20px 0;"><div class="doc-title">발 주 서</div></div>
+                <div style="display:flex; gap:20px; margin-bottom:20px;">
+                  <table class="doc-info-table" style="flex:1; margin-bottom:0;">
+                    <tr><th colspan="2" style="background:#e3f2fd; text-align:center;">수신</th></tr>
+                    <tr><th>매입처명</th><td contenteditable="true" class="editable">RACK 코리아</td></tr>
+                    <tr><th>담당자</th><td contenteditable="true" class="editable"></td></tr>
+                    <tr><th>연락처</th><td contenteditable="true" class="editable"></td></tr>
+                    <tr><th>이메일</th><td contenteditable="true" class="editable"></td></tr>
+                  </table>
+                  <table class="doc-info-table" style="flex:1; margin-bottom:0;">
+                    <tr><th colspan="2" style="background:#e3f2fd; text-align:center;">발신</th></tr>
+                    <tr><th>발 주 자</th><td>㈜서버메이트 (107-86-68756)</td></tr>
+                    <tr><th>발주일자</th><td contenteditable="true" class="editable">2025년 12월 2일</td></tr>
+                    <tr><th>납품장소</th><td contenteditable="true" class="editable" style="font-size:9px;">서울시 금천구 가산디지털1로 131 BYC하이시티 B동 1201호</td></tr>
+                    <tr><th>담당자</th><td contenteditable="true" class="editable">김대훈(010-2994-4720)</td></tr>
+                    <tr><th>결제조건</th><td contenteditable="true" class="editable">계산서 발행 후 익월 말 현금</td></tr>
+                  </table>
+                </div>
+                <div style="margin:15px 0; font-size:11px;">다음과 같이 발주하오니 납품요청일에 납품하여 주시기 바랍니다.</div>
+                <table class="doc-items-table">
+                  <thead><tr><th>Part No.</th><th>품 목</th><th>수량</th><th>소비자가</th><th>공급단가</th><th>금액</th></tr></thead>
+                  <tbody>
+                    <tr>
+                      <td contenteditable="true" class="editable">[품목명]</td>
+                      <td class="desc-cell editable" contenteditable="true">서버랙 42U -19인치표준랙</td>
+                      <td contenteditable="true" class="editable">1</td>
+                      <td class="right editable" contenteditable="true"></td>
+                      <td class="right editable" contenteditable="true">2,400,000</td>
+                      <td class="right editable" contenteditable="true">2,400,000</td>
+                    </tr>
+                    <tr>
+                      <td contenteditable="true" class="editable">[품목명]</td>
+                      <td class="desc-cell editable" contenteditable="true">AL 10구 16A MCCB 랙전원</td>
+                      <td contenteditable="true" class="editable">2</td>
+                      <td class="right editable" contenteditable="true"></td>
+                      <td class="right editable" contenteditable="true">100,000</td>
+                      <td class="right editable" contenteditable="true">200,000</td>
+                    </tr>
+                    <tr>
+                      <td contenteditable="true" class="editable">[품목명]</td>
+                      <td class="desc-cell editable" contenteditable="true">배송비</td>
+                      <td contenteditable="true" class="editable">1</td>
+                      <td class="right editable" contenteditable="true"></td>
+                      <td class="right editable" contenteditable="true">100,000</td>
+                      <td class="right editable" contenteditable="true">100,000</td>
+                    </tr>
+                    <tr>
+                      <td contenteditable="true" class="editable"></td>
+                      <td class="desc-cell editable" contenteditable="true"></td>
+                      <td contenteditable="true" class="editable"></td>
+                      <td class="right editable" contenteditable="true"></td>
+                      <td class="right editable" contenteditable="true"></td>
+                      <td class="right editable" contenteditable="true"></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div class="doc-summary">
+                  <table class="doc-summary-table">
+                    <tr><th>합 계</th><td contenteditable="true" class="editable">2,700,000</td></tr>
+                    <tr><th>V.A.T</th><td contenteditable="true" class="editable">270,000</td></tr>
+                    <tr class="total"><th>총합계(VAT포함)</th><td contenteditable="true" class="editable">2,970,000</td></tr>
+                  </table>
+                </div>
+                <div class="doc-notes">
+                  <div class="doc-notes-title">비고</div>
+                  <div contenteditable="true" class="editable" style="min-height:30px;">참고사항 [서버메이트->매입처 결제조건과 매출처->서버메이트의 결제조건이 다를 수 있음]</div>
+                </div>
+              </div>
+            </div>
+            <div class="action-bar">
+              <div class="action-bar-left"><button class="btn btn-secondary" onclick="switchMode('sales-order-form', 'web')">← 웹 모드</button></div>
+              <div class="action-bar-right">
+                <button class="btn btn-secondary" onclick="window.print()">🖨️ 인쇄</button>
+                <button class="btn btn-primary btn-lg">📧 발주서 발송</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== MA 견적서 폼 ========== -->
+        <div class="screen" id="ma-quote-form">
+          <div class="mode-toggle-bar">
+            <button class="mode-toggle-btn active" onclick="switchMode('ma-quote-form', 'web')">📊 웹 모드</button>
+            <button class="mode-toggle-btn" onclick="switchMode('ma-quote-form', 'form')">📄 양식 모드</button>
+          </div>
+
+          <div class="view-mode active" id="ma-quote-form-web">
+            <div class="form-container">
+              <div class="form-card">
+                <div class="form-card-header"><span class="form-card-title">📋 기본 정보</span></div>
+                <div class="form-card-body">
+                  <div class="form-grid">
+                    <div class="form-group"><label class="form-label">수신 (고객사)</label><input type="text" class="form-input" value="현대모비스"></div>
+                    <div class="form-group"><label class="form-label">참조 (담당자)</label><input type="text" class="form-input" placeholder="담당자명"></div>
+                    <div class="form-group"><label class="form-label">발신일</label><input type="date" class="form-input" value="2025-12-02"></div>
+                    <div class="form-group"><label class="form-label">견적담당</label><input type="text" class="form-input" value="김대훈" disabled></div>
+                    <div class="form-group span-2"><label class="form-label">기계설치주소</label><input type="text" class="form-input" placeholder="기계가 설치된 주소"></div>
+                    <div class="form-group"><label class="form-label">유효기간</label><input type="text" class="form-input" value="15일"></div>
+                    <div class="form-group"><label class="form-label">지급조건</label><input type="text" class="form-input" value="계약시점 초일 청구 60일 이내"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-card">
+                <div class="form-card-header"><span class="form-card-title">🔧 유지보수 기기 목록</span><button class="btn btn-sm btn-secondary">+ 기기 추가</button></div>
+                <div class="form-card-body" style="padding:0;">
+                  <div class="items-table-wrap" style="border:none;">
+                    <table class="items-table">
+                      <thead><tr><th>기기명</th><th>M/T</th><th>Model</th><th>S/N</th><th>서비스</th><th>기간</th><th>개시일</th><th>종료일</th><th>총계</th><th></th></tr></thead>
+                      <tbody>
+                        <tr>
+                          <td><input type="text" value="SR250V2" style="width:70px"></td>
+                          <td><input type="text" value="7D7Q" style="width:50px"></td>
+                          <td><input type="text" value="CTO1WW" style="width:60px"></td>
+                          <td><input type="text" value="J678E9R0" style="width:70px"></td>
+                          <td><input type="text" value="Essential Post Wty 24x7 4Hr"></td>
+                          <td><input type="text" value="1년" style="width:40px"></td>
+                          <td><input type="date" value="2025-12-23"></td>
+                          <td><input type="date" value="2026-12-22"></td>
+                          <td><input type="text" class="num-input" value="680,000"></td>
+                          <td><button class="del-btn">×</button></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <div class="items-summary">
+                      <div class="summary-grid">
+                        <span class="summary-label">월간 금액 (VAT별도)</span><span class="summary-value">96,667</span>
+                        <span class="summary-label">합계 (VAT별도)</span><span class="summary-value total">1,160,000</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="action-bar">
+              <div class="action-bar-left"><button class="btn btn-secondary" onclick="goBack()">취소</button></div>
+              <div class="action-bar-right">
+                <button class="btn btn-secondary" onclick="switchMode('ma-quote-form', 'form')">📄 양식 미리보기</button>
+                <button class="btn btn-primary btn-lg">📧 견적서 발송</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="view-mode" id="ma-quote-form-form">
+            <div class="document-preview">
+              <div class="form-document">
+                <div class="doc-header">
+                  <div class="doc-logo"><div class="doc-logo-img">㈜서버메이트</div></div>
+                  <div class="doc-title-area"><div class="doc-title" style="font-size:18px; letter-spacing:3px;">시스템 유지정비 서비스 견적서</div></div>
+                  <div class="doc-company-info"><div class="doc-seal">대표<br>서 서 형<br>(인)</div></div>
+                </div>
+                <table class="doc-info-table">
+                  <tr><th>수 신</th><td colspan="2" contenteditable="true" class="editable"><strong>현대모비스</strong> 귀중</td><td contenteditable="true" class="editable">2025-12-02</td></tr>
+                  <tr><th>참 조</th><td colspan="3" contenteditable="true" class="editable">[담당자]</td></tr>
+                  <tr><th>발 신</th><td colspan="3">㈜서버메이트 김대훈 070-8892-1455</td></tr>
+                  <tr><th>고객명</th><td colspan="3" contenteditable="true" class="editable">현대모비스</td></tr>
+                  <tr><th>기계설치주소</th><td colspan="3" contenteditable="true" class="editable"></td></tr>
+                </table>
+                <table class="doc-items-table">
+                  <thead><tr><th>기기명</th><th>M/T</th><th>Model</th><th>S/N</th><th>서비스</th><th>기간</th><th>개시일</th><th>종료일</th><th>총계</th></tr></thead>
+                  <tbody>
+                    <tr>
+                      <td contenteditable="true" class="editable">SR250V2</td>
+                      <td contenteditable="true" class="editable">7D7Q</td>
+                      <td contenteditable="true" class="editable">CTO1WW</td>
+                      <td contenteditable="true" class="editable">J678E9R0</td>
+                      <td contenteditable="true" class="editable left">Essential Post Wty 24x7 4Hr</td>
+                      <td contenteditable="true" class="editable">1년</td>
+                      <td contenteditable="true" class="editable">2025-12-23</td>
+                      <td contenteditable="true" class="editable">2026-12-22</td>
+                      <td class="right editable" contenteditable="true">680,000</td>
+                    </tr>
+                    <tr>
+                      <td contenteditable="true" class="editable"></td>
+                      <td contenteditable="true" class="editable"></td>
+                      <td contenteditable="true" class="editable"></td>
+                      <td contenteditable="true" class="editable"></td>
+                      <td contenteditable="true" class="editable left"></td>
+                      <td contenteditable="true" class="editable"></td>
+                      <td contenteditable="true" class="editable"></td>
+                      <td contenteditable="true" class="editable"></td>
+                      <td class="right editable" contenteditable="true"></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div class="doc-summary">
+                  <table class="doc-summary-table">
+                    <tr><th>월간 금액 (VAT별도)</th><td contenteditable="true" class="editable">96,667</td></tr>
+                    <tr class="total"><th>합계 (VAT별도)</th><td contenteditable="true" class="editable">1,160,000</td></tr>
+                  </table>
+                </div>
+                <div class="doc-notes">
+                  <ul style="list-style:none; padding:0; margin:0; font-size:10px;">
+                    <li>* 서비스기간: 24 * 7 * 365 * 4</li>
+                    <li>* 견적 유효기간: 15일</li>
+                    <li>* 지급조건: 계약시점 초일 청구 60일 이내 현금지급</li>
+                    <li>* 특약사항: 정기점검 없음, 장애시 부품 포함 엔지니어 긴급 지원</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div class="action-bar">
+              <div class="action-bar-left"><button class="btn btn-secondary" onclick="switchMode('ma-quote-form', 'web')">← 웹 모드</button></div>
+              <div class="action-bar-right">
+                <button class="btn btn-secondary" onclick="window.print()">🖨️ 인쇄</button>
+                <button class="btn btn-primary btn-lg">📧 견적서 발송</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== MA 품의서 폼 ========== -->
+        <div class="screen" id="ma-approval-form">
+          <div class="mode-toggle-bar">
+            <button class="mode-toggle-btn active" onclick="switchMode('ma-approval-form', 'web')">📊 웹 모드</button>
+            <button class="mode-toggle-btn" onclick="switchMode('ma-approval-form', 'form')">📄 양식 모드</button>
+          </div>
+
+          <div class="view-mode active" id="ma-approval-form-web">
+            <div class="form-container">
+              <div class="form-card">
+                <div class="form-card-header"><span class="form-card-title">📋 품의 기본 정보</span></div>
+                <div class="form-card-body">
+                  <div class="form-grid">
+                    <div class="form-group"><label class="form-label">품의일자</label><input type="date" class="form-input" value="2025-12-02"></div>
+                    <div class="form-group"><label class="form-label">담당자</label><input type="text" class="form-input" value="김대훈" disabled></div>
+                    <div class="form-group"><label class="form-label">고객사</label><input type="text" class="form-input" value="[고객사명]"></div>
+                    <div class="form-group"><label class="form-label">매출처</label><input type="text" class="form-input" value="[매출처명]"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-card">
+                <div class="form-card-header"><span class="form-card-title">📦 유지보수 계약</span></div>
+                <div class="form-card-body" style="padding:0;">
+                  <div class="items-table-wrap" style="border:none;">
+                    <table class="items-table">
+                      <thead><tr><th>SM코드</th><th>벤더코드</th><th>매출가</th><th>청구구분</th><th>계약기간</th><th>매입처</th><th>매입가</th><th>총GP</th><th>GP율</th></tr></thead>
+                      <tbody>
+                        <tr>
+                          <td><input type="text" value="" style="width:70px"></td>
+                          <td><input type="text" value="" style="width:70px"></td>
+                          <td><input type="text" class="num-input" value="1,000,000"></td>
+                          <td><input type="text" value="일시불" style="width:60px"></td>
+                          <td><input type="text" value="2025-12-02 ~ 2026-12-01"></td>
+                          <td><input type="text" value="LEN" style="width:60px"></td>
+                          <td><input type="text" class="num-input" value="800,000"></td>
+                          <td><input type="text" class="num-input" value="200,000" style="color:#22c55e"></td>
+                          <td><input type="text" value="20%" style="width:50px; color:#22c55e"></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+              <div class="form-card">
+                <div class="form-card-header"><span class="form-card-title">✅ 결재</span></div>
+                <div class="form-card-body">
+                  <div class="approval-line">
+                    <div class="approval-box"><div class="approval-box-header">대표이사</div><div class="approval-box-body"><span class="approval-status waiting">대기</span></div></div>
+                    <div class="approval-box"><div class="approval-box-header">영업팀장</div><div class="approval-box-body"><span class="approval-status waiting">대기</span></div></div>
+                    <div class="approval-box"><div class="approval-box-header">영업담당</div><div class="approval-box-body"><span class="approval-signature">김대훈</span></div></div>
+                    <div class="approval-box"><div class="approval-box-header">출고</div><div class="approval-box-body"><span class="approval-status waiting">대기</span></div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="action-bar">
+              <div class="action-bar-left"><button class="btn btn-secondary" onclick="goBack()">취소</button></div>
+              <div class="action-bar-right">
+                <button class="btn btn-secondary" onclick="switchMode('ma-approval-form', 'form')">📄 양식 미리보기</button>
+                <button class="btn btn-success btn-lg">✅ 품의 상신</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="view-mode" id="ma-approval-form-form">
+            <div class="document-preview">
+              <div class="form-document">
+                <div style="text-align:center; margin-bottom:30px; padding-bottom:15px; border-bottom:2px solid #000;"><div class="doc-title">유지보수 품의서</div></div>
+                <table class="doc-info-table">
+                  <tr><th>품의일자</th><td contenteditable="true" class="editable">2025-12-02</td><th>담당자</th><td contenteditable="true" class="editable">김대훈</td></tr>
+                </table>
+                <table class="doc-items-table">
+                  <thead><tr><th>SM코드</th><th>벤더코드</th><th>고객사</th><th>매출처</th><th>매출가</th><th>청구구분</th><th>계약기간</th><th>매입처</th><th>매입가</th><th>총GP</th><th>GP율</th></tr></thead>
+                  <tbody>
+                    <tr>
+                      <td contenteditable="true" class="editable"></td>
+                      <td contenteditable="true" class="editable"></td>
+                      <td contenteditable="true" class="editable">[고객사명]</td>
+                      <td contenteditable="true" class="editable">[매출처명]</td>
+                      <td class="right editable" contenteditable="true">1,000,000</td>
+                      <td contenteditable="true" class="editable">일시불</td>
+                      <td contenteditable="true" class="editable">2025-12-02~2026-12-01</td>
+                      <td contenteditable="true" class="editable">LEN</td>
+                      <td class="right editable" contenteditable="true">800,000</td>
+                      <td class="right doc-gp-highlight editable" contenteditable="true">200,000</td>
+                      <td class="doc-gp-highlight editable" contenteditable="true">20%</td>
+                    </tr>
+                    <tr>
+                      <td contenteditable="true" class="editable"></td>
+                      <td contenteditable="true" class="editable"></td>
+                      <td contenteditable="true" class="editable"></td>
+                      <td contenteditable="true" class="editable"></td>
+                      <td class="right editable" contenteditable="true"></td>
+                      <td contenteditable="true" class="editable"></td>
+                      <td contenteditable="true" class="editable"></td>
+                      <td contenteditable="true" class="editable"></td>
+                      <td class="right editable" contenteditable="true"></td>
+                      <td class="right editable" contenteditable="true"></td>
+                      <td contenteditable="true" class="editable"></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div class="doc-approval">
+                  <table class="doc-approval-table">
+                    <tr><th></th><th>대표이사</th><th>영업팀장</th><th>영업담당</th><th>출고</th></tr>
+                    <tr><th>서명</th><td class="sign-cell"></td><td class="sign-cell"></td><td class="sign-cell"><span class="doc-signature">김대훈</span></td><td class="sign-cell"></td></tr>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="action-bar">
+              <div class="action-bar-left"><button class="btn btn-secondary" onclick="switchMode('ma-approval-form', 'web')">← 웹 모드</button></div>
+              <div class="action-bar-right">
+                <button class="btn btn-secondary" onclick="window.print()">🖨️ 인쇄</button>
+                <button class="btn btn-success btn-lg">✅ 결재 요청</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- 품의서 선택 모달 -->
+  <div class="modal-overlay" id="approvalModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">📋 품의서 선택</span>
+        <button class="modal-close" onclick="closeApprovalSelector()">×</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom:16px; display:flex; gap:10px;">
+          <select class="filter-select" style="flex:1;">
+            <option>승인완료 품의서만</option>
+            <option>전체 품의서</option>
+          </select>
+          <div class="search-box" style="flex:2;">
+            <span>🔍</span>
+            <input type="text" placeholder="매출처, 품목 검색...">
+          </div>
+        </div>
+        <div class="approval-select-list">
+          <div class="approval-select-item" onclick="selectApproval(this, 'D251202-01', '삼성전자', 'RACK 코리아', '2,700,000')">
+            <div class="approval-select-check">✓</div>
+            <div class="approval-select-content">
+              <div class="approval-select-title">D251202-01 · 삼성전자</div>
+              <div class="approval-select-meta">서버랙 42U 외 1건 · RACK 코리아 · 2025-12-02</div>
+            </div>
+            <div class="approval-select-amount">
+              <div style="color:var(--accent-green);">GP 300,000</div>
+              <div style="font-size:12px; color:var(--text-muted);">매입 2,700,000</div>
+            </div>
+          </div>
+          <div class="approval-select-item" onclick="selectApproval(this, 'D251201-03', 'LG CNS', '인프라텍', '8,500,000')">
+            <div class="approval-select-check">✓</div>
+            <div class="approval-select-content">
+              <div class="approval-select-title">D251201-03 · LG CNS</div>
+              <div class="approval-select-meta">네트워크 스위치 · 인프라텍 · 2025-12-01</div>
+            </div>
+            <div class="approval-select-amount">
+              <div style="color:var(--accent-green);">GP 1,200,000</div>
+              <div style="font-size:12px; color:var(--text-muted);">매입 8,500,000</div>
+            </div>
+          </div>
+          <div class="approval-select-item" onclick="selectApproval(this, 'D251128-02', 'SK하이닉스', 'HPE 코리아', '15,200,000')">
+            <div class="approval-select-check">✓</div>
+            <div class="approval-select-content">
+              <div class="approval-select-title">D251128-02 · SK하이닉스</div>
+              <div class="approval-select-meta">ProLiant 서버 2대 · HPE 코리아 · 2025-11-28</div>
+            </div>
+            <div class="approval-select-amount">
+              <div style="color:var(--accent-green);">GP 2,800,000</div>
+              <div style="font-size:12px; color:var(--text-muted);">매입 15,200,000</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeApprovalSelector()">취소</button>
+        <button class="btn btn-success" onclick="confirmApprovalSelection()">선택 완료</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 미리보기 모달 -->
+  <div class="modal-overlay" id="previewModal">
+    <div class="modal" style="max-width:800px;">
+      <div class="modal-header">
+        <span class="modal-title">📄 클라이언트 발주서</span>
+        <button class="modal-close" onclick="closePreview()">×</button>
+      </div>
+      <div class="modal-body" style="background:#f0f0f0; padding:20px;">
+        <div style="background:white; padding:40px; text-align:center; color:#666; min-height:400px; display:flex; align-items:center; justify-content:center; flex-direction:column; border-radius:8px;">
+          <div style="font-size:60px; margin-bottom:20px;">📄</div>
+          <div style="font-size:16px; font-weight:500;">삼성전자_발주서_2025120201.pdf</div>
+          <div style="font-size:13px; margin-top:8px;">PDF 미리보기 영역</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closePreview()">닫기</button>
+        <button class="btn btn-primary" onclick="downloadPO()">📥 다운로드</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentListPage = 'dashboard';
+    let pageHistory = [];
+
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const screenId = item.dataset.screen;
+        if (screenId) showListPage(screenId);
+      });
+    });
+
+    function showListPage(screenId) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(screenId).classList.add('active');
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.querySelector(`[data-screen="${screenId}"]`)?.classList.add('active');
+      currentListPage = screenId;
+      pageHistory = [];
+      document.getElementById('backBtn').classList.remove('show');
+      const titles = {
+        'dashboard': '대시보드',
+        'sales-quote-list': '견적서 관리',
+        'sales-approval-list': '품의서 관리',
+        'sales-order-list': '발주서 관리',
+        'ma-quote-list': '유지보수 견적서',
+        'ma-approval-list': '유지보수 품의서'
+      };
+      document.getElementById('pageTitle').textContent = titles[screenId] || screenId;
+    }
+
+    function showPage(screenId, title) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(screenId).classList.add('active');
+      pageHistory.push(currentListPage);
+      document.getElementById('backBtn').classList.add('show');
+      document.getElementById('pageTitle').textContent = title || screenId;
+    }
+
+    function goBack() {
+      if (pageHistory.length > 0) {
+        const prevPage = pageHistory.pop();
+        showListPage(prevPage);
+      }
+    }
+
+    function switchMode(pageId, mode) {
+      const page = document.getElementById(pageId);
+      page.querySelectorAll('.mode-toggle-btn').forEach((btn, i) => {
+        btn.classList.remove('active', 'form-mode');
+        if ((mode === 'web' && i === 0) || (mode === 'form' && i === 1)) {
+          btn.classList.add('active');
+          if (mode === 'form') btn.classList.add('form-mode');
+        }
+      });
+      page.querySelectorAll('.view-mode').forEach(v => v.classList.remove('active'));
+      document.getElementById(`${pageId}-${mode}`).classList.add('active');
+      if (mode === 'form') showEditHint();
+    }
+
+    function showEditHint() {
+      const hint = document.getElementById('editHint');
+      if (hint) {
+        hint.classList.add('show');
+        setTimeout(() => hint.classList.remove('show'), 3000);
+      }
+    }
+    
+    // ===== 엑셀 저장 =====
+    function exportToExcel(type) {
+      // 실제로는 서버에서 처리하거나 SheetJS 등 라이브러리 사용
+      const filename = type === 'quote' ? '견적서_Q-2025-0115.xlsx' : '문서.xlsx';
+      alert(`📥 ${filename} 파일이 다운로드됩니다.\n\n실제 구현 시 SheetJS(xlsx) 라이브러리를 사용하여 엑셀 파일을 생성합니다.`);
+      
+      // 다운로드 시뮬레이션
+      console.log(`Exporting ${type} to Excel...`);
+    }
+    
+    // ===== 견적서 품목 관리 =====
+    let quoteItemCount = 1;
+    
+    function addQuoteItem() {
+      quoteItemCount++;
+      const tbody = document.getElementById('quoteItemsBody');
+      const newRow = document.createElement('tr');
+      newRow.innerHTML = `
+        <td><input type="text" placeholder="P/N"></td>
+        <td><input type="text" placeholder="품목 설명"></td>
+        <td><input type="number" class="num-input" value="1" onchange="calcQuoteRow(this)"></td>
+        <td><input type="text" class="num-input" placeholder="SRP"></td>
+        <td><input type="text" class="num-input" placeholder="Price" onchange="calcQuoteRow(this)"></td>
+        <td><input type="text" class="num-input" value="0" disabled></td>
+        <td><button class="del-btn" onclick="removeQuoteItem(this)">×</button></td>
+      `;
+      tbody.appendChild(newRow);
+      
+      // 새 행에 포커스
+      newRow.querySelector('input').focus();
+    }
+    
+    function removeQuoteItem(btn) {
+      const row = btn.closest('tr');
+      const tbody = document.getElementById('quoteItemsBody');
+      
+      // 최소 1개 행은 유지
+      if (tbody.querySelectorAll('tr').length > 1) {
+        row.remove();
+        calcQuoteTotal();
+      } else {
+        alert('최소 1개 품목은 필요합니다.');
+      }
+    }
+    
+    function calcQuoteRow(input) {
+      const row = input.closest('tr');
+      const inputs = row.querySelectorAll('input');
+      const qty = parseInt(inputs[2].value) || 0;
+      const price = parseInt(inputs[4].value.replace(/,/g, '')) || 0;
+      const sum = qty * price;
+      inputs[5].value = sum.toLocaleString();
+      
+      calcQuoteTotal();
+    }
+    
+    function calcQuoteTotal() {
+      const tbody = document.getElementById('quoteItemsBody');
+      let total = 0;
+      
+      tbody.querySelectorAll('tr').forEach(row => {
+        const sumInput = row.querySelectorAll('input')[5];
+        total += parseInt(sumInput.value.replace(/,/g, '')) || 0;
+      });
+      
+      document.getElementById('quoteTotalExVat').textContent = total.toLocaleString();
+      document.getElementById('quoteTotalInVat').textContent = Math.round(total * 1.1).toLocaleString();
+    }
+    
+    // ===== 클라이언트 발주서 첨부 =====
+    function handlePOUpload(input) {
+      if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const fileName = file.name;
+        const fileSize = (file.size / 1024).toFixed(0) + 'KB';
+        const fileType = fileName.split('.').pop().toUpperCase();
+        const today = new Date().toISOString().split('T')[0];
+        
+        document.getElementById('poFileName').textContent = fileName;
+        document.getElementById('poFileMeta').textContent = `${fileType} · ${fileSize} · ${today} 업로드`;
+        
+        document.getElementById('poUploadEmpty').style.display = 'none';
+        document.getElementById('poUploadPreview').style.display = 'block';
+      }
+    }
+    
+    function downloadPO() {
+      const fileName = document.getElementById('poFileName')?.textContent || '클라이언트_발주서.pdf';
+      alert(`📥 ${fileName} 다운로드 중...`);
+    }
+    
+    function previewPO() {
+      document.getElementById('previewModal').classList.add('show');
+    }
+    
+    function closePreview() {
+      document.getElementById('previewModal').classList.remove('show');
+    }
+    
+    function removePO() {
+      if (confirm('첨부된 발주서를 삭제하시겠습니까?')) {
+        document.getElementById('poUploadEmpty').style.display = 'block';
+        document.getElementById('poUploadPreview').style.display = 'none';
+        document.getElementById('poFileInput').value = '';
+      }
+    }
+    
+    // ===== 품의서 선택 (발주서 작성용) =====
+    let selectedApproval = null;
+    
+    function openApprovalSelector() {
+      document.getElementById('approvalModal').classList.add('show');
+    }
+    
+    function closeApprovalSelector() {
+      document.getElementById('approvalModal').classList.remove('show');
+    }
+    
+    function selectApproval(element, code, salesTo, purchaseFrom, amount) {
+      // 기존 선택 해제
+      document.querySelectorAll('.approval-select-item').forEach(item => {
+        item.classList.remove('selected');
+      });
+      
+      // 새 선택
+      element.classList.add('selected');
+      selectedApproval = { code, salesTo, purchaseFrom, amount };
+    }
+    
+    function confirmApprovalSelection() {
+      if (!selectedApproval) {
+        alert('품의서를 선택해주세요.');
+        return;
+      }
+      
+      // 발주서 폼에 데이터 채우기
+      document.getElementById('linkedApprovalEmpty').style.display = 'none';
+      document.getElementById('linkedApprovalInfo').style.display = 'block';
+      
+      document.getElementById('linkedApprovalCode').textContent = selectedApproval.code;
+      document.getElementById('linkedSalesTo').textContent = selectedApproval.salesTo;
+      document.getElementById('linkedPurchaseFrom').textContent = selectedApproval.purchaseFrom;
+      document.getElementById('linkedPurchaseAmount').textContent = selectedApproval.amount;
+      
+      // 발주서 폼 필드 자동 채우기 (매입처 정보)
+      const purchaseInputs = document.querySelectorAll('#sales-order-form-web input');
+      purchaseInputs.forEach(input => {
+        if (input.value === 'RACK 코리아') {
+          input.value = selectedApproval.purchaseFrom;
+        }
+      });
+      
+      closeApprovalSelector();
+      
+      // 알림
+      alert(`✅ 품의서 ${selectedApproval.code}가 연결되었습니다.\n매입처 및 품목 정보가 자동으로 채워집니다.`);
+    }
+    
+    function viewLinkedApproval() {
+      closeApprovalSelector();
+      showPage('sales-approval-form', '품의서 상세');
+    }
+    
+    function unlinkApproval() {
+      if (confirm('품의서 연결을 해제하시겠습니까?')) {
+        document.getElementById('linkedApprovalEmpty').style.display = 'block';
+        document.getElementById('linkedApprovalInfo').style.display = 'none';
+        selectedApproval = null;
+      }
+    }
+    
+    // ===== 품의서에서 바로 발주서 작성 =====
+    function createPOFromApproval(code, salesTo, purchaseFrom, amount) {
+      // 품의서 정보 저장
+      selectedApproval = { code, salesTo, purchaseFrom, amount };
+      
+      // 발주서 페이지로 이동
+      showPage('sales-order-form', '발주서 작성');
+      
+      // 품의서 연결 정보 표시
+      setTimeout(() => {
+        document.getElementById('linkedApprovalEmpty').style.display = 'none';
+        document.getElementById('linkedApprovalInfo').style.display = 'block';
+        
+        document.getElementById('linkedApprovalCode').textContent = code;
+        document.getElementById('linkedSalesTo').textContent = salesTo;
+        document.getElementById('linkedPurchaseFrom').textContent = purchaseFrom;
+        document.getElementById('linkedPurchaseAmount').textContent = amount;
+      }, 100);
+    }
+  </script>
+</body>
+</html>

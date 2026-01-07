@@ -1,0 +1,234 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==================== 사용자 & 권한 ====================
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  phone        String?
+  department   String?  // SALES, MA, FINANCE, ADMIN
+  position     String?  // 직급
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  roles         UserRole[]
+  documents     Document[]     @relation("CreatedBy")
+  approvals     Approval[]     @relation("Approver")
+  uploadedFiles DocumentFile[] @relation("UploadedBy")
+  excelImports  ExcelImport[]  @relation("ImportedBy")
+
+  @@map("users")
+}
+
+model Role {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique // ADMIN, SALES_MANAGER, SALES_STAFF, MA_MANAGER, MA_STAFF, FINANCE
+  description String?
+  users       UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  userId String @map("user_id")
+  roleId Int    @map("role_id")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+// ==================== 문서 ====================
+
+enum DocType {
+  SALES_QUOTE    // 영업 견적서
+  SALES_APPROVAL // 영업 품의서
+  SALES_ORDER    // 영업 발주서
+  MA_QUOTE       // 유지보수 견적서
+  MA_APPROVAL    // 유지보수 품의서
+}
+
+enum DocStatus {
+  DRAFT      // 임시저장
+  SUBMITTED  // 제출됨
+  APPROVED   // 승인됨
+  REJECTED   // 반려됨
+  COMPLETED  // 완료
+}
+
+model Document {
+  id        String    @id @default(uuid())
+  docType   DocType   @map("doc_type")
+  docNumber String    @unique @map("doc_number") // Q-2025-0001, A-2025-0001
+  status    DocStatus @default(DRAFT)
+
+  // 기본 정보
+  title       String?
+  projectName String? @map("project_name")
+
+  // 매출처 (고객)
+  clientCompany String? @map("client_company")
+  clientContact String? @map("client_contact")
+  clientPhone   String? @map("client_phone")
+  clientFax     String? @map("client_fax")
+  clientEmail   String? @map("client_email")
+
+  // 매입처 (공급사) - 품의서, 발주서
+  vendorCompany String? @map("vendor_company")
+  vendorContact String? @map("vendor_contact")
+  vendorPhone   String? @map("vendor_phone")
+  vendorEmail   String? @map("vendor_email")
+
+  // 금액
+  totalAmount   Decimal @default(0) @map("total_amount") @db.Decimal(15, 2)
+  vatAmount     Decimal @default(0) @map("vat_amount") @db.Decimal(15, 2)
+  totalWithVat  Decimal @default(0) @map("total_with_vat") @db.Decimal(15, 2)
+
+  // 매입 금액 (품의서용)
+  purchaseAmount Decimal? @map("purchase_amount") @db.Decimal(15, 2)
+  marginAmount   Decimal? @map("margin_amount") @db.Decimal(15, 2)
+  marginRate     Decimal? @map("margin_rate") @db.Decimal(5, 2)
+
+  // 조건
+  quoteDate    DateTime? @map("quote_date") @db.Date
+  deliveryDate DateTime? @map("delivery_date") @db.Date
+  validUntil   DateTime? @map("valid_until") @db.Date
+  paymentTerms String?   @map("payment_terms")
+
+  // 기타
+  notes String? @db.Text
+
+  // 연결 문서
+  parentDocId String?   @map("parent_doc_id")
+  parentDoc   Document? @relation("LinkedDocuments", fields: [parentDocId], references: [id])
+  childDocs   Document[] @relation("LinkedDocuments")
+
+  // 메타
+  createdById String   @map("created_by")
+  createdBy   User     @relation("CreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  items     DocumentItem[]
+  files     DocumentFile[]
+  approvals Approval[]
+
+  @@index([docType])
+  @@index([status])
+  @@index([createdById])
+  @@index([clientCompany])
+  @@index([createdAt(sort: Desc)])
+  @@map("documents")
+}
+
+model DocumentItem {
+  id         String @id @default(uuid())
+  documentId String @map("document_id")
+
+  sortOrder     Int      @default(0) @map("sort_order")
+  partNumber    String?  @map("part_number")  // P/N
+  description   String?  @db.Text
+  quantity      Int      @default(1)
+  srpPrice      Decimal? @map("srp_price") @db.Decimal(15, 2)      // 정가
+  unitPrice     Decimal? @map("unit_price") @db.Decimal(15, 2)     // 단가
+  totalPrice    Decimal? @map("total_price") @db.Decimal(15, 2)    // 합계
+  purchasePrice Decimal? @map("purchase_price") @db.Decimal(15, 2) // 매입가 (품의서)
+
+  document  Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([documentId])
+  @@map("document_items")
+}
+
+enum FileType {
+  EXCEL_ORIGINAL   // 업로드된 원본
+  EXCEL_GENERATED  // 시스템 생성
+  CLIENT_PO        // 고객 발주서
+  ATTACHMENT       // 일반 첨부
+}
+
+model DocumentFile {
+  id         String   @id @default(uuid())
+  documentId String   @map("document_id")
+  fileType   FileType @map("file_type")
+  fileName   String   @map("file_name")
+  filePath   String   @map("file_path") // S3 key
+  fileSize   Int?     @map("file_size")
+  mimeType   String?  @map("mime_type")
+
+  uploadedById String   @map("uploaded_by")
+  uploadedBy   User     @relation("UploadedBy", fields: [uploadedById], references: [id])
+  uploadedAt   DateTime @default(now()) @map("uploaded_at")
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@map("document_files")
+}
+
+// ==================== 결재 ====================
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Approval {
+  id         String         @id @default(uuid())
+  documentId String         @map("document_id")
+  step       Int            // 결재 순서
+  approverId String         @map("approver_id")
+  status     ApprovalStatus @default(PENDING)
+  comment    String?        @db.Text
+
+  approvedAt DateTime? @map("approved_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  approver User     @relation("Approver", fields: [approverId], references: [id])
+
+  @@index([documentId])
+  @@index([approverId])
+  @@map("approvals")
+}
+
+// ==================== 엑셀 일괄 업로드 ====================
+
+enum ImportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model ExcelImport {
+  id       String       @id @default(uuid())
+  fileName String       @map("file_name")
+  filePath String       @map("file_path")
+  docType  DocType      @map("doc_type")
+  status   ImportStatus @default(PENDING)
+
+  totalCount   Int   @default(0) @map("total_count")
+  successCount Int   @default(0) @map("success_count")
+  errorCount   Int   @default(0) @map("error_count")
+  errorLog     Json? @map("error_log")
+
+  importedById String   @map("imported_by")
+  importedBy   User     @relation("ImportedBy", fields: [importedById], references: [id])
+  importedAt   DateTime @default(now()) @map("imported_at")
+
+  @@map("excel_imports")
+}
