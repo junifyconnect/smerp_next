@@ -1,5 +1,18 @@
 import { cookies } from 'next/headers'
-import prisma from '@/lib/db/prisma'
+import jwt from 'jsonwebtoken'
+// TODO: DB 준비 후 Prisma 사용
+// import prisma from '@/lib/db/prisma'
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+
+// 더미 사용자 정보
+const DUMMY_USER = {
+  id: 'dummy-user-id',
+  email: 'kkakkuro0@naver.com',
+  name: '홍길동',
+  department: 'SALES',
+  roles: ['ADMIN', 'SALES_MANAGER'],
+}
 
 export type SessionUser = {
   id: string
@@ -11,14 +24,41 @@ export type SessionUser = {
 
 // 세션에서 현재 사용자 가져오기
 export async function getCurrentUser(): Promise<SessionUser | null> {
-  // TODO: 실제 세션/JWT 구현
-  const cookieStore = await cookies()
-  const sessionToken = cookieStore.get('session')?.value
-  
-  if (!sessionToken) return null
-  
-  // TODO: 토큰 검증 및 사용자 조회
-  return null
+  try {
+    const cookieStore = await cookies()
+    const token = cookieStore.get('token')?.value
+
+    if (!token) {
+      return null
+    }
+
+    // JWT 토큰 검증
+    const decoded = jwt.verify(token, JWT_SECRET) as {
+      id: string
+      email: string
+      name: string
+      department: string | null
+      roles: string[]
+    }
+
+    // 더미 사용자 체크
+    if (decoded.id === DUMMY_USER.id) {
+      return {
+        id: DUMMY_USER.id,
+        email: DUMMY_USER.email,
+        name: DUMMY_USER.name,
+        department: DUMMY_USER.department,
+        roles: DUMMY_USER.roles,
+      }
+    }
+
+    // TODO: DB 준비 후 실제 사용자 조회 로직 추가
+    // 현재는 더미 사용자만 지원
+    return null
+  } catch (error) {
+    // 토큰 검증 실패
+    return null
+  }
 }
 
 // 권한 체크 헬퍼
