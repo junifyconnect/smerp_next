@@ -1,5 +1,6 @@
-import { DocType } from '@prisma/client'
 import { SessionUser } from './session'
+
+export type DocType = 'SALES_QUOTE' | 'SALES_APPROVAL' | 'SALES_ORDER' | 'MA_QUOTE' | 'MA_APPROVAL'
 
 type Permission = 'create' | 'read' | 'update' | 'delete' | 'approve'
 

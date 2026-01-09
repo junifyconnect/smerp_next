@@ -1,7 +1,8 @@
 import * as ExcelJS from 'exceljs'
 import * as path from 'path'
 import * as fs from 'fs/promises'
-import { DocType } from '@prisma/client'
+
+export type DocType = 'SALES_QUOTE' | 'SALES_APPROVAL' | 'SALES_ORDER' | 'MA_QUOTE' | 'MA_APPROVAL'
 
 // 템플릿 파일 경로
 const TEMPLATE_DIR = path.join(process.cwd(), 'templates')

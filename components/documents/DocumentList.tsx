@@ -23,6 +23,14 @@ interface DocumentListProps {
   title: string
 }
 
+const apiPathMap: Record<string, string> = {
+  SALES_QUOTE: '/api/sales-quotes',
+  SALES_APPROVAL: '/api/sales-approvals',
+  SALES_ORDER: '/api/sales-orders',
+  MA_QUOTE: '/api/ma-quotes',
+  MA_APPROVAL: '/api/ma-approvals',
+}
+
 const statusLabels: Record<string, { label: string; color: string }> = {
   DRAFT: { label: '작성중', color: 'bg-gray-100 text-gray-700' },
   PENDING: { label: '승인대기', color: 'bg-yellow-100 text-yellow-700' },
@@ -46,12 +54,12 @@ export default function DocumentList({ docType, basePath, title }: DocumentListP
     setLoading(true)
     try {
       const params = new URLSearchParams({
-        docType,
         page: page.toString(),
         limit: '20',
         ...(search && { search }),
       })
-      const res = await fetch(`/api/documents?${params}`)
+      const apiPath = apiPathMap[docType]
+      const res = await fetch(`${apiPath}?${params}`)
       const data = await res.json()
       setDocuments(data.items || [])
       setTotalPages(data.totalPages || 1)

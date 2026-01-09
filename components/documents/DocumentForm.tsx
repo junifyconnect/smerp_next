@@ -20,6 +20,14 @@ interface DocumentFormProps {
   title: string
 }
 
+const apiPathMap: Record<string, string> = {
+  SALES_QUOTE: '/api/sales-quotes',
+  SALES_APPROVAL: '/api/sales-approvals',
+  SALES_ORDER: '/api/sales-orders',
+  MA_QUOTE: '/api/ma-quotes',
+  MA_APPROVAL: '/api/ma-approvals',
+}
+
 export function DocumentForm({ docType, basePath, title }: DocumentFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -181,11 +189,11 @@ export function DocumentForm({ docType, basePath, title }: DocumentFormProps) {
 
     try {
       const totals = calculateTotal()
-      const response = await fetch('/api/documents', {
+      const apiPath = apiPathMap[docType]
+      const response = await fetch(apiPath, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          docType,
           ...formData,
           items: items.map((item) => ({
             partNumber: item.partNumber || undefined,

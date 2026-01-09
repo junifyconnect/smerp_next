@@ -1,5 +1,9 @@
-import 'dotenv/config'
+import path from 'path'
+import dotenv from 'dotenv'
 import { defineConfig } from 'prisma/config'
+
+// Load .env from parent directory
+dotenv.config({ path: path.resolve(__dirname, '../.env') })
 
 export default defineConfig({
   earlyAccess: true,

@@ -1,5 +1,6 @@
 import * as ExcelJS from 'exceljs'
-import { DocType } from '@prisma/client'
+
+export type DocType = 'SALES_QUOTE' | 'SALES_APPROVAL' | 'SALES_ORDER' | 'MA_QUOTE' | 'MA_APPROVAL'
 
 export interface ParsedDocument {
   // 공통 필드
@@ -7,12 +8,14 @@ export interface ParsedDocument {
   clientContact?: string
   clientPhone?: string
   clientFax?: string
+  clientMobile?: string // CP (휴대폰)
   clientEmail?: string
   vendorCompany?: string
   vendorContact?: string
   vendorPhone?: string
   vendorEmail?: string
   projectName?: string
+  managerName?: string // 견적 담당
   quoteDate?: Date
   deliveryDate?: Date
   validUntil?: string
@@ -121,54 +124,82 @@ function getNumericValue(sheet: ExcelJS.Worksheet, address: string): number {
 function getDateValue(sheet: ExcelJS.Worksheet, address: string): Date | undefined {
   const cell = sheet.getCell(address)
   const value = cell.value
+
+  // Date 객체인 경우
   if (value instanceof Date) return value
-  if (typeof value === 'string') {
-    const parsed = new Date(value)
-    return isNaN(parsed.getTime()) ? undefined : parsed
-  }
+
+  // 숫자인 경우 (Excel serial date)
   if (typeof value === 'number') {
-    // Excel serial date 변환
     const excelEpoch = new Date(1899, 11, 30)
     const date = new Date(excelEpoch.getTime() + value * 24 * 60 * 60 * 1000)
     return date
   }
-  return undefined
+
+  // 문자열로 변환해서 파싱 시도
+  let dateStr = ''
+  if (typeof value === 'string') {
+    dateStr = value.trim()
+  } else if (value && typeof value === 'object') {
+    // richText 처리
+    if ('richText' in value && Array.isArray(value.richText)) {
+      dateStr = value.richText.map((r: { text: string }) => r.text).join('').trim()
+    } else if ('text' in value && value.text) {
+      dateStr = String(value.text).trim()
+    }
+  }
+
+  if (!dateStr) return undefined
+
+  // 다양한 날짜 형식 파싱 시도
+  // 2026.01.09, 2026-01-09, 2026/01/09
+  const patterns = [
+    /^(\d{4})\.(\d{1,2})\.(\d{1,2})$/, // 2026.01.09
+    /^(\d{4})-(\d{1,2})-(\d{1,2})$/, // 2026-01-09
+    /^(\d{4})\/(\d{1,2})\/(\d{1,2})$/, // 2026/01/09
+  ]
+
+  for (const pattern of patterns) {
+    const match = dateStr.match(pattern)
+    if (match) {
+      const [, year, month, day] = match
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+      if (!isNaN(date.getTime())) return date
+    }
+  }
+
+  // 일반 Date 파싱 시도
+  const parsed = new Date(dateStr)
+  return isNaN(parsed.getTime()) ? undefined : parsed
 }
 
 // ==================== Sales 견적서 파싱 ====================
 function parseSalesQuote(sheet: ExcelJS.Worksheet): ParsedDocument {
-  // 고객 정보 파싱
-  let clientCompany = getCellValue(sheet, 'C6')
-  if (clientCompany.endsWith('귀중')) {
-    clientCompany = clientCompany.replace(/\s*귀중$/, '')
-  }
-  // 플레이스홀더 제거
-  if (clientCompany.startsWith('[') && clientCompany.endsWith(']')) {
-    clientCompany = ''
-  }
-
-  const clientContact = getCellValue(sheet, 'C7').replace(/^\[.*\]$/, '')
-  const clientPhone = getCellValue(sheet, 'C8').replace(/^예시_/, '')
-  const clientFax = getCellValue(sheet, 'C9').replace(/^예시_/, '')
-  const clientEmail = getCellValue(sheet, 'C11').replace(/^\[.*\]$/, '')
+  // 고객 정보 파싱 - 셀 값 그대로 읽기, "귀중" 접미사만 제거
+  const clientCompany = getCellValue(sheet, 'C6').replace(/\s*귀중$/, '') || undefined
+  const clientContact = getCellValue(sheet, 'C7') || undefined
+  const clientPhone = getCellValue(sheet, 'C8') || undefined
+  const clientFax = getCellValue(sheet, 'C9') || undefined
+  const clientMobile = getCellValue(sheet, 'C10') || undefined // CP (휴대폰)
+  const clientEmail = getCellValue(sheet, 'C11') || undefined
 
   // 날짜/조건 정보
   const quoteDate = getDateValue(sheet, 'C14')
   const deliveryDate = getDateValue(sheet, 'C15')
-  const validUntil = getCellValue(sheet, 'C16').replace(/^예시_/, '')
-  const paymentTerms = getCellValue(sheet, 'C17').replace(/^예시_/, '')
-  const approvalManager = getCellValue(sheet, 'C18')
-  const projectName = getCellValue(sheet, 'C19').replace(/^예시_/, '')
+  const validUntil = getCellValue(sheet, 'C16') || undefined
+  const paymentTerms = getCellValue(sheet, 'C17') || undefined
+  const managerName = getCellValue(sheet, 'C18') || undefined // 견적 담당
+  const projectName = getCellValue(sheet, 'C19') || undefined
 
-  // 품목 파싱 (R21이 헤더, R23부터 데이터)
+  // 품목 파싱 (R23부터 데이터)
   const items: ParsedItem[] = []
   let row = 23
-  let currentPartNumber = ''
 
   while (row < 100) {
     const partNumber = getCellValue(sheet, `B${row}`)
     const description = getCellValue(sheet, `C${row}`)
     const quantity = getNumericValue(sheet, `D${row}`)
+    const srpPrice = getNumericValue(sheet, `E${row}`)
+    const unitPrice = getNumericValue(sheet, `F${row}`)
     const totalPrice = getNumericValue(sheet, `G${row}`)
 
     // 합계 행 확인
@@ -176,34 +207,20 @@ function parseSalesQuote(sheet: ExcelJS.Worksheet): ParsedDocument {
       break
     }
 
-    // 빈 행 확인
+    // 빈 행 확인 - 모든 값이 비어있으면 중단
     if (!partNumber && !description && quantity === 0 && totalPrice === 0) {
       break
     }
 
-    // 품목명 (예: [품목명]\n예시_서버랙)
-    if (partNumber && !partNumber.includes('[제품명]')) {
-      const cleanPartNumber = partNumber.replace(/^\[품목명\]\s*/, '').replace(/^예시_/, '')
-      if (cleanPartNumber) {
-        currentPartNumber = cleanPartNumber
-      }
-    }
-
-    // 제품명 행 ([제품명])
-    if (description && !description.startsWith('[제품명]')) {
+    // 실제 데이터가 있는 행만 추가
+    if (description || totalPrice > 0) {
       items.push({
-        partNumber: currentPartNumber || undefined,
-        description: description.replace(/^\[제품명\]$/, '').trim() || undefined,
+        partNumber: partNumber || undefined,
+        description: description || undefined,
         quantity: quantity || 1,
+        srpPrice: srpPrice || undefined,
+        unitPrice: unitPrice || undefined,
         totalPrice: totalPrice || undefined,
-      })
-    } else if (description === '[제품명]' && totalPrice > 0) {
-      // 제품명 플레이스홀더지만 가격이 있는 경우
-      items.push({
-        partNumber: currentPartNumber || undefined,
-        description: undefined,
-        quantity: quantity || 1,
-        totalPrice: totalPrice,
       })
     }
 
@@ -216,21 +233,22 @@ function parseSalesQuote(sheet: ExcelJS.Worksheet): ParsedDocument {
   const vatAmount = totalWithVat - totalAmount
 
   // 기타사항
-  const notes = getCellValue(sheet, 'B31').replace(/^\[.*\]$/, '')
+  const notes = getCellValue(sheet, 'B31') || undefined
 
   return {
-    clientCompany: clientCompany || undefined,
-    clientContact: clientContact || undefined,
-    clientPhone: clientPhone || undefined,
-    clientFax: clientFax || undefined,
-    clientEmail: clientEmail || undefined,
-    projectName: projectName || undefined,
+    clientCompany,
+    clientContact,
+    clientPhone,
+    clientFax,
+    clientMobile,
+    clientEmail,
+    projectName,
+    managerName,
     quoteDate,
     deliveryDate,
-    validUntil: validUntil || undefined,
-    paymentTerms: paymentTerms || undefined,
-    approvalManager: approvalManager || undefined,
-    notes: notes || undefined,
+    validUntil,
+    paymentTerms,
+    notes,
     items,
     totalAmount,
     vatAmount,
@@ -583,11 +601,25 @@ export async function parseExcel(
   docType: DocType
 ): Promise<ParsedDocument> {
   const workbook = new ExcelJS.Workbook()
-  await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer)
 
-  const sheet = workbook.getWorksheet(1)
+  try {
+    await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer)
+  } catch (loadError) {
+    console.error('ExcelJS 로드 오류:', loadError)
+    throw new Error(`엑셀 파일을 로드할 수 없습니다: ${loadError instanceof Error ? loadError.message : '알 수 없는 오류'}`)
+  }
+
+  // 첫 번째 시트 또는 인덱스로 시트 찾기
+  let sheet = workbook.getWorksheet(1)
+
+  // 인덱스로 못 찾으면 worksheets 배열에서 첫 번째 시트 사용
+  if (!sheet && workbook.worksheets.length > 0) {
+    sheet = workbook.worksheets[0]
+  }
+
   if (!sheet) {
-    throw new Error('워크시트를 찾을 수 없습니다')
+    const sheetCount = workbook.worksheets.length
+    throw new Error(`워크시트를 찾을 수 없습니다 (시트 수: ${sheetCount})`)
   }
 
   switch (docType) {
@@ -609,9 +641,18 @@ export async function parseExcel(
 // ==================== 문서 타입 자동 감지 ====================
 export async function detectDocType(buffer: Buffer): Promise<DocType | null> {
   const workbook = new ExcelJS.Workbook()
-  await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer)
 
-  const sheet = workbook.getWorksheet(1)
+  try {
+    await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer)
+  } catch {
+    return null
+  }
+
+  // 첫 번째 시트 또는 인덱스로 시트 찾기
+  let sheet = workbook.getWorksheet(1)
+  if (!sheet && workbook.worksheets.length > 0) {
+    sheet = workbook.worksheets[0]
+  }
   if (!sheet) return null
 
   const sheetName = sheet.name.toLowerCase()

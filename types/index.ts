@@ -1,4 +1,6 @@
-import { DocType, DocStatus, ApprovalStatus } from '@prisma/client'
+export type DocType = 'SALES_QUOTE' | 'SALES_APPROVAL' | 'SALES_ORDER' | 'MA_QUOTE' | 'MA_APPROVAL'
+export type DocStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'COMPLETED'
+export type ApprovalStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED'
 
 // API 응답 타입
 export interface ApiResponse<T = unknown> {

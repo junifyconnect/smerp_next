@@ -45,6 +45,14 @@ interface DocumentDetailProps {
   basePath: string
 }
 
+const apiPathMap: Record<string, string> = {
+  '/sales/quotes': '/api/sales-quotes',
+  '/sales/approvals': '/api/sales-approvals',
+  '/sales/orders': '/api/sales-orders',
+  '/ma/quotes': '/api/ma-quotes',
+  '/ma/approvals': '/api/ma-approvals',
+}
+
 const statusLabels: Record<string, { label: string; color: string }> = {
   DRAFT: { label: '작성중', color: 'bg-gray-100 text-gray-700' },
   PENDING: { label: '승인대기', color: 'bg-yellow-100 text-yellow-700' },
@@ -65,7 +73,8 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
 
   const fetchDocument = async () => {
     try {
-      const res = await fetch(`/api/documents/${documentId}`)
+      const apiPath = apiPathMap[basePath] || '/api/sales-quotes'
+      const res = await fetch(`${apiPath}/${documentId}`)
       if (!res.ok) throw new Error('문서를 찾을 수 없습니다')
       const data = await res.json()
       setDocument(data)
@@ -78,7 +87,8 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
 
   const handleDownloadExcel = async () => {
     try {
-      const res = await fetch(`/api/documents/${documentId}/excel`)
+      const apiPath = apiPathMap[basePath] || '/api/sales-quotes'
+      const res = await fetch(`${apiPath}/${documentId}/excel`)
       if (!res.ok) throw new Error('다운로드 실패')
 
       const blob = await res.blob()

@@ -12,6 +12,7 @@ import {
   UilFileCheckAlt,
   UilUsersAlt,
   UilUpload,
+  UilBracketsCurly,
 } from '@iconscout/react-unicons'
 
 const navigation = [
@@ -41,6 +42,7 @@ const navigation = [
     items: [
       { name: '사용자 관리', href: '/admin/users', icon: UilUsersAlt },
       { name: '엑셀 일괄 업로드', href: '/admin/import', icon: UilUpload },
+      { name: 'API 테스트', href: '/admin/api-test', icon: UilBracketsCurly },
     ],
   },
 ]

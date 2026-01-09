@@ -131,11 +131,10 @@ export function SalesApprovalForm({ basePath, title }: SalesApprovalFormProps) {
       const salesTotal = calcSalesTotal()
       const purchaseTotals = calcPurchaseTotals()
 
-      const res = await fetch('/api/documents', {
+      const res = await fetch('/api/sales-approvals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          docType: 'SALES_APPROVAL',
           ...formData,
           salesItems,
           purchaseItems,

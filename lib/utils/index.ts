@@ -1,42 +1,4 @@
-import { DocType } from '@prisma/client'
-import prisma from '@/lib/db/prisma'
-
-// 문서번호 접두사
-const DOC_PREFIX: Record<DocType, string> = {
-  SALES_QUOTE: 'Q',
-  SALES_APPROVAL: 'A',
-  SALES_ORDER: 'PO',
-  MA_QUOTE: 'MQ',
-  MA_APPROVAL: 'MA',
-}
-
-/**
- * 새 문서번호 생성
- * 형식: {PREFIX}-{YYYY}-{순번4자리}
- * 예: Q-2025-0001, A-2025-0023
- */
-export async function generateDocNumber(docType: DocType): Promise<string> {
-  const prefix = DOC_PREFIX[docType]
-  const year = new Date().getFullYear()
-  const pattern = `${prefix}-${year}-%`
-  
-  // 해당 연도의 마지막 문서번호 조회
-  const lastDoc = await prisma.document.findFirst({
-    where: {
-      docNumber: { startsWith: `${prefix}-${year}-` },
-    },
-    orderBy: { docNumber: 'desc' },
-    select: { docNumber: true },
-  })
-  
-  let nextNum = 1
-  if (lastDoc?.docNumber) {
-    const lastNum = parseInt(lastDoc.docNumber.split('-')[2])
-    if (!isNaN(lastNum)) nextNum = lastNum + 1
-  }
-  
-  return `${prefix}-${year}-${nextNum.toString().padStart(4, '0')}`
-}
+export type DocType = 'SALES_QUOTE' | 'SALES_APPROVAL' | 'SALES_ORDER' | 'MA_QUOTE' | 'MA_APPROVAL'
 
 /**
  * 금액 포맷 (천단위 콤마)
