@@ -1,6 +1,7 @@
 import * as ExcelJS from 'exceljs'
 import * as path from 'path'
 import * as fs from 'fs/promises'
+import { getFromS3 } from '@/lib/s3'
 
 export type DocType = 'SALES_QUOTE' | 'SALES_APPROVAL' | 'SALES_ORDER' | 'MA_QUOTE' | 'MA_APPROVAL'
 
@@ -59,6 +60,12 @@ export interface DocumentData {
   maItems?: MAItem[]
   serviceTerms?: string
   specialTerms?: string
+  // 결재 서명 정보
+  signatures?: {
+    salesManager?: { name: string; signatureUrl?: string; signedAt?: Date }
+    teamLeader?: { name: string; signatureUrl?: string; signedAt?: Date }
+    ceo?: { name: string; signatureUrl?: string; signedAt?: Date }
+  }
 }
 
 export interface DocumentItem {
@@ -102,10 +109,51 @@ function formatDate(date?: Date): string {
   })
 }
 
-// 금액 포맷팅 헬퍼
-function formatCurrency(amount?: number): string {
-  if (!amount) return ''
-  return new Intl.NumberFormat('ko-KR').format(amount)
+// 금액 포맷팅 헬퍼 (사용되지 않지만 유틸리티로 보존)
+// function formatCurrency(amount?: number): string {
+//   if (!amount) return ''
+//   return new Intl.NumberFormat('ko-KR').format(amount)
+// }
+
+// S3에서 서명 이미지 가져와서 엑셀 셀 안에 삽입
+async function addSignatureImage(
+  workbook: ExcelJS.Workbook,
+  sheet: ExcelJS.Worksheet,
+  signatureUrl: string,
+  cellAddress: string // e.g., 'I34'
+): Promise<void> {
+  try {
+    const imageBuffer = await getFromS3(signatureUrl)
+
+    // 이미지 확장자 추출
+    const ext = signatureUrl.split('.').pop()?.toLowerCase() || 'png'
+    const extension = ext === 'jpg' ? 'jpeg' : ext as 'png' | 'jpeg' | 'gif'
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const imageId = workbook.addImage({
+      buffer: imageBuffer,
+      extension,
+    } as any)
+
+    // 셀 주소에서 행/열 추출
+    const match = cellAddress.match(/([A-Z]+)(\d+)/)
+    if (!match) return
+
+    const col = match[1].split('').reduce((acc, char) => acc * 26 + char.charCodeAt(0) - 64, 0) - 1
+    const row = parseInt(match[2]) - 1
+
+    // 셀에 꽉 차게 이미지 삽입
+    // tl: top-left (셀 시작), br: bottom-right (다음 셀 = 현재 셀 끝)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    sheet.addImage(imageId, {
+      tl: { col, row },
+      br: { col: col + 1, row: row + 1 },
+      editAs: 'oneCell',
+    } as any)
+  } catch (error) {
+    console.warn('서명 이미지 삽입 실패:', signatureUrl, error)
+    // 이미지 삽입 실패해도 계속 진행
+  }
 }
 
 // ==================== Sales 견적서 생성 ====================
@@ -372,6 +420,32 @@ export async function generateSalesApproval(data: DocumentData): Promise<Buffer>
       ? `${data.receiverName} / ${data.receiverPhone}`
       : data.receiverName || ''
   sheet.getCell('D31').value = data.deliveryDate || ''
+
+  // 서명 이미지 삽입 (템플릿에 서명 영역이 있는 경우)
+  // 결재란 위치: 대표이사(I34), 영업팀장(J34), 영업담당(K34)
+  if (data.signatures) {
+    const signaturePromises: Promise<void>[] = []
+
+    if (data.signatures.ceo?.signatureUrl) {
+      signaturePromises.push(
+        addSignatureImage(workbook, sheet, data.signatures.ceo.signatureUrl, 'I34')
+      )
+    }
+
+    if (data.signatures.teamLeader?.signatureUrl) {
+      signaturePromises.push(
+        addSignatureImage(workbook, sheet, data.signatures.teamLeader.signatureUrl, 'J34')
+      )
+    }
+
+    if (data.signatures.salesManager?.signatureUrl) {
+      signaturePromises.push(
+        addSignatureImage(workbook, sheet, data.signatures.salesManager.signatureUrl, 'K34')
+      )
+    }
+
+    await Promise.all(signaturePromises)
+  }
 
   const buffer = await workbook.xlsx.writeBuffer()
   return Buffer.from(buffer)

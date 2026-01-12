@@ -16,6 +16,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       include: {
         items: { orderBy: { sortOrder: 'asc' } },
         purchaseItems: { orderBy: { sortOrder: 'asc' } },
+        salesManager: { select: { name: true, signatureUrl: true } },
+        teamLeader: { select: { name: true, signatureUrl: true } },
+        ceo: { select: { name: true, signatureUrl: true } },
       },
     })
 
@@ -65,6 +68,24 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       vatAmount: approval.vatAmount ? Number(approval.vatAmount) : undefined,
       totalWithVat: approval.totalWithVat ? Number(approval.totalWithVat) : undefined,
       purchaseTotal: approval.purchaseTotal ? Number(approval.purchaseTotal) : undefined,
+      // 서명 정보
+      signatures: {
+        salesManager: approval.salesManager ? {
+          name: approval.salesManager.name,
+          signatureUrl: approval.salesManager.signatureUrl || undefined,
+          signedAt: approval.salesManagerSignedAt || undefined,
+        } : undefined,
+        teamLeader: approval.teamLeader ? {
+          name: approval.teamLeader.name,
+          signatureUrl: approval.teamLeader.signatureUrl || undefined,
+          signedAt: approval.teamLeaderSignedAt || undefined,
+        } : undefined,
+        ceo: approval.ceo ? {
+          name: approval.ceo.name,
+          signatureUrl: approval.ceo.signatureUrl || undefined,
+          signedAt: approval.ceoSignedAt || undefined,
+        } : undefined,
+      },
     }
 
     const buffer = await generateSalesApproval(data)
