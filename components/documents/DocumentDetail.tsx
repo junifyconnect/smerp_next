@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { UilEdit, UilFileAlt } from '@iconscout/react-unicons'
+import { SalesApprovalTemplate } from './SalesApprovalTemplate'
 
 interface DocumentItem {
   id: string
@@ -14,6 +15,23 @@ interface DocumentItem {
   srpPrice?: number
   unitPrice?: number
   totalPrice?: number
+}
+
+interface PurchaseItem {
+  id: string
+  partNumber?: string
+  description?: string
+  quantity: number
+  unitPrice?: number
+  totalPrice?: number
+  vendorCompany?: string
+  purchaseDate?: string
+}
+
+interface SignerInfo {
+  id: string
+  name: string
+  signatureUrl?: string
 }
 
 interface QuoteFile {
@@ -56,15 +74,40 @@ interface Document {
   vendorContact?: string
   vendorPhone?: string
   quoteDate?: string
+  approvalDate?: string
+  approvalCode?: string
   validUntil?: string
   deliveryDate?: string
+  deliveryAddress?: string
+  receiverName?: string
+  receiverPhone?: string
   paymentTerms?: string
+  endUser?: string
+  invoiceEmail?: string
+  invoiceIssueDate?: string
   notes?: string
   totalAmount?: number
   vatAmount?: number
   totalWithVat?: number
   items: DocumentItem[]
+  purchaseItems?: PurchaseItem[]
   deal?: { id: string; name: string; status: string }
+  // 품의서 전용 필드
+  totalAmount?: number
+  vatAmount?: number
+  totalWithVat?: number
+  purchaseTotal?: number
+  purchaseTotalWithVat?: number
+  // 결재선
+  salesManager?: SignerInfo
+  salesManagerSignedAt?: string
+  teamLeader?: SignerInfo
+  teamLeaderSignedAt?: string
+  ceo?: SignerInfo
+  ceoSignedAt?: string
+  rejectedBy?: SignerInfo
+  rejectedAt?: string
+  rejectionReason?: string
   createdAt: string
   updatedAt?: string
   createdBy?: {
@@ -92,7 +135,9 @@ const statusLabels: Record<string, { label: string; color: string }> = {
   ACCEPTED: { label: '수주', color: 'bg-emerald-100 text-emerald-700' },
   REJECTED: { label: '실주', color: 'bg-red-100 text-red-700' },
   PENDING: { label: '승인대기', color: 'bg-yellow-100 text-yellow-700' },
-  APPROVED: { label: '승인완료', color: 'bg-green-100 text-green-700' },
+  PENDING_TEAM_LEAD: { label: '팀장 승인대기', color: 'bg-orange-100 text-orange-700' },
+  PENDING_CEO: { label: '대표 승인대기', color: 'bg-blue-100 text-blue-700' },
+  APPROVED: { label: '승인완료', color: 'bg-emerald-100 text-emerald-700' },
   COMPLETED: { label: '완료', color: 'bg-blue-100 text-blue-700' },
 }
 
@@ -119,6 +164,7 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
   const [mode, setMode] = useState<'web' | 'template'>('web')
 
   const isSalesQuote = basePath === '/sales/quotes'
+  const isSalesApproval = basePath === '/sales/approvals'
 
   const fetchDocument = useCallback(async () => {
     try {
@@ -148,6 +194,20 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
     }
   }, [documentId, basePath, isSalesQuote])
 
+  const fetchApprovalFiles = useCallback(async () => {
+    if (!isSalesApproval) return
+    try {
+      const apiPath = apiPathMap[basePath] || '/api/sales-approvals'
+      const res = await fetch(`${apiPath}/${documentId}/files`)
+      if (res.ok) {
+        const data = await res.json()
+        setFiles(data)
+      }
+    } catch (err) {
+      console.error('파일 목록 조회 실패:', err)
+    }
+  }, [documentId, basePath, isSalesApproval])
+
   const fetchVersions = useCallback(async () => {
     if (!isSalesQuote) return
     try {
@@ -164,11 +224,17 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
 
   useEffect(() => {
     fetchDocument()
+  }, [fetchDocument])
+
+  useEffect(() => {
     if (isSalesQuote) {
       fetchFiles()
       fetchVersions()
     }
-  }, [fetchDocument, fetchFiles, fetchVersions, isSalesQuote])
+    if (isSalesApproval && document?.status === 'APPROVED') {
+      fetchApprovalFiles()
+    }
+  }, [document?.status, isSalesQuote, isSalesApproval, fetchFiles, fetchVersions, fetchApprovalFiles])
 
   const handleStatusChange = async (newStatus: string) => {
     if (!document || !isSalesQuote) return
@@ -241,24 +307,93 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
     }
   }
 
+  const handleSign = async (role: 'SALES_MANAGER' | 'TEAM_LEADER' | 'CEO') => {
+    if (!document || !isSalesApproval) return
+    const userId = prompt('서명할 사용자 ID를 입력하세요:')
+    if (!userId) return
+
+    setUpdatingStatus(true)
+    try {
+      const apiPath = apiPathMap[basePath] || '/api/sales-approvals'
+      const res = await fetch(`${apiPath}/${documentId}/sign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, role }),
+      })
+
+      if (res.ok) {
+        const updated = await res.json()
+        setDocument(updated)
+      } else {
+        const data = await res.json()
+        alert(data.error || '서명 실패')
+      }
+    } catch {
+      alert('서명에 실패했습니다')
+    } finally {
+      setUpdatingStatus(false)
+    }
+  }
+
+  const handleReject = async () => {
+    if (!document || !isSalesApproval) return
+    const userId = prompt('반려할 사용자 ID를 입력하세요:')
+    if (!userId) return
+
+    const reason = prompt('반려 사유를 입력하세요 (선택):')
+
+    setUpdatingStatus(true)
+    try {
+      const apiPath = apiPathMap[basePath] || '/api/sales-approvals'
+      const res = await fetch(`${apiPath}/${documentId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, reason }),
+      })
+
+      if (res.ok) {
+        const updated = await res.json()
+        setDocument(updated)
+      } else {
+        const data = await res.json()
+        alert(data.error || '반려 실패')
+      }
+    } catch {
+      alert('반려에 실패했습니다')
+    } finally {
+      setUpdatingStatus(false)
+    }
+  }
+
+  const calcMargin = () => {
+    if (!document || !isSalesApproval) return 0
+    const sales = Number(document.totalAmount) || 0
+    const purchase = Number(document.purchaseTotal) || 0
+    return sales - purchase
+  }
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !isSalesQuote) return
+    if (!file || (!isSalesQuote && !isSalesApproval)) return
 
     setUploading(true)
     try {
       const formData = new FormData()
       formData.append('file', file)
-      formData.append('fileType', 'SIGNED_ORIGINAL')
+      formData.append('fileType', isSalesQuote ? 'SIGNED_ORIGINAL' : 'SIGNED_ORIGINAL')
 
-      const apiPath = apiPathMap[basePath] || '/api/sales-quotes'
+      const apiPath = apiPathMap[basePath] || (isSalesQuote ? '/api/sales-quotes' : '/api/sales-approvals')
       const res = await fetch(`${apiPath}/${documentId}/files`, {
         method: 'POST',
         body: formData,
       })
 
       if (res.ok) {
-        await fetchFiles()
+        if (isSalesQuote) {
+          await fetchFiles()
+        } else if (isSalesApproval) {
+          await fetchApprovalFiles()
+        }
         alert('파일이 업로드되었습니다')
       } else {
         const data = await res.json()
@@ -275,9 +410,9 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
   }
 
   const handleFileDownload = async (fileId: string) => {
-    if (!isSalesQuote) return
+    if (!isSalesQuote && !isSalesApproval) return
     try {
-      const apiPath = apiPathMap[basePath] || '/api/sales-quotes'
+      const apiPath = apiPathMap[basePath] || (isSalesQuote ? '/api/sales-quotes' : '/api/sales-approvals')
       const res = await fetch(`${apiPath}/${documentId}/files/${fileId}`)
       if (!res.ok) throw new Error('다운로드 URL 조회 실패')
 
@@ -289,7 +424,7 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
   }
 
   const handleFileDelete = async (fileId: string, fileName: string) => {
-    if (!isSalesQuote) return
+    if (!isSalesQuote && !isSalesApproval) return
     if (!confirm(`"${fileName}" 파일을 삭제하시겠습니까?`)) return
 
     try {
@@ -390,9 +525,9 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
           )}
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        {/* 모드 토글 (SALES_QUOTE만) */}
-        {isSalesQuote && (
+        <div className="flex items-center gap-2">
+          {/* 모드 토글 (SALES_QUOTE, SALES_APPROVAL) */}
+          {(isSalesQuote || isSalesApproval) && (
           <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg p-1 mr-2">
             <button
               type="button"
@@ -465,10 +600,79 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
     </div>
   )
 
-  // 양식 모드 렌더링 (SALES_QUOTE만)
-  if (isSalesQuote && mode === 'template') {
-    return (
-      <div className="space-y-6">
+  // 양식 모드 렌더링 (SALES_QUOTE, SALES_APPROVAL)
+  if ((isSalesQuote || isSalesApproval) && mode === 'template') {
+    // 품의서 양식 모드
+    if (isSalesApproval) {
+      const approvalFormData = {
+        invoiceIssueDate: (document as any).invoiceIssueDate || '',
+        approvalCode: document.approvalCode || '',
+        approvalDate: document.approvalDate ? formatDate(document.approvalDate) : '',
+        approvalOwner: document.managerName || '',
+        salesContactLine: document.clientCompany && document.clientContact && document.clientPhone
+          ? `${document.clientCompany} / ${document.clientContact} / ${document.clientPhone}`
+          : '',
+        endUser: document.endUser || '',
+        mtSn: '',
+        etc: document.notes || '',
+        invoicePlannedDate: document.invoiceEmail || '',
+        invoiceEmail: document.invoiceEmail || '',
+        paymentDue: document.paymentTerms || '',
+        shippingAddress: document.deliveryAddress || '',
+        shippingReceiver: document.receiverName || '',
+        shippingReceiverPhone: document.receiverPhone || '',
+        shippingDate: document.deliveryDate ? formatDate(document.deliveryDate) : '',
+      }
+
+      const salesItems = (document.items || []).map(item => ({
+        partNumber: item.partNumber || '',
+        description: item.description || '',
+        quantity: item.quantity || 0,
+        unitPrice: item.unitPrice || 0,
+        totalPrice: item.totalPrice || 0,
+      }))
+
+      const purchaseItems = (document.purchaseItems || []).map(item => ({
+        dateOrInvoice: item.purchaseDate ? formatDate(item.purchaseDate) : '',
+        vendor: item.vendorCompany || '',
+        quantity: item.quantity || 0,
+        unitPrice: item.unitPrice || 0,
+        totalPrice: item.totalPrice || 0,
+      }))
+
+      const salesTotal = Number(document.totalAmount) || 0
+      const purchaseTotals = {
+        total: Number(document.purchaseTotal) || 0,
+        totalWithVat: Number(document.purchaseTotalWithVat) || 0,
+      }
+
+      return (
+        <div className="space-y-6">
+          {/* 공통 헤더 */}
+          {renderHeader()}
+
+          {/* 양식 모드 내용 - 읽기 전용 */}
+          <div style={{ pointerEvents: 'none' }}>
+            <SalesApprovalTemplate
+              formData={approvalFormData}
+              salesItems={salesItems}
+              purchaseItems={purchaseItems}
+              salesTotal={salesTotal}
+              purchaseTotals={purchaseTotals}
+              onDataChange={() => {}}
+              onSalesItemChange={() => {}}
+              onPurchaseItemChange={() => {}}
+              onAddRow={() => {}}
+            />
+          </div>
+        </div>
+      )
+    }
+
+    // 견적서 양식 모드
+    if (isSalesQuote) {
+      return (
+        <div className="space-y-6">
         {/* 공통 헤더 */}
         {renderHeader()}
 
@@ -705,7 +909,8 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
           </div>
         </div>
       </div>
-    )
+      )
+    }
   }
 
   // 웹 모드 렌더링
@@ -713,6 +918,148 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
     <div className="space-y-6">
       {/* 공통 헤더 */}
       {renderHeader()}
+
+      {/* 결재선 (SALES_APPROVAL만) */}
+      {isSalesApproval && (
+        <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium text-gray-900">결재선</h3>
+            {document.status === 'REJECTED' && document.rejectionReason && (
+              <div className="text-sm text-red-600 bg-red-50 px-3 py-1 rounded-lg">
+                반려사유: {document.rejectionReason}
+              </div>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            {/* 영업담당자 */}
+            <div className={`p-4 rounded-lg border-2 ${
+              document.salesManager ? 'border-emerald-500 bg-emerald-50' :
+              document.status === 'DRAFT' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+            }`}>
+              <div className="text-center">
+                <p className="text-xs text-gray-500 mb-1">영업담당</p>
+                {document.salesManager ? (
+                  <>
+                    <p className="font-medium text-gray-900">{document.salesManager.name}</p>
+                    <p className="text-xs text-emerald-600 mt-1">
+                      {document.salesManagerSignedAt && new Date(document.salesManagerSignedAt).toLocaleDateString('ko-KR')}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-gray-400">-</p>
+                )}
+              </div>
+              {document.status === 'DRAFT' && (
+                <button
+                  onClick={() => handleSign('SALES_MANAGER')}
+                  disabled={updatingStatus}
+                  className="w-full mt-3 px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {updatingStatus ? '처리중...' : '서명'}
+                </button>
+              )}
+            </div>
+
+            {/* 영업팀장 */}
+            <div className={`p-4 rounded-lg border-2 ${
+              document.teamLeader ? 'border-emerald-500 bg-emerald-50' :
+              document.status === 'PENDING_TEAM_LEAD' ? 'border-orange-500 bg-orange-50' : 'border-gray-200'
+            }`}>
+              <div className="text-center">
+                <p className="text-xs text-gray-500 mb-1">영업팀장</p>
+                {document.teamLeader ? (
+                  <>
+                    <p className="font-medium text-gray-900">{document.teamLeader.name}</p>
+                    <p className="text-xs text-emerald-600 mt-1">
+                      {document.teamLeaderSignedAt && new Date(document.teamLeaderSignedAt).toLocaleDateString('ko-KR')}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-gray-400">-</p>
+                )}
+              </div>
+              {document.status === 'PENDING_TEAM_LEAD' && (
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={() => handleSign('TEAM_LEADER')}
+                    disabled={updatingStatus}
+                    className="flex-1 px-3 py-2 bg-orange-600 text-white text-sm rounded hover:bg-orange-700 disabled:opacity-50"
+                  >
+                    {updatingStatus ? '...' : '승인'}
+                  </button>
+                  <button
+                    onClick={handleReject}
+                    disabled={updatingStatus}
+                    className="flex-1 px-3 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 disabled:opacity-50"
+                  >
+                    반려
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 대표이사 */}
+            <div className={`p-4 rounded-lg border-2 ${
+              document.ceo ? 'border-emerald-500 bg-emerald-50' :
+              document.status === 'PENDING_CEO' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+            }`}>
+              <div className="text-center">
+                <p className="text-xs text-gray-500 mb-1">대표이사</p>
+                {document.ceo ? (
+                  <>
+                    <p className="font-medium text-gray-900">{document.ceo.name}</p>
+                    <p className="text-xs text-emerald-600 mt-1">
+                      {document.ceoSignedAt && new Date(document.ceoSignedAt).toLocaleDateString('ko-KR')}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-gray-400">-</p>
+                )}
+              </div>
+              {document.status === 'PENDING_CEO' && (
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={() => handleSign('CEO')}
+                    disabled={updatingStatus}
+                    className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {updatingStatus ? '...' : '승인'}
+                  </button>
+                  <button
+                    onClick={handleReject}
+                    disabled={updatingStatus}
+                    className="flex-1 px-3 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 disabled:opacity-50"
+                  >
+                    반려
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 마진 요약 (SALES_APPROVAL만) */}
+      {isSalesApproval && (
+        <div className="bg-blue-50 rounded-lg border border-blue-200 p-5">
+          <div className="grid grid-cols-3 gap-6 text-center">
+            <div>
+              <p className="text-sm text-blue-600">매출 (VAT별도)</p>
+              <p className="text-xl font-bold text-blue-900">{Number(document.totalAmount || 0).toLocaleString()}원</p>
+            </div>
+            <div>
+              <p className="text-sm text-blue-600">매입 (VAT별도)</p>
+              <p className="text-xl font-bold text-blue-900">{Number(document.purchaseTotal || 0).toLocaleString()}원</p>
+            </div>
+            <div>
+              <p className="text-sm text-blue-600">마진</p>
+              <p className={`text-xl font-bold ${calcMargin() >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {calcMargin().toLocaleString()}원
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 상태 변경 (SALES_QUOTE만) */}
       {isSalesQuote && (
@@ -755,11 +1102,13 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
         </div>
       )}
 
-      {/* 견적 정보 */}
+      {/* 정보 섹션 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* 수신 (고객 정보) */}
+        {/* 수신/매출처 정보 */}
         <div className="bg-white rounded-lg border border-gray-200 p-5">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4 pb-3 border-b">수신</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-4 pb-3 border-b">
+            {isSalesApproval ? '매출처 정보' : '수신'}
+          </h3>
           <dl className="space-y-3">
             <div className="flex justify-between">
               <dt className="text-sm text-gray-600">회사명</dt>
@@ -785,41 +1134,74 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
                 </div>
               </>
             )}
+            {isSalesApproval && (
+              <div className="flex justify-between">
+                <dt className="text-sm text-gray-600">End User</dt>
+                <dd className="text-sm text-gray-900">{document.endUser || '-'}</dd>
+              </div>
+            )}
             <div className="flex justify-between">
               <dt className="text-sm text-gray-600">이메일</dt>
               <dd className="text-sm text-gray-900 break-all">{document.clientEmail || '-'}</dd>
             </div>
+            {isSalesApproval && (
+              <div className="flex justify-between">
+                <dt className="text-sm text-gray-600">결제조건</dt>
+                <dd className="text-sm text-gray-900">{document.paymentTerms || '-'}</dd>
+              </div>
+            )}
           </dl>
         </div>
 
-        {/* 견적 정보 */}
+        {/* 견적/품의 정보 */}
         <div className="bg-white rounded-lg border border-gray-200 p-5">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4 pb-3 border-b">견적 정보</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-4 pb-3 border-b">
+            {isSalesApproval ? '품의 정보' : '견적 정보'}
+          </h3>
           <dl className="space-y-3">
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-600">견적일</dt>
-              <dd className="text-sm text-gray-900 font-medium">
-                {document.quoteDate ? new Date(document.quoteDate).toLocaleDateString('ko-KR') : '-'}
-              </dd>
-            </div>
-            {isSalesQuote && (
-              <div className="flex justify-between">
-                <dt className="text-sm text-gray-600">유효기간</dt>
-                <dd className="text-sm text-gray-900">{(document as any).validUntil || '-'}</dd>
-              </div>
-            )}
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-600">납기일</dt>
-              <dd className="text-sm text-gray-900">
-                {document.deliveryDate ? new Date(document.deliveryDate).toLocaleDateString('ko-KR') : '-'}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-600">결제조건</dt>
-              <dd className="text-sm text-gray-900">{document.paymentTerms || '-'}</dd>
-            </div>
-            {isSalesQuote && (
+            {isSalesApproval ? (
               <>
+                <div className="flex justify-between">
+                  <dt className="text-sm text-gray-600">품의번호</dt>
+                  <dd className="text-sm text-gray-900 font-medium">{document.docNumber || '-'}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-sm text-gray-600">품의코드</dt>
+                  <dd className="text-sm text-gray-900">{document.approvalCode || '-'}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-sm text-gray-600">품의일자</dt>
+                  <dd className="text-sm text-gray-900">
+                    {document.approvalDate ? new Date(document.approvalDate).toLocaleDateString('ko-KR') : '-'}
+                  </dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-sm text-gray-600">품의담당</dt>
+                  <dd className="text-sm text-gray-900">{document.managerName || '-'}</dd>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between">
+                  <dt className="text-sm text-gray-600">견적일</dt>
+                  <dd className="text-sm text-gray-900 font-medium">
+                    {document.quoteDate ? new Date(document.quoteDate).toLocaleDateString('ko-KR') : '-'}
+                  </dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-sm text-gray-600">유효기간</dt>
+                  <dd className="text-sm text-gray-900">{(document as any).validUntil || '-'}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-sm text-gray-600">납기일</dt>
+                  <dd className="text-sm text-gray-900">
+                    {document.deliveryDate ? new Date(document.deliveryDate).toLocaleDateString('ko-KR') : '-'}
+                  </dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-sm text-gray-600">결제조건</dt>
+                  <dd className="text-sm text-gray-900">{document.paymentTerms || '-'}</dd>
+                </div>
                 <div className="flex justify-between">
                   <dt className="text-sm text-gray-600">견적 담당</dt>
                   <dd className="text-sm text-gray-900">{document.managerName || '-'}</dd>
@@ -834,10 +1216,37 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
         </div>
       </div>
 
-      {/* 품목 목록 */}
+      {/* 배송 정보 (SALES_APPROVAL만) */}
+      {isSalesApproval && (document.deliveryAddress || document.receiverName) && (
+        <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4 pb-3 border-b">배송 정보</h3>
+          <dl className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <dt className="text-sm text-gray-600">배송주소</dt>
+              <dd className="text-sm text-gray-900 mt-1">{document.deliveryAddress || '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-gray-600">납기일</dt>
+              <dd className="text-sm text-gray-900 mt-1">
+                {document.deliveryDate ? new Date(document.deliveryDate).toLocaleDateString('ko-KR') : '-'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm text-gray-600">수령자</dt>
+              <dd className="text-sm text-gray-900 mt-1">
+                {document.receiverName || '-'} {document.receiverPhone ? `(${document.receiverPhone})` : ''}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      )}
+
+      {/* 매출 품목 (SALES_APPROVAL) / 품목 목록 (SALES_QUOTE) */}
       <div className="bg-white rounded-lg border border-gray-200">
         <div className="px-5 py-3 border-b border-gray-100">
-          <h3 className="text-sm font-medium text-gray-900">품목 목록</h3>
+          <h3 className="text-sm font-medium text-gray-900">
+            {isSalesApproval ? `매출 품목 (${document.items?.length || 0}개)` : '품목 목록'}
+          </h3>
         </div>
         
         {document.items?.length === 0 ? (
@@ -913,29 +1322,119 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
             </div>
 
             {/* 합계 */}
-            <div className="px-5 py-5 border-t border-gray-100">
-              <div className="flex justify-end">
-                <div className="w-80">
-                  <div className="space-y-2.5 mb-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-500">공급가액</span>
-                      <span className="text-sm font-medium text-gray-900">{document.totalAmount?.toLocaleString() || 0}원</span>
+            {document.items && document.items.length > 0 && (
+              <div className="px-5 py-5 border-t border-gray-100">
+                <div className="flex justify-end">
+                  <div className="w-80">
+                    <div className="space-y-2.5 mb-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-500">
+                          {isSalesApproval ? '매출 합계' : '공급가액'}
+                        </span>
+                        <span className="text-sm font-medium text-gray-900">{document.totalAmount?.toLocaleString() || 0}원</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-500">부가세 (10%)</span>
+                        <span className="text-sm font-medium text-gray-900">{document.vatAmount?.toLocaleString() || 0}원</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-500">부가세 (10%)</span>
-                      <span className="text-sm font-medium text-gray-900">{document.vatAmount?.toLocaleString() || 0}원</span>
+                    <div className="flex justify-between items-center pt-3 border-t border-gray-200">
+                      <span className="text-base font-semibold text-gray-900">
+                        {isSalesApproval ? 'VAT 포함' : '총 금액'}
+                      </span>
+                      <span className={`text-lg font-bold ${isSalesApproval ? 'text-blue-600' : 'text-gray-900'}`}>
+                        {document.totalWithVat?.toLocaleString() || 0}원
+                      </span>
                     </div>
-                  </div>
-                  <div className="flex justify-between items-center pt-3 border-t border-gray-200">
-                    <span className="text-base font-semibold text-gray-900">총 금액</span>
-                    <span className="text-lg font-bold text-gray-900">{document.totalWithVat?.toLocaleString() || 0}원</span>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </>
         )}
       </div>
+
+      {/* 매입 품목 (SALES_APPROVAL만) */}
+      {isSalesApproval && (
+        <div className="bg-white rounded-lg border border-gray-200">
+          <div className="px-5 py-3 border-b border-gray-100">
+            <h3 className="text-sm font-medium text-gray-900">매입 품목 ({document.purchaseItems?.length || 0}개)</h3>
+          </div>
+          
+          {!document.purchaseItems || document.purchaseItems.length === 0 ? (
+            <div className="px-5 py-12 text-center text-sm text-gray-400">
+              매입 품목이 없습니다
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full table-fixed">
+                  <colgroup>
+                    <col className="w-24" />
+                    <col className="w-64" />
+                    <col className="w-32" />
+                    <col className="w-20" />
+                    <col className="w-28" />
+                    <col className="w-32" />
+                  </colgroup>
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">P/N</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">품목</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">매입처</th>
+                      <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500">수량</th>
+                      <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500">단가</th>
+                      <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500">금액</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {document.purchaseItems.map((item, idx) => (
+                      <tr key={item.id || idx} className="border-b border-gray-50 last:border-0">
+                        <td className="px-4 py-3 text-sm text-gray-600 font-mono truncate">
+                          {item.partNumber || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900 break-words">
+                          {item.description || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600 break-words">
+                          {item.vendorCompany || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900 text-right whitespace-nowrap">
+                          {item.quantity}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900 text-right whitespace-nowrap">
+                          {item.unitPrice?.toLocaleString() || 0}원
+                        </td>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right whitespace-nowrap">
+                          {item.totalPrice?.toLocaleString() || 0}원
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* 매입 합계 */}
+              {document.purchaseItems && document.purchaseItems.length > 0 && (
+                <div className="px-5 py-5 border-t border-gray-100 bg-gray-50">
+                  <div className="flex justify-end">
+                    <div className="w-80">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-500">매입 합계</span>
+                        <span className="text-sm font-medium text-gray-900">{document.purchaseTotal?.toLocaleString() || 0}원</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 border-t border-gray-200 mt-2">
+                        <span className="text-base font-semibold text-gray-900">VAT 포함</span>
+                        <span className="text-lg font-bold text-purple-600">{document.purchaseTotalWithVat?.toLocaleString() || 0}원</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* 비고 */}
       {document.notes && (
@@ -991,11 +1490,13 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
         </div>
       )}
 
-      {/* 파일 관리 (SALES_QUOTE만, 발송 후) */}
-      {isSalesQuote && document.status !== 'DRAFT' && (
+      {/* 파일 관리 (SALES_QUOTE: 발송 후, SALES_APPROVAL: 승인 완료 후) */}
+      {((isSalesQuote && document.status !== 'DRAFT') || (isSalesApproval && document.status === 'APPROVED')) && (
         <div className="bg-white rounded-lg border border-gray-200">
           <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-            <h3 className="text-sm font-medium text-gray-900">첨부 파일</h3>
+            <h3 className="text-sm font-medium text-gray-900">
+              {isSalesApproval ? '원본 파일' : '첨부 파일'}
+            </h3>
             <div>
               <input
                 ref={fileInputRef}

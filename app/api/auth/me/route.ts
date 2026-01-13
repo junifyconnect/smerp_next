@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
-// TODO: DB 준비 후 Prisma 사용
-// import prisma from '@/lib/db'
+import prisma from '@/lib/db'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
@@ -48,12 +47,36 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // TODO: DB 준비 후 실제 사용자 조회 로직 추가
-    // 현재는 더미 사용자만 지원
-    return NextResponse.json(
-      { error: '사용자를 찾을 수 없습니다' },
-      { status: 401 }
-    )
+    // 실제 DB에서 사용자 조회
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      include: {
+        roles: {
+          include: {
+            role: true,
+          },
+        },
+      },
+    })
+
+    if (!user || !user.isActive) {
+      return NextResponse.json(
+        { error: '사용자를 찾을 수 없습니다' },
+        { status: 401 }
+      )
+    }
+
+    // Role 이름 배열로 변환
+    const roles = user.roles.map((ur) => ur.role.name)
+
+    return NextResponse.json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      department: user.department,
+      position: user.position,
+      roles,
+    })
   } catch (error) {
     console.error('인증 확인 오류:', error)
     return NextResponse.json(
