@@ -40,6 +40,17 @@ interface ApprovalFile {
   uploadedBy?: { id: string; name: string }
 }
 
+interface ApprovalVersion {
+  id: string
+  version: number
+  approvalNumber: string
+  approvalCode?: string
+  status: string
+  totalWithVat?: number | string
+  createdAt: string
+  isCurrent: boolean
+}
+
 interface SalesApproval {
   id: string
   approvalNumber: string
@@ -98,7 +109,9 @@ export default function SalesApprovalDetailPage() {
   const [loading, setLoading] = useState(true)
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [files, setFiles] = useState<ApprovalFile[]>([])
+  const [versions, setVersions] = useState<ApprovalVersion[]>([])
   const [uploadingFile, setUploadingFile] = useState(false)
+  const [creatingRevision, setCreatingRevision] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchApproval = useCallback(async () => {
@@ -130,9 +143,22 @@ export default function SalesApprovalDetailPage() {
     }
   }, [id])
 
+  const fetchVersions = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/sales-approvals/${id}/versions`)
+      if (res.ok) {
+        const data = await res.json()
+        setVersions(data.versions || [])
+      }
+    } catch (err) {
+      console.error('버전 목록 조회 실패:', err)
+    }
+  }, [id])
+
   useEffect(() => {
     fetchApproval()
-  }, [fetchApproval])
+    fetchVersions()
+  }, [fetchApproval, fetchVersions])
 
   useEffect(() => {
     if (approval?.status === 'APPROVED') {
@@ -209,6 +235,28 @@ export default function SalesApprovalDetailPage() {
     }
   }
 
+  // 새 버전 생성
+  const handleCreateRevision = async () => {
+    if (!approval) return
+    if (!confirm('현재 품의서를 기반으로 새 버전을 생성하시겠습니까?\n(서명 정보는 초기화됩니다)')) return
+
+    setCreatingRevision(true)
+    try {
+      const res = await fetch(`/api/sales-approvals/${id}/revise`, { method: 'POST' })
+      if (res.ok) {
+        const newApproval = await res.json()
+        router.push(`/admin/api-test/sales-approvals/${newApproval.id}`)
+      } else {
+        const data = await res.json()
+        alert(data.error || '새 버전 생성 실패')
+      }
+    } catch {
+      alert('새 버전 생성에 실패했습니다')
+    } finally {
+      setCreatingRevision(false)
+    }
+  }
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -225,8 +273,7 @@ export default function SalesApprovalDetailPage() {
       })
 
       if (res.ok) {
-        const savedFile = await res.json()
-        setFiles(prev => [savedFile, ...prev])
+        await fetchFiles()
         alert('파일이 업로드되었습니다')
       } else {
         const data = await res.json()
@@ -239,6 +286,39 @@ export default function SalesApprovalDetailPage() {
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
+    }
+  }
+
+  // 파일 다운로드
+  const handleFileDownload = async (fileId: string) => {
+    try {
+      const res = await fetch(`/api/sales-approvals/${id}/files/${fileId}`)
+      if (!res.ok) throw new Error('다운로드 URL 조회 실패')
+
+      const data = await res.json()
+      window.open(data.downloadUrl, '_blank')
+    } catch {
+      alert('파일 다운로드에 실패했습니다')
+    }
+  }
+
+  // 파일 삭제
+  const handleFileDelete = async (fileId: string, fileName: string) => {
+    if (!confirm(`"${fileName}" 파일을 삭제하시겠습니까?`)) return
+
+    try {
+      const res = await fetch(`/api/sales-approvals/${id}/files/${fileId}`, {
+        method: 'DELETE',
+      })
+
+      if (res.ok) {
+        await fetchFiles()
+      } else {
+        const data = await res.json()
+        alert(data.error || '파일 삭제 실패')
+      }
+    } catch {
+      alert('파일 삭제에 실패했습니다')
     }
   }
 
@@ -324,6 +404,18 @@ export default function SalesApprovalDetailPage() {
               </svg>
               수정
             </Link>
+          )}
+          {approval.status !== 'DRAFT' && (
+            <button
+              onClick={handleCreateRevision}
+              disabled={creatingRevision}
+              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+              </svg>
+              {creatingRevision ? '생성 중...' : '새 버전'}
+            </button>
           )}
           <button
             onClick={handleDelete}
@@ -683,7 +775,7 @@ export default function SalesApprovalDetailPage() {
               {files.map((file) => (
                 <div
                   key={file.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -699,9 +791,29 @@ export default function SalesApprovalDetailPage() {
                       </p>
                     </div>
                   </div>
-                  <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full">
-                    {file.fileType === 'SIGNED_ORIGINAL' ? '서명원본' : file.fileType}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full">
+                      {file.fileType === 'SIGNED_ORIGINAL' ? '서명원본' : file.fileType}
+                    </span>
+                    <button
+                      onClick={() => handleFileDownload(file.id)}
+                      className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                      title="다운로드"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleFileDelete(file.id, file.fileName)}
+                      className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                      title="삭제"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -710,6 +822,58 @@ export default function SalesApprovalDetailPage() {
               업로드된 파일이 없습니다
             </div>
           )}
+        </div>
+      )}
+
+      {/* 버전 이력 */}
+      {versions.length > 1 && (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b bg-gray-50">
+            <h3 className="text-sm font-semibold text-gray-900">버전 이력 ({versions.length})</h3>
+          </div>
+          <div className="divide-y divide-gray-200">
+            {versions.map((version) => (
+              <div
+                key={version.id}
+                className={`px-6 py-4 flex items-center justify-between ${
+                  version.isCurrent ? 'bg-blue-50' : 'hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-mono text-gray-500">v{version.version}</span>
+                  <span className="font-medium">{version.approvalCode || version.approvalNumber}</span>
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                    statusLabels[version.status]?.color || 'bg-gray-100 text-gray-700'
+                  }`}>
+                    {statusLabels[version.status]?.label || version.status}
+                  </span>
+                  {version.isCurrent && (
+                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
+                      현재
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-gray-500">
+                    {new Date(version.createdAt).toLocaleDateString('ko-KR')}
+                  </span>
+                  {version.totalWithVat && (
+                    <span className="text-sm font-medium">
+                      {Number(version.totalWithVat).toLocaleString()}원
+                    </span>
+                  )}
+                  {!version.isCurrent && (
+                    <Link
+                      href={`/admin/api-test/sales-approvals/${version.id}`}
+                      className="text-sm text-blue-600 hover:underline"
+                    >
+                      보기
+                    </Link>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

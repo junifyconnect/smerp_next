@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { parseExcel } from '@/lib/excel/parser'
 
+// 유효한 Date인지 확인
+function isValidDate(date: Date | undefined | null): date is Date {
+  return date instanceof Date && !isNaN(date.getTime())
+}
+
 // POST /api/sales-orders/upload - 엑셀 업로드
 export async function POST(request: NextRequest) {
   try {
@@ -19,9 +24,6 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer())
     const parsed = await parseExcel(buffer, 'SALES_ORDER')
 
-    // TODO: 실제 인증된 사용자 ID 사용
-    const createdById = 'dummy-user-id'
-
     // 발주번호 생성
     const year = new Date().getFullYear()
     const lastOrder = await prisma.salesOrder.findFirst({
@@ -34,11 +36,11 @@ export async function POST(request: NextRequest) {
       const lastNum = parseInt(lastOrder.orderNumber.split('-')[2])
       sequence = lastNum + 1
     }
-    const orderNumber = `SO-${year}-${sequence.toString().padStart(4, '0')}`
+    const orderNumber = `SO-${year}-${String(sequence).padStart(4, '0')}`
 
     // 금액 계산
     let totalAmount = 0
-    const itemsWithTotal = parsed.items.map((item, index) => {
+    const itemsWithTotal = (parsed.items || []).map((item, index) => {
       const qty = item.quantity || 1
       const price = item.unitPrice || 0
       const itemTotal = qty * price
@@ -47,7 +49,7 @@ export async function POST(request: NextRequest) {
         partNumber: item.partNumber,
         description: item.description,
         quantity: qty,
-        srpPrice: item.srpPrice,
+        srpPrice: item.srpPrice || 0,
         unitPrice: price,
         totalPrice: itemTotal,
         sortOrder: index,
@@ -57,22 +59,35 @@ export async function POST(request: NextRequest) {
     const vatAmount = Math.round(totalAmount * 0.1)
     const totalWithVat = totalAmount + vatAmount
 
+    // 시스템 사용자 조회 또는 생성
+    let systemUser = await prisma.user.findFirst({ where: { email: 'system@smerp.local' } })
+    if (!systemUser) {
+      systemUser = await prisma.user.create({
+        data: {
+          email: 'system@smerp.local',
+          passwordHash: 'not-used',
+          name: 'System',
+        },
+      })
+    }
+
     const order = await prisma.salesOrder.create({
       data: {
         orderNumber,
-        orderDate: parsed.quoteDate || null, // quoteDate를 orderDate로 사용
-        managerName: parsed.approvalManager,
-        deliveryAddress: parsed.deliveryAddress,
-        paymentTerms: parsed.paymentTerms,
-        vendorCompany: parsed.vendorCompany,
-        vendorContact: parsed.vendorContact,
-        vendorPhone: parsed.vendorPhone,
-        vendorEmail: parsed.vendorEmail,
-        notes: parsed.notes,
+        orderDate: isValidDate(parsed.quoteDate) ? parsed.quoteDate : new Date(),
+        managerName: parsed.approvalManager || null,
+        managerPhone: parsed.managerPhone || null,
+        deliveryAddress: parsed.deliveryAddress || null,
+        paymentTerms: parsed.paymentTerms || null,
+        vendorCompany: parsed.vendorCompany || null,
+        vendorContact: parsed.vendorContact || null,
+        vendorPhone: parsed.vendorPhone || null,
+        vendorEmail: parsed.vendorEmail || null,
         totalAmount,
         vatAmount,
         totalWithVat,
-        createdById,
+        notes: parsed.notes || null,
+        createdById: systemUser.id,
         items: {
           create: itemsWithTotal,
         },

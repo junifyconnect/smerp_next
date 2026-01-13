@@ -60,6 +60,9 @@ interface Document {
   deliveryDate?: string
   paymentTerms?: string
   notes?: string
+  totalAmount?: number
+  vatAmount?: number
+  totalWithVat?: number
   items: DocumentItem[]
   deal?: { id: string; name: string; status: string }
   createdAt: string

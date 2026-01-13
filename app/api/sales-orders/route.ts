@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server'
-import prisma from '@/lib/db'
+import { NextRequest, NextResponse } from "next/server"
+import prisma from "@/lib/db"
 
-// GET /api/sales-orders - 목록 조회
+// 발주서 목록 조회
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
-    const status = searchParams.get('status')
-    const search = searchParams.get('search')
+    const searchParams = request.nextUrl.searchParams
+    const page = parseInt(searchParams.get("page") || "1")
+    const limit = parseInt(searchParams.get("limit") || "20")
+    const status = searchParams.get("status")
+    const search = searchParams.get("search")
 
     const where: Record<string, unknown> = {}
 
@@ -18,18 +18,22 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       where.OR = [
-        { orderNumber: { contains: search, mode: 'insensitive' } },
-        { vendorCompany: { contains: search, mode: 'insensitive' } },
+        { orderNumber: { contains: search, mode: "insensitive" } },
+        { vendorCompany: { contains: search, mode: "insensitive" } },
+        { managerName: { contains: search, mode: "insensitive" } },
       ]
     }
 
-    const [items, total] = await Promise.all([
+    const [orders, total] = await Promise.all([
       prisma.salesOrder.findMany({
         where,
         include: {
-          _count: { select: { items: true } },
+          items: true,
+          deal: {
+            select: { id: true, name: true },
+          },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
         take: limit,
       }),
@@ -37,26 +41,29 @@ export async function GET(request: NextRequest) {
     ])
 
     return NextResponse.json({
-      items,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      data: orders,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     })
   } catch (error) {
-    console.error('발주서 목록 조회 오류:', error)
+    console.error("발주서 목록 조회 오류:", error)
     return NextResponse.json(
-      { error: '목록을 불러오는데 실패했습니다' },
+      { error: "발주서 목록을 불러오는데 실패했습니다" },
       { status: 500 }
     )
   }
 }
 
-// POST /api/sales-orders - 생성
+// 발주서 생성
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const {
+      dealId,
       orderDate,
       managerName,
       deliveryAddress,
@@ -69,46 +76,34 @@ export async function POST(request: NextRequest) {
       items = [],
     } = body
 
-    // TODO: 실제 인증된 사용자 ID 사용
-    const createdById = 'dummy-user-id'
-
-    // 발주번호 생성 (SO-YYYY-NNNN)
+    // 발주서 번호 생성 (SO-YYYY-NNNN)
     const year = new Date().getFullYear()
     const lastOrder = await prisma.salesOrder.findFirst({
-      where: { orderNumber: { startsWith: `SO-${year}-` } },
-      orderBy: { orderNumber: 'desc' },
+      where: {
+        orderNumber: { startsWith: `SO-${year}-` },
+      },
+      orderBy: { orderNumber: "desc" },
     })
 
-    let sequence = 1
+    let nextNumber = 1
     if (lastOrder) {
-      const lastNum = parseInt(lastOrder.orderNumber.split('-')[2])
-      sequence = lastNum + 1
+      const lastNumber = parseInt(lastOrder.orderNumber.split("-")[2])
+      nextNumber = lastNumber + 1
     }
-    const orderNumber = `SO-${year}-${sequence.toString().padStart(4, '0')}`
+    const orderNumber = `SO-${year}-${String(nextNumber).padStart(4, "0")}`
 
     // 금액 계산
-    let totalAmount = 0
-    const itemsWithTotal = items.map((item: { quantity?: number; unitPrice?: number; partNumber?: string; description?: string; srpPrice?: number; sortOrder?: number }, index: number) => {
-      const qty = item.quantity || 1
-      const price = item.unitPrice || 0
-      const itemTotal = qty * price
-      totalAmount += itemTotal
-      return {
-        ...item,
-        sortOrder: item.sortOrder ?? index,
-        quantity: qty,
-        unitPrice: price,
-        totalPrice: itemTotal,
-      }
-    })
-
+    const totalAmount = items.reduce((sum: number, item: { quantity?: number; unitPrice?: number }) => {
+      return sum + (item.quantity || 1) * (item.unitPrice || 0)
+    }, 0)
     const vatAmount = Math.round(totalAmount * 0.1)
     const totalWithVat = totalAmount + vatAmount
 
     const order = await prisma.salesOrder.create({
       data: {
         orderNumber,
-        orderDate: orderDate ? new Date(orderDate) : null,
+        dealId: dealId || undefined,
+        orderDate: orderDate ? new Date(orderDate) : new Date(),
         managerName,
         deliveryAddress,
         paymentTerms,
@@ -116,13 +111,27 @@ export async function POST(request: NextRequest) {
         vendorContact,
         vendorPhone,
         vendorEmail,
-        notes,
         totalAmount,
         vatAmount,
         totalWithVat,
-        createdById,
+        notes,
+        createdById: "system", // TODO: 실제 사용자 ID로 변경
         items: {
-          create: itemsWithTotal,
+          create: items.map((item: {
+            partNumber?: string
+            description?: string
+            quantity?: number
+            srpPrice?: number
+            unitPrice?: number
+          }, index: number) => ({
+            sortOrder: index,
+            partNumber: item.partNumber,
+            description: item.description,
+            quantity: item.quantity || 1,
+            srpPrice: item.srpPrice || 0,
+            unitPrice: item.unitPrice || 0,
+            totalPrice: (item.quantity || 1) * (item.unitPrice || 0),
+          })),
         },
       },
       include: {
@@ -132,9 +141,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(order, { status: 201 })
   } catch (error) {
-    console.error('발주서 생성 오류:', error)
+    console.error("발주서 생성 오류:", error)
     return NextResponse.json(
-      { error: '발주서 생성에 실패했습니다' },
+      { error: "발주서 생성에 실패했습니다" },
       { status: 500 }
     )
   }

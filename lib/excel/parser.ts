@@ -16,6 +16,7 @@ export interface ParsedDocument {
   vendorEmail?: string
   projectName?: string
   managerName?: string // 견적 담당
+  managerPhone?: string // 담당자 연락처
   quoteDate?: Date
   deliveryDate?: Date
   validUntil?: string
@@ -370,19 +371,34 @@ function parseSalesApproval(sheet: ExcelJS.Worksheet): ParsedDocument {
 // ==================== Sales 발주서 파싱 ====================
 function parseSalesOrder(sheet: ExcelJS.Worksheet): ParsedDocument {
   // 매입처 정보
+  // B6: 매입처명 (예: "ABC회사 귀중")
+  // C7~C9: 담당자, 연락처, 이메일
   let vendorCompany = getCellValue(sheet, 'B6')
   if (vendorCompany.endsWith('귀중')) {
     vendorCompany = vendorCompany.replace(/\s*귀중$/, '').replace(/^\[.*\]$/, '')
   }
-  const vendorContact = getCellValue(sheet, 'B7').replace(/^매입처 담당자$/, '')
-  const vendorPhone = getCellValue(sheet, 'B8').replace(/^연락처$/, '')
-  const vendorEmail = getCellValue(sheet, 'B9').replace(/^이메일$/, '')
+  const vendorContact = getCellValue(sheet, 'C7').replace(/^\[.*\]$/, '')
+  const vendorPhone = getCellValue(sheet, 'C8').replace(/^\[.*\]$/, '')
+  const vendorEmail = getCellValue(sheet, 'C9').replace(/^\[.*\]$/, '')
 
   // 발주 정보
   const orderDate = getDateValue(sheet, 'F7') || getDateValue(sheet, 'G7')
   const deliveryAddress = getCellValue(sheet, 'F8') || getCellValue(sheet, 'G8')
-  const orderManager = getCellValue(sheet, 'F9') || getCellValue(sheet, 'G9')
+  const orderManagerRaw = getCellValue(sheet, 'F9') || getCellValue(sheet, 'G9')
   const paymentTerms = getCellValue(sheet, 'F10') || getCellValue(sheet, 'G10')
+
+  // 담당자 정보 파싱: "김대훈(010-2994-4720)" -> 이름과 전화번호 분리
+  let orderManagerName: string | undefined
+  let orderManagerPhone: string | undefined
+  if (orderManagerRaw) {
+    const managerMatch = orderManagerRaw.match(/^(.+?)\(([^)]+)\)$/)
+    if (managerMatch) {
+      orderManagerName = managerMatch[1].trim()
+      orderManagerPhone = managerMatch[2].trim()
+    } else {
+      orderManagerName = orderManagerRaw
+    }
+  }
 
   // 품목 파싱 (R15가 헤더, R16부터 데이터)
   const items: ParsedItem[] = []
@@ -437,7 +453,8 @@ function parseSalesOrder(sheet: ExcelJS.Worksheet): ParsedDocument {
     vendorEmail: vendorEmail || undefined,
     quoteDate: orderDate,
     deliveryAddress: deliveryAddress?.replace(/^예시_/, '') || undefined,
-    approvalManager: orderManager || undefined,
+    approvalManager: orderManagerName || undefined,
+    managerPhone: orderManagerPhone || undefined,
     paymentTerms: paymentTerms || undefined,
     items,
     totalAmount,

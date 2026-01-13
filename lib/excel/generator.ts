@@ -109,6 +109,44 @@ function formatDate(date?: Date): string {
   })
 }
 
+// 셀 내용에 따른 행 높이 계산 헬퍼
+// 줄바꿈이 있거나 내용이 길어서 셀 너비를 초과하는 경우 적절한 높이 반환
+function calculateRowHeight(
+  content: string | undefined,
+  columnWidth: number,
+  baseHeight: number = 15, // 기본 행 높이 (엑셀 기본값 약 15 포인트)
+  fontSize: number = 10, // 폰트 크기
+  charWidthRatio: number = 1.2 // 한글 문자 너비 비율 (영문 대비)
+): number {
+  if (!content) return baseHeight
+
+  const text = String(content)
+
+  // 줄바꿈으로 분리
+  const lines = text.split('\n')
+
+  // 각 줄이 셀 너비를 초과하는지 계산하여 총 줄 수 산출
+  let totalLines = 0
+
+  // 엑셀 열 너비 단위를 문자 수로 근사 변환 (대략 1 열 너비 = 1 문자)
+  const charsPerLine = Math.floor(columnWidth / charWidthRatio)
+
+  for (const line of lines) {
+    if (line.length === 0) {
+      totalLines += 1
+    } else {
+      // 한 줄이 셀 너비를 초과하면 자동 줄바꿈되므로 줄 수 계산
+      totalLines += Math.ceil(line.length / Math.max(charsPerLine, 1))
+    }
+  }
+
+  // 줄 수에 따른 높이 계산 (한 줄당 약 폰트크기 * 1.4 포인트)
+  const lineHeight = fontSize * 1.4
+  const calculatedHeight = totalLines * lineHeight
+
+  return Math.max(baseHeight, calculatedHeight)
+}
+
 // 금액 포맷팅 헬퍼 (사용되지 않지만 유틸리티로 보존)
 // function formatCurrency(amount?: number): string {
 //   if (!amount) return ''
@@ -558,22 +596,32 @@ export async function generateSalesOrder(data: DocumentData): Promise<Buffer> {
   const sheet = workbook.getWorksheet('발주서') || workbook.getWorksheet(1)
   if (!sheet) throw new Error('워크시트를 찾을 수 없습니다')
 
+  // 대표 이름 + 직인은 템플릿에 이미지로 포함 (건드리지 않음)
+
   // 매입처 정보
+  // B6: 매입처명, C7~C9: 담당자/연락처/이메일
   sheet.getCell('B6').value = data.vendorCompany ? `${data.vendorCompany} 귀중` : ''
-  sheet.getCell('B7').value = data.vendorContact || ''
-  sheet.getCell('B8').value = data.vendorPhone || ''
-  sheet.getCell('B9').value = data.vendorEmail || ''
+  sheet.getCell('C7').value = data.vendorContact || ''
+  sheet.getCell('C8').value = data.vendorPhone || ''
+  sheet.getCell('C9').value = data.vendorEmail || ''
 
   // 발주 정보
   sheet.getCell('F7').value = data.quoteDate || new Date()
   sheet.getCell('F8').value = data.deliveryAddress || ''
-  sheet.getCell('F9').value = data.managerName
-    ? `${data.managerName}(${data.managerPhone || ''})`
-    : ''
+
+  // 담당자 정보 포맷팅 (이미 전화번호가 포함되어 있으면 그대로 사용)
+  const formatManagerInfo = (name?: string, phone?: string): string => {
+    if (!name) return ''
+    // 이미 괄호가 포함되어 있으면 (전화번호 포함) 그대로 반환
+    if (name.includes('(') && name.includes(')')) return name
+    // 전화번호가 있으면 조합
+    if (phone) return `${name}(${phone})`
+    return name
+  }
+
+  sheet.getCell('F9').value = formatManagerInfo(data.managerName, data.managerPhone)
   sheet.getCell('F10').value = data.paymentTerms || ''
-  sheet.getCell('F11').value = data.managerName
-    ? `${data.managerName}(${data.managerPhone || ''})`
-    : ''
+  sheet.getCell('F11').value = formatManagerInfo(data.managerName, data.managerPhone)
 
   // 품목 채우기 (R16부터)
   const startRow = 16
@@ -588,6 +636,9 @@ export async function generateSalesOrder(data: DocumentData): Promise<Buffer> {
   }
 
   // 품목 입력
+  // 품목 열 C (description)의 너비를 가져옴 (템플릿에서 설정된 값 또는 기본값)
+  const descColumnWidth = sheet.getColumn('C').width || 45
+
   data.items.forEach((item, index) => {
     const row = startRow + index
 
@@ -600,6 +651,17 @@ export async function generateSalesOrder(data: DocumentData): Promise<Buffer> {
     const itemTotal = item.totalPrice || item.quantity * (item.unitPrice || 0)
     sheet.getCell(`G${row}`).value = itemTotal
     totalSum += itemTotal
+
+    // description 셀에 줄바꿈이 있거나 내용이 긴 경우 행 높이 자동 조절
+    const descCell = sheet.getCell(`C${row}`)
+    descCell.alignment = { ...descCell.alignment, wrapText: true, vertical: 'middle' }
+
+    const calculatedHeight = calculateRowHeight(item.description, descColumnWidth)
+    const sheetRow = sheet.getRow(row)
+    // 기존 높이보다 계산된 높이가 크면 적용
+    if (!sheetRow.height || calculatedHeight > sheetRow.height) {
+      sheetRow.height = calculatedHeight
+    }
   })
 
   // 합계 (R29~31)
@@ -634,10 +696,11 @@ async function generateSalesOrderBasic(data: DocumentData): Promise<Buffer> {
   sheet.getCell('B4').alignment = { horizontal: 'center' }
 
   // 매입처/발주자 정보
+  // B6: 매입처명, C7~C9: 담당자/연락처/이메일
   sheet.getCell('B6').value = data.vendorCompany ? `${data.vendorCompany} 귀중` : ''
-  sheet.getCell('B7').value = data.vendorContact || ''
-  sheet.getCell('B8').value = data.vendorPhone || ''
-  sheet.getCell('B9').value = data.vendorEmail || ''
+  sheet.getCell('C7').value = data.vendorContact || ''
+  sheet.getCell('C8').value = data.vendorPhone || ''
+  sheet.getCell('C9').value = data.vendorEmail || ''
 
   sheet.getCell('D6').value = '발   주   자'
   sheet.getCell('F6').value = '(주)서버메이트 (107-86-68756)'
