@@ -37,8 +37,9 @@ model User {
   // NextAuth 관계
   sessions     Session[]
 
-  roles        UserRole[]
-  excelImports ExcelImport[] @relation("ImportedBy")
+  roles           UserRole[]
+  menuPermissions UserMenuPermission[]
+  excelImports    ExcelImport[] @relation("ImportedBy")
 
   // SalesQuote relations
   salesQuotes     SalesQuote[]     @relation("SalesQuoteCreatedBy")
@@ -77,6 +78,27 @@ model UserRole {
 
   @@id([userId, roleId])
   @@map("user_roles")
+}
+
+// ==================== 메뉴 권한 ====================
+
+enum PermissionLevel {
+  NONE // 접근 불가
+  READ // 조회만 가능
+  FULL // 생성/수정/삭제 가능
+}
+
+model UserMenuPermission {
+  id     String          @id @default(uuid())
+  userId String          @map("user_id")
+  menu   String          // SALES_QUOTE, SALES_APPROVAL, SALES_ORDER, MA_QUOTE, MA_APPROVAL, CLOUD, USER_MANAGEMENT
+  level  PermissionLevel @default(NONE)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, menu])
+  @@index([userId])
+  @@map("user_menu_permissions")
 }
 
 // ==================== 파일 타입 ====================

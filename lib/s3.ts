@@ -1,4 +1,10 @@
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 const s3Client = new S3Client({
@@ -84,4 +90,42 @@ export function generateS3Key(
   const timestamp = Date.now()
   const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_')
   return `${folder}/${docNumber}/${timestamp}_${sanitizedFileName}`
+}
+
+// S3 파일/폴더 목록 조회
+export interface S3Object {
+  key: string
+  size: number
+  lastModified: Date
+  isFolder: boolean
+}
+
+export async function listS3Objects(
+  prefix = '',
+  delimiter = '/'
+): Promise<{ objects: S3Object[]; prefixes: string[] }> {
+  const command = new ListObjectsV2Command({
+    Bucket: BUCKET_NAME,
+    Prefix: prefix,
+    Delimiter: delimiter,
+  })
+
+  const response = await s3Client.send(command)
+
+  const objects: S3Object[] =
+    response.Contents?.map((item) => ({
+      key: item.Key || '',
+      size: item.Size || 0,
+      lastModified: item.LastModified || new Date(),
+      isFolder: false,
+    })) || []
+
+  const prefixes = response.CommonPrefixes?.map((p) => p.Prefix || '') || []
+
+  return { objects, prefixes }
+}
+
+// S3 버킷 정보
+export function getS3BucketName(): string {
+  return BUCKET_NAME
 }

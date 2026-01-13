@@ -53,6 +53,13 @@ const testModules: TestModule[] = [
     features: ['MA 품의서 생성', '매출/매입 관리', '승인 처리', '엑셀 업로드'],
     color: 'bg-teal-500',
   },
+  {
+    title: '클라우드 스토리지',
+    description: 'Cloud Storage - AWS S3 파일 관리',
+    href: '/admin/api-test/cloud',
+    features: ['파일 업로드', '파일 다운로드', '파일 삭제', '폴더 탐색'],
+    color: 'bg-cyan-500',
+  },
 ]
 
 export default function ApiTestIndexPage() {
