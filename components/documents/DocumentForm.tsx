@@ -2,10 +2,11 @@
 
 import { UilEdit, UilFileAlt, UilPlus, UilTrashAlt } from '@iconscout/react-unicons'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { DocumentFormTemplate } from './DocumentFormTemplate'
 
 interface DocumentItem {
+  id?: string
   partNumber?: string
   description?: string
   quantity: number
@@ -18,6 +19,7 @@ interface DocumentFormProps {
   docType: 'SALES_QUOTE' | 'SALES_APPROVAL' | 'SALES_ORDER' | 'MA_QUOTE' | 'MA_APPROVAL'
   basePath: string
   title: string
+  documentId?: string // 수정 모드일 때 문서 ID
 }
 
 const apiPathMap: Record<string, string> = {
@@ -28,9 +30,10 @@ const apiPathMap: Record<string, string> = {
   MA_APPROVAL: '/api/ma-approvals',
 }
 
-export function DocumentForm({ docType, basePath, title }: DocumentFormProps) {
+export function DocumentForm({ docType, basePath, title, documentId }: DocumentFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(!!documentId)
   const [mode, setMode] = useState<'web' | 'template'>('web')
   
   // 오늘 날짜를 YYYY.MM.DD 형식으로 가져오기
@@ -68,6 +71,74 @@ export function DocumentForm({ docType, basePath, title }: DocumentFormProps) {
   const [items, setItems] = useState<DocumentItem[]>([
     { partNumber: '', description: '', quantity: 1, srpPrice: 0, unitPrice: 0, totalPrice: 0 },
   ])
+
+  // 수정 모드일 때 기존 데이터 로드
+  const fetchDocument = useCallback(async () => {
+    if (!documentId) return
+
+    setFetching(true)
+    try {
+      const apiPath = apiPathMap[docType]
+      const res = await fetch(`${apiPath}/${documentId}`)
+      if (res.ok) {
+        const data = await res.json()
+
+        // 폼 데이터 설정
+        setFormData({
+          title: data.title || '',
+          projectName: data.projectName || '',
+          clientCompany: data.clientCompany || '',
+          clientContact: data.clientContact || '',
+          clientPhone: data.clientPhone || '',
+          clientFax: data.clientFax || '',
+          clientCP: data.clientMobile || '',
+          clientEmail: data.clientEmail || '',
+          salesContactLine: '',
+          vendorCompany: data.vendorCompany || '',
+          vendorContact: data.vendorContact || '',
+          vendorPhone: data.vendorPhone || '',
+          vendorEmail: data.vendorEmail || '',
+          quoteDate: data.quoteDate ? new Date(data.quoteDate).toISOString().split('T')[0].replace(/-/g, '.') : getTodayDate(),
+          deliveryDate: data.deliveryDate ? new Date(data.deliveryDate).toISOString().split('T')[0].replace(/-/g, '.') : '',
+          validUntil: data.validUntil || '',
+          paymentTerms: data.paymentTerms || '',
+          managerName: data.managerName || '',
+          managerPhone: '',
+          notes: data.notes || '',
+        })
+
+        // 품목 설정
+        if (data.items && data.items.length > 0) {
+          setItems(data.items.map((item: any) => ({
+            id: item.id,
+            partNumber: item.partNumber || '',
+            description: item.description || '',
+            quantity: item.quantity || 1,
+            srpPrice: item.srpPrice || 0,
+            unitPrice: item.unitPrice || 0,
+            totalPrice: item.totalPrice || 0,
+          })))
+        }
+
+        // DRAFT 상태가 아니면 수정 불가
+        if (data.status !== 'DRAFT') {
+          alert('작성중 상태의 문서만 수정할 수 있습니다.')
+          router.push(`${basePath}/${documentId}`)
+        }
+      } else {
+        router.push(basePath)
+      }
+    } catch (err) {
+      console.error('조회 실패:', err)
+      router.push(basePath)
+    } finally {
+      setFetching(false)
+    }
+  }, [documentId, docType, basePath, router])
+
+  useEffect(() => {
+    fetchDocument()
+  }, [fetchDocument])
 
   // 전화번호 포맷팅 함수
   const formatPhoneNumber = (value: string): string => {
@@ -190,12 +261,18 @@ export function DocumentForm({ docType, basePath, title }: DocumentFormProps) {
     try {
       const totals = calculateTotal()
       const apiPath = apiPathMap[docType]
-      const response = await fetch(apiPath, {
-        method: 'POST',
+      
+      // 수정 모드일 때는 PATCH, 생성 모드일 때는 POST
+      const method = documentId ? 'PATCH' : 'POST'
+      const url = documentId ? `${apiPath}/${documentId}` : apiPath
+      
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
           items: items.map((item) => ({
+            id: item.id,
             partNumber: item.partNumber || undefined,
             description: item.description || undefined,
             quantity: item.quantity,
@@ -207,16 +284,24 @@ export function DocumentForm({ docType, basePath, title }: DocumentFormProps) {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.error || '문서 생성에 실패했습니다')
+        throw new Error(data.error || (documentId ? '문서 수정에 실패했습니다' : '문서 생성에 실패했습니다'))
       }
 
       const data = await response.json()
       router.push(`${basePath}/${data.id}`)
     } catch (err) {
-      alert(err instanceof Error ? err.message : '문서 생성에 실패했습니다')
+      alert(err instanceof Error ? err.message : (documentId ? '문서 수정에 실패했습니다' : '문서 생성에 실패했습니다'))
     } finally {
       setLoading(false)
     }
+  }
+
+  if (fetching) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-gray-500">로딩 중...</div>
+      </div>
+    )
   }
 
   const totals = calculateTotal()
@@ -525,7 +610,7 @@ export function DocumentForm({ docType, basePath, title }: DocumentFormProps) {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {items.map((item, index) => (
-                  <tr key={index}>
+                  <tr key={item.id || index}>
                     <td className="px-4 py-3">
                       <input
                         type="text"
