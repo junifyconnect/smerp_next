@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -28,6 +28,16 @@ interface SignerInfo {
   id: string
   name: string
   signatureUrl?: string
+}
+
+interface ApprovalFile {
+  id: string
+  fileType: string
+  fileName: string
+  filePath: string
+  fileSize?: number
+  uploadedAt: string
+  uploadedBy?: { id: string; name: string }
 }
 
 interface SalesApproval {
@@ -87,6 +97,9 @@ export default function SalesApprovalDetailPage() {
   const [approval, setApproval] = useState<SalesApproval | null>(null)
   const [loading, setLoading] = useState(true)
   const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [files, setFiles] = useState<ApprovalFile[]>([])
+  const [uploadingFile, setUploadingFile] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchApproval = useCallback(async () => {
     try {
@@ -105,9 +118,27 @@ export default function SalesApprovalDetailPage() {
     }
   }, [id, router])
 
+  const fetchFiles = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/sales-approvals/${id}/files`)
+      if (res.ok) {
+        const data = await res.json()
+        setFiles(data)
+      }
+    } catch (err) {
+      console.error('파일 목록 조회 실패:', err)
+    }
+  }, [id])
+
   useEffect(() => {
     fetchApproval()
   }, [fetchApproval])
+
+  useEffect(() => {
+    if (approval?.status === 'APPROVED') {
+      fetchFiles()
+    }
+  }, [approval?.status, fetchFiles])
 
   const handleSign = async (role: 'SALES_MANAGER' | 'TEAM_LEADER' | 'CEO') => {
     // 테스트용: 사용자 ID 입력 (실제로는 로그인된 사용자 사용)
@@ -176,6 +207,46 @@ export default function SalesApprovalDetailPage() {
     } catch (err) {
       console.error('삭제 실패:', err)
     }
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingFile(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('fileType', 'SIGNED_ORIGINAL')
+
+      const res = await fetch(`/api/sales-approvals/${id}/files`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (res.ok) {
+        const savedFile = await res.json()
+        setFiles(prev => [savedFile, ...prev])
+        alert('파일이 업로드되었습니다')
+      } else {
+        const data = await res.json()
+        alert(data.error || '파일 업로드 실패')
+      }
+    } catch {
+      alert('파일 업로드에 실패했습니다')
+    } finally {
+      setUploadingFile(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
+  const formatFileSize = (bytes?: number) => {
+    if (!bytes) return '-'
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   }
 
   const getDisplayName = () => {
@@ -581,6 +652,64 @@ export default function SalesApprovalDetailPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h3 className="text-sm font-semibold text-gray-900 mb-3">비고</h3>
           <p className="text-sm text-gray-700 whitespace-pre-wrap">{approval.notes}</p>
+        </div>
+      )}
+
+      {/* 원본 파일 (결재 완료 후) */}
+      {approval.status === 'APPROVED' && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-gray-900">원본 파일</h3>
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                onChange={handleFileUpload}
+                className="hidden"
+                accept=".xlsx,.xls,.pdf,.doc,.docx,.hwp"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingFile}
+                className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {uploadingFile ? '업로드 중...' : '파일 업로드'}
+              </button>
+            </div>
+          </div>
+
+          {files.length > 0 ? (
+            <div className="space-y-2">
+              {files.map((file) => (
+                <div
+                  key={file.id}
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{file.fileName}</p>
+                      <p className="text-xs text-gray-500">
+                        {formatFileSize(file.fileSize)} | {new Date(file.uploadedAt).toLocaleString('ko-KR')}
+                        {file.uploadedBy && ` | ${file.uploadedBy.name}`}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full">
+                    {file.fileType === 'SIGNED_ORIGINAL' ? '서명원본' : file.fileType}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500 text-sm">
+              업로드된 파일이 없습니다
+            </div>
+          )}
         </div>
       )}
 

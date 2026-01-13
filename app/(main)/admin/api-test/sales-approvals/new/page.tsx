@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -37,7 +37,7 @@ interface SalesQuote {
   }[]
 }
 
-export default function NewSalesApprovalPage() {
+function NewSalesApprovalForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const quoteId = searchParams.get('quoteId')
@@ -667,5 +667,17 @@ export default function NewSalesApprovalPage() {
         </div>
       </form>
     </div>
+  )
+}
+
+export default function NewSalesApprovalPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-gray-500">로딩 중...</div>
+      </div>
+    }>
+      <NewSalesApprovalForm />
+    </Suspense>
   )
 }

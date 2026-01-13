@@ -6,12 +6,25 @@ datasource db {
   provider = "postgresql"
 }
 
+// ==================== NextAuth 세션 ====================
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
 // ==================== 사용자 & 권한 ====================
 
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
-  passwordHash String   @map("password_hash")
+  passwordHash String?  @map("password_hash")
   name         String
   phone        String?
   department   String?  // SALES, MA, FINANCE, ADMIN
@@ -21,12 +34,18 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  // NextAuth 관계
+  sessions     Session[]
+
   roles        UserRole[]
   excelImports ExcelImport[] @relation("ImportedBy")
 
   // SalesQuote relations
   salesQuotes     SalesQuote[]     @relation("SalesQuoteCreatedBy")
   salesQuoteFiles SalesQuoteFile[] @relation("SalesQuoteFileUploadedBy")
+
+  // SalesApproval relations
+  salesApprovalFiles SalesApprovalFile[] @relation("SalesApprovalFileUploadedBy")
 
   // SalesApproval signature relations
   salesManagerApprovals SalesApproval[] @relation("SalesManagerSigner")
@@ -287,6 +306,7 @@ model SalesApproval {
   // 관계
   items         SalesApprovalItem[]
   purchaseItems SalesApprovalPurchaseItem[]
+  files         SalesApprovalFile[]
 
   @@index([status])
   @@index([createdById])
@@ -333,6 +353,25 @@ model SalesApprovalPurchaseItem {
 
   @@index([approvalId])
   @@map("sales_approval_purchase_items")
+}
+
+model SalesApprovalFile {
+  id         String   @id @default(uuid())
+  approvalId String   @map("approval_id")
+  fileType   FileType @map("file_type")
+  fileName   String   @map("file_name")
+  filePath   String   @map("file_path") // S3 key
+  fileSize   Int?     @map("file_size")
+  mimeType   String?  @map("mime_type")
+
+  uploadedById String   @map("uploaded_by")
+  uploadedBy   User     @relation("SalesApprovalFileUploadedBy", fields: [uploadedById], references: [id])
+  uploadedAt   DateTime @default(now()) @map("uploaded_at")
+
+  approval SalesApproval @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+
+  @@index([approvalId])
+  @@map("sales_approval_files")
 }
 
 // ==================== 영업 발주서 (SalesOrder) ====================
