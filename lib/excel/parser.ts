@@ -257,6 +257,24 @@ function parseSalesQuote(sheet: ExcelJS.Worksheet): ParsedDocument {
   }
 }
 
+// 품의서 품목 구조 (메인 + 하위)
+interface ParsedApprovalItem {
+  productName: string // 메인 품목명
+  quantity: number
+  unitPrice?: number
+  totalPrice?: number
+  details: {
+    partNumber?: string // 하위 품목 P/N (시리얼번호)
+    description?: string // 하위 품목 상세내용
+    quantity?: number
+  }[]
+}
+
+interface ParsedApprovalPurchaseItem extends ParsedApprovalItem {
+  purchaseDate?: Date
+  vendorCompany?: string
+}
+
 // ==================== Sales 품의서 파싱 ====================
 function parseSalesApproval(sheet: ExcelJS.Worksheet): ParsedDocument {
   // 기본 정보
@@ -275,8 +293,12 @@ function parseSalesApproval(sheet: ExcelJS.Worksheet): ParsedDocument {
   const modelTypeSerial = getCellValue(sheet, 'D15') // "M/T / S/N"
 
   // 매출 품목 파싱 (R16이 헤더, R17부터 데이터)
-  const items: ParsedItem[] = []
-  const purchaseItems: ParsedPurchaseItem[] = []
+  // 새로운 로직: P/N이 비어있고 단가가 있는 행 = 메인 품목
+  //             P/N에 값이 있고 단가가 없는 행 = 하위 품목
+  const approvalItems: ParsedApprovalItem[] = []
+  const approvalPurchaseItems: ParsedApprovalPurchaseItem[] = []
+  let currentItem: ParsedApprovalItem | null = null
+  let currentPurchaseItem: ParsedApprovalPurchaseItem | null = null
   let row = 17
 
   while (row < 50) {
@@ -287,27 +309,48 @@ function parseSalesApproval(sheet: ExcelJS.Worksheet): ParsedDocument {
     const totalPrice = getNumericValue(sheet, `G${row}`)
 
     // 합계 행 확인
-    if (partNumber.includes('합계') || getCellValue(sheet, `C${row}`).includes('합계')) {
+    if (partNumber.includes('합계') || description.includes('합계')) {
       break
     }
 
-    // 빈 행 확인
-    if (!partNumber && !description && quantity === 0) {
+    // 빈 행 확인 (모든 값이 비어있으면 중단)
+    if (!partNumber && !description && quantity === 0 && unitPrice === 0 && totalPrice === 0) {
       break
     }
 
-    // 매출 품목
-    if (description || quantity > 0 || totalPrice > 0) {
-      const cleanPartNumber = partNumber.replace(/^\[품목명\]\s*/, '').replace(/^예시_/, '')
-      items.push({
-        partNumber: cleanPartNumber || undefined,
-        description: description?.replace(/^\[제품명\]$/, '') || undefined,
+    // 메인 품목 판단:
+    // 1. P/N이 비어있고 단가/합계가 있는 행 (묶음의 메인)
+    // 2. P/N에 값이 있고 단가/합계도 있는 행 (단일 품목)
+    const isMainItem = (unitPrice > 0 || totalPrice > 0)
+
+    // 하위 품목 판단: P/N에 값이 있고 단가가 없는 행 (메인 품목 아래의 하위 품목)
+    const isSubItem = partNumber && unitPrice === 0 && totalPrice === 0 && currentItem
+
+    if (isMainItem) {
+      // 이전 메인 품목 저장
+      if (currentItem) {
+        approvalItems.push(currentItem)
+      }
+      if (currentPurchaseItem) {
+        approvalPurchaseItems.push(currentPurchaseItem)
+        currentPurchaseItem = null
+      }
+
+      // 새 메인 품목 생성
+      const cleanDescription = description
+        ?.replace(/^\[제품명\]/, '')
+        ?.replace(/^ProductCode/, '')
+        ?.trim() || '제품'
+
+      currentItem = {
+        productName: cleanDescription,
         quantity: quantity || 1,
         unitPrice: unitPrice || undefined,
         totalPrice: totalPrice || undefined,
-      })
+        details: [],
+      }
 
-      // 매입 품목 (같은 행의 I~L열)
+      // 매입 정보 확인 (같은 행의 H~L열)
       const purchaseDate = getDateValue(sheet, `H${row}`)
       const vendorCompany = getCellValue(sheet, `I${row}`)
       const purchaseQty = getNumericValue(sheet, `J${row}`)
@@ -315,20 +358,75 @@ function parseSalesApproval(sheet: ExcelJS.Worksheet): ParsedDocument {
       const purchaseTotalPrice = getNumericValue(sheet, `L${row}`)
 
       if (vendorCompany || purchaseTotalPrice > 0) {
-        purchaseItems.push({
-          partNumber: cleanPartNumber || undefined,
-          description: description || undefined,
+        currentPurchaseItem = {
+          productName: cleanDescription,
           quantity: purchaseQty || quantity || 1,
           unitPrice: purchaseUnitPrice || undefined,
           totalPrice: purchaseTotalPrice || undefined,
           purchaseDate,
           vendorCompany: vendorCompany || undefined,
+          details: [],
+        }
+      }
+    } else if (isSubItem && currentItem) {
+      // 하위 품목 추가
+      const cleanPartNumber = partNumber
+        ?.replace(/^\[품목명\]\s*/, '')
+        ?.replace(/^예시_/, '')
+        ?.trim()
+
+      currentItem.details.push({
+        partNumber: cleanPartNumber || undefined,
+        description: description || undefined,
+        quantity: quantity || undefined,
+      })
+
+      // 매입 하위 품목도 추가
+      if (currentPurchaseItem) {
+        currentPurchaseItem.details.push({
+          partNumber: cleanPartNumber || undefined,
+          description: description || undefined,
+          quantity: quantity || undefined,
         })
       }
     }
 
     row++
   }
+
+  // 마지막 메인 품목 저장
+  if (currentItem) {
+    approvalItems.push(currentItem)
+  }
+  if (currentPurchaseItem) {
+    approvalPurchaseItems.push(currentPurchaseItem)
+  }
+
+  // 기존 ParsedItem 형식으로 변환 (하위 호환성)
+  const items: ParsedItem[] = approvalItems.map(item => ({
+    partNumber: item.productName, // productName을 partNumber로 (upload route에서 productName으로 변환)
+    description: item.details.map(d =>
+      `${d.partNumber ? `[${d.partNumber}] ` : ''}${d.description || ''}${d.quantity ? ` x${d.quantity}` : ''}`
+    ).join('\n') || undefined,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+    totalPrice: item.totalPrice,
+    // 새 구조 정보도 추가로 전달
+    _details: item.details,
+  } as ParsedItem & { _details?: typeof item.details }))
+
+  const purchaseItems: ParsedPurchaseItem[] = approvalPurchaseItems.map(item => ({
+    partNumber: item.productName,
+    description: item.details.map(d =>
+      `${d.partNumber ? `[${d.partNumber}] ` : ''}${d.description || ''}${d.quantity ? ` x${d.quantity}` : ''}`
+    ).join('\n') || undefined,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+    totalPrice: item.totalPrice,
+    purchaseDate: item.purchaseDate,
+    vendorCompany: item.vendorCompany,
+    _details: item.details,
+  } as ParsedPurchaseItem & { _details?: typeof item.details }))
 
   // 합계 금액
   const totalAmount = getNumericValue(sheet, 'G22') || getNumericValue(sheet, 'F22')

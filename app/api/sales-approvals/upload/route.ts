@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // 품의번호 생성
+    // 품의번호 생성 (시스템 내부 고유키)
     const year = new Date().getFullYear()
     const lastApproval = await prisma.salesApproval.findFirst({
       where: { approvalNumber: { startsWith: `SA-${year}-` } },
@@ -48,42 +48,108 @@ export async function POST(request: NextRequest) {
     }
     const approvalNumber = `SA-${year}-${sequence.toString().padStart(4, '0')}`
 
-    // 매출 금액 계산
+    // 품의코드 자동생성 (엑셀에 없는 경우)
+    // 형식: {담당자ID첫글자}{YYMMDD}-{순번} 예: D260115-01
+    let finalApprovalCode = parsed.approvalCode
+    if (!finalApprovalCode && parsed.approvalManager) {
+      const today = new Date()
+      const yy = String(today.getFullYear()).slice(-2)
+      const mm = String(today.getMonth() + 1).padStart(2, '0')
+      const dd = String(today.getDate()).padStart(2, '0')
+      const dateStr = `${yy}${mm}${dd}`
+      const initial = parsed.approvalManager.charAt(0).toUpperCase()
+
+      const prefix = `${initial}${dateStr}-`
+      const lastCodeApproval = await prisma.salesApproval.findFirst({
+        where: { approvalCode: { startsWith: prefix } },
+        orderBy: { approvalCode: 'desc' },
+      })
+
+      let codeSequence = 1
+      if (lastCodeApproval?.approvalCode) {
+        const lastSeq = parseInt(lastCodeApproval.approvalCode.split('-')[1])
+        if (!isNaN(lastSeq)) {
+          codeSequence = lastSeq + 1
+        }
+      }
+      finalApprovalCode = `${prefix}${String(codeSequence).padStart(2, '0')}`
+    }
+
+    // 매출 금액 계산 - 새 구조 (productName + details)
+    // 파서에서 _details가 있으면 사용, 없으면 기존 방식
     let totalAmount = 0
-    const itemsWithTotal = (parsed.items || []).map((item, index) => {
+    type ParsedItemWithDetails = typeof parsed.items[0] & {
+      _details?: { partNumber?: string; description?: string; quantity?: number }[]
+    }
+    const itemsWithTotal = (parsed.items || []).map((rawItem, index) => {
+      const item = rawItem as ParsedItemWithDetails
       const qty = item.quantity || 1
       const price = item.unitPrice || 0
       const itemTotal = qty * price
       totalAmount += itemTotal
+
+      // _details가 있으면 새 구조 사용
+      const details = item._details && item._details.length > 0
+        ? item._details.map((d, dIdx) => ({
+            partNumber: d.partNumber,
+            description: d.description,
+            quantity: d.quantity,
+            sortOrder: dIdx,
+          }))
+        : item.description
+          ? [{ description: item.description, sortOrder: 0 }]
+          : []
+
       return {
-        partNumber: item.partNumber,
-        description: item.description,
+        productName: item.partNumber || '제품', // partNumber를 productName으로 사용
         quantity: qty,
         unitPrice: price,
         totalPrice: itemTotal,
         sortOrder: index,
+        details: {
+          create: details,
+        },
       }
     })
 
     const vatAmount = Math.round(totalAmount * 0.1)
     const totalWithVat = totalAmount + vatAmount
 
-    // 매입 금액 계산
+    // 매입 금액 계산 - 새 구조 (productName + details)
     let purchaseTotal = 0
-    const purchaseItemsWithTotal = (parsed.purchaseItems || []).map((item, index) => {
+    type ParsedPurchaseItemWithDetails = typeof parsed.purchaseItems extends (infer T)[] | undefined
+      ? T & { _details?: { partNumber?: string; description?: string; quantity?: number }[] }
+      : never
+    const purchaseItemsWithTotal = (parsed.purchaseItems || []).map((rawItem, index) => {
+      const item = rawItem as ParsedPurchaseItemWithDetails
       const qty = item.quantity || 1
       const price = item.unitPrice || 0
       const itemTotal = qty * price
       purchaseTotal += itemTotal
+
+      // _details가 있으면 새 구조 사용
+      const details = item._details && item._details.length > 0
+        ? item._details.map((d, dIdx) => ({
+            partNumber: d.partNumber,
+            description: d.description,
+            quantity: d.quantity,
+            sortOrder: dIdx,
+          }))
+        : item.description
+          ? [{ description: item.description, sortOrder: 0 }]
+          : []
+
       return {
-        partNumber: item.partNumber,
-        description: item.description,
+        productName: item.partNumber || '제품', // partNumber를 productName으로 사용
         quantity: qty,
         unitPrice: price,
         totalPrice: itemTotal,
         purchaseDate: isValidDate(item.purchaseDate) ? item.purchaseDate : null,
         vendorCompany: item.vendorCompany,
         sortOrder: index,
+        details: {
+          create: details,
+        },
       }
     })
 
@@ -105,7 +171,7 @@ export async function POST(request: NextRequest) {
       data: {
         approvalNumber,
         deal: { connect: { id: deal.id } },
-        approvalCode: parsed.approvalCode,
+        approvalCode: finalApprovalCode,
         approvalDate: isValidDate(parsed.approvalDate) ? parsed.approvalDate : null,
         managerName: parsed.approvalManager,
         clientCompany: parsed.clientCompany,
@@ -133,8 +199,14 @@ export async function POST(request: NextRequest) {
         },
       },
       include: {
-        items: true,
-        purchaseItems: true,
+        items: {
+          include: { details: { orderBy: { sortOrder: 'asc' } } },
+          orderBy: { sortOrder: 'asc' },
+        },
+        purchaseItems: {
+          include: { details: { orderBy: { sortOrder: 'asc' } } },
+          orderBy: { sortOrder: 'asc' },
+        },
         deal: { select: { id: true, name: true } },
       },
     })

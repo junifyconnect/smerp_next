@@ -14,8 +14,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const approval = await prisma.salesApproval.findUnique({
       where: { id },
       include: {
-        items: { orderBy: { sortOrder: 'asc' } },
-        purchaseItems: { orderBy: { sortOrder: 'asc' } },
+        items: {
+          include: { details: { orderBy: { sortOrder: 'asc' } } },
+          orderBy: { sortOrder: 'asc' },
+        },
+        purchaseItems: {
+          include: { details: { orderBy: { sortOrder: 'asc' } } },
+          orderBy: { sortOrder: 'asc' },
+        },
         salesManager: { select: { name: true, signatureUrl: true } },
         teamLeader: { select: { name: true, signatureUrl: true } },
         ceo: { select: { name: true, signatureUrl: true } },
@@ -29,10 +35,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // DocumentData 형식으로 변환
+    // DocumentData 형식으로 변환 (새 구조 -> 기존 형식)
+    // details를 description 문자열로 합침
     const purchaseItems: PurchaseItem[] = approval.purchaseItems.map((item) => ({
-      partNumber: item.partNumber || undefined,
-      description: item.description || undefined,
+      partNumber: item.productName || undefined,
+      description: item.details.map((d) =>
+        `${d.partNumber ? `[${d.partNumber}] ` : ''}${d.description || ''}${d.quantity ? ` x${d.quantity}` : ''}`
+      ).join('\n') || undefined,
       quantity: item.quantity,
       unitPrice: item.unitPrice ? Number(item.unitPrice) : undefined,
       totalPrice: item.totalPrice ? Number(item.totalPrice) : undefined,
@@ -57,8 +66,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       notes: approval.notes || undefined,
       managerName: approval.managerName || undefined,
       items: approval.items.map((item) => ({
-        partNumber: item.partNumber || undefined,
-        description: item.description || undefined,
+        partNumber: item.productName || undefined,
+        description: item.details.map((d) =>
+          `${d.partNumber ? `[${d.partNumber}] ` : ''}${d.description || ''}${d.quantity ? ` x${d.quantity}` : ''}`
+        ).join('\n') || undefined,
         quantity: item.quantity,
         unitPrice: item.unitPrice ? Number(item.unitPrice) : undefined,
         totalPrice: item.totalPrice ? Number(item.totalPrice) : undefined,

@@ -41,7 +41,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         clientCompany: true,
         items: {
           take: 1,
-          select: { description: true },
+          select: { productName: true },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const versionsWithNumber = versions.map((v) => ({
       ...v,
       version: sortedByCreation.findIndex((s) => s.id === v.id) + 1,
-      displayName: v.approvalCode || v.approvalNumber || v.clientCompany || v.items[0]?.description || v.id.slice(0, 8),
+      displayName: v.approvalCode || v.approvalNumber || v.clientCompany || v.items[0]?.productName || v.id.slice(0, 8),
       isCurrent: v.id === id,
     }))
 

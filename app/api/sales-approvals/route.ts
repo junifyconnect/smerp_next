@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     // TODO: 실제 인증된 사용자 ID 사용
     const createdById = 'dummy-user-id'
 
-    // 품의번호 생성 (SA-YYYY-NNNN)
+    // 품의번호 생성 (SA-YYYY-NNNN) - 시스템 내부 고유키
     const year = new Date().getFullYear()
     const lastApproval = await prisma.salesApproval.findFirst({
       where: { approvalNumber: { startsWith: `SA-${year}-` } },
@@ -104,6 +104,34 @@ export async function POST(request: NextRequest) {
     }
     const approvalNumber = `SA-${year}-${sequence.toString().padStart(4, '0')}`
 
+    // 품의코드 자동생성 (사용자ID첫글자 + YYMMDD + -순번)
+    // 예: D260115-01 (DaehoonKim이 2026년 1월 15일 첫 번째 품의서)
+    let finalApprovalCode = approvalCode
+    if (!finalApprovalCode && managerName) {
+      const today = new Date()
+      const yy = String(today.getFullYear()).slice(-2)
+      const mm = String(today.getMonth() + 1).padStart(2, '0')
+      const dd = String(today.getDate()).padStart(2, '0')
+      const dateStr = `${yy}${mm}${dd}`
+      const initial = managerName.charAt(0).toUpperCase()
+
+      // 해당 날짜 + 이니셜로 시작하는 품의코드 중 마지막 순번 조회
+      const prefix = `${initial}${dateStr}-`
+      const lastCodeApproval = await prisma.salesApproval.findFirst({
+        where: { approvalCode: { startsWith: prefix } },
+        orderBy: { approvalCode: 'desc' },
+      })
+
+      let codeSequence = 1
+      if (lastCodeApproval?.approvalCode) {
+        const lastSeq = parseInt(lastCodeApproval.approvalCode.split('-')[1])
+        if (!isNaN(lastSeq)) {
+          codeSequence = lastSeq + 1
+        }
+      }
+      finalApprovalCode = `${prefix}${String(codeSequence).padStart(2, '0')}`
+    }
+
     // 견적서에서 생성하는 경우 데이터 초기화
     const finalClientCompany = clientCompany || quoteData?.clientCompany
     const finalClientContact = clientContact || quoteData?.clientContact
@@ -111,27 +139,36 @@ export async function POST(request: NextRequest) {
     const finalManagerName = managerName || quoteData?.managerName
     const finalPaymentTerms = paymentTerms || quoteData?.paymentTerms
     const finalDealId = dealId || quoteData?.dealId
+    // 견적서에서 가져올 때는 기존 구조를 새 구조로 변환
     const finalItems = items.length > 0 ? items : (quoteData?.items || []).map((item: { partNumber: string | null; description: string | null; quantity: number; unitPrice: unknown; totalPrice: unknown; sortOrder: number }) => ({
-      partNumber: item.partNumber,
-      description: item.description,
+      productName: item.partNumber || '제품', // 기존 partNumber를 productName으로
       quantity: item.quantity,
       unitPrice: Number(item.unitPrice) || 0,
       sortOrder: item.sortOrder,
+      details: item.description ? [{ description: item.description, sortOrder: 0 }] : [],
     }))
 
     // 매출 금액 계산
     let totalAmount = 0
-    const itemsWithTotal = finalItems.map((item: { quantity?: number; unitPrice?: number; partNumber?: string; description?: string; sortOrder?: number }, index: number) => {
+    const itemsWithTotal = finalItems.map((item: { quantity?: number; unitPrice?: number; productName?: string; details?: { partNumber?: string; description?: string; quantity?: number; sortOrder?: number }[]; sortOrder?: number }, index: number) => {
       const qty = item.quantity || 1
       const price = item.unitPrice || 0
       const itemTotal = qty * price
       totalAmount += itemTotal
       return {
-        ...item,
+        productName: item.productName || '제품',
         sortOrder: item.sortOrder ?? index,
         quantity: qty,
         unitPrice: price,
         totalPrice: itemTotal,
+        details: {
+          create: (item.details || []).map((detail, detailIndex) => ({
+            partNumber: detail.partNumber,
+            description: detail.description,
+            quantity: detail.quantity,
+            sortOrder: detail.sortOrder ?? detailIndex,
+          })),
+        },
       }
     })
 
@@ -140,18 +177,27 @@ export async function POST(request: NextRequest) {
 
     // 매입 금액 계산
     let purchaseTotal = 0
-    const purchaseItemsWithTotal = purchaseItems.map((item: { quantity?: number; unitPrice?: number; partNumber?: string; description?: string; purchaseDate?: string; vendorCompany?: string; sortOrder?: number }, index: number) => {
+    const purchaseItemsWithTotal = purchaseItems.map((item: { quantity?: number; unitPrice?: number; productName?: string; details?: { partNumber?: string; description?: string; quantity?: number; sortOrder?: number }[]; purchaseDate?: string; vendorCompany?: string; sortOrder?: number }, index: number) => {
       const qty = item.quantity || 1
       const price = item.unitPrice || 0
       const itemTotal = qty * price
       purchaseTotal += itemTotal
       return {
-        ...item,
+        productName: item.productName || '제품',
         sortOrder: item.sortOrder ?? index,
         quantity: qty,
         unitPrice: price,
         totalPrice: itemTotal,
         purchaseDate: item.purchaseDate ? new Date(item.purchaseDate) : null,
+        vendorCompany: item.vendorCompany,
+        details: {
+          create: (item.details || []).map((detail, detailIndex) => ({
+            partNumber: detail.partNumber,
+            description: detail.description,
+            quantity: detail.quantity,
+            sortOrder: detail.sortOrder ?? detailIndex,
+          })),
+        },
       }
     })
 
@@ -161,7 +207,7 @@ export async function POST(request: NextRequest) {
       data: {
         approvalNumber,
         ...(finalDealId && { deal: { connect: { id: finalDealId } } }),
-        approvalCode,
+        approvalCode: finalApprovalCode,
         approvalDate: approvalDate ? new Date(approvalDate) : null,
         managerName: finalManagerName,
         clientCompany: finalClientCompany,
@@ -189,8 +235,14 @@ export async function POST(request: NextRequest) {
         },
       },
       include: {
-        items: true,
-        purchaseItems: true,
+        items: {
+          include: { details: { orderBy: { sortOrder: 'asc' } } },
+          orderBy: { sortOrder: 'asc' },
+        },
+        purchaseItems: {
+          include: { details: { orderBy: { sortOrder: 'asc' } } },
+          orderBy: { sortOrder: 'asc' },
+        },
         deal: { select: { id: true, name: true } },
       },
     })

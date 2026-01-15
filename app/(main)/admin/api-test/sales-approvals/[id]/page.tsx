@@ -4,24 +4,31 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 
-interface ApprovalItem {
+interface ItemDetail {
   id?: string
   partNumber?: string
   description?: string
+  quantity?: number
+}
+
+interface ApprovalItem {
+  id?: string
+  productName: string
   quantity: number
   unitPrice?: number
   totalPrice?: number
+  details?: ItemDetail[]
 }
 
 interface PurchaseItem {
   id?: string
-  partNumber?: string
-  description?: string
+  productName: string
   quantity: number
   unitPrice?: number
   totalPrice?: number
   vendorCompany?: string
   purchaseDate?: string
+  details?: ItemDetail[]
 }
 
 interface SignerInfo {
@@ -648,29 +655,44 @@ export default function SalesApprovalDetailPage() {
         <div className="px-6 py-4 border-b bg-gray-50">
           <h3 className="text-sm font-semibold text-gray-900">매출 품목 ({approval.items?.length || 0}개)</h3>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">P/N</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">품목</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">수량</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">단가</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">금액</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {approval.items?.map((item, idx) => (
-                <tr key={idx} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm text-gray-600">{item.partNumber || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{item.description || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-right">{item.quantity}</td>
-                  <td className="px-4 py-3 text-sm text-right">{Number(item.unitPrice || 0).toLocaleString()}원</td>
-                  <td className="px-4 py-3 text-sm text-right font-medium">{Number(item.totalPrice || 0).toLocaleString()}원</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="p-4 space-y-3">
+          {approval.items?.map((item, idx) => (
+            <div key={idx} className="border border-blue-200 rounded-lg overflow-hidden">
+              {/* 메인 품목 헤더 */}
+              <div className="bg-blue-50 px-4 py-3 flex items-center justify-between border-b border-blue-200">
+                <div className="flex items-center gap-3">
+                  <span className="px-2 py-0.5 bg-blue-600 text-white text-xs font-medium rounded">P/N</span>
+                  <span className="font-semibold text-blue-900">{item.productName || '-'}</span>
+                </div>
+                <div className="flex items-center gap-6 text-sm">
+                  <span className="text-gray-600">{item.quantity}개</span>
+                  <span className="text-gray-600">{Number(item.unitPrice || 0).toLocaleString()}원</span>
+                  <span className="font-bold text-blue-700">{Number(item.totalPrice || 0).toLocaleString()}원</span>
+                </div>
+              </div>
+              {/* 하위 품목 리스트 */}
+              {item.details && item.details.length > 0 && (
+                <div className="bg-white divide-y divide-gray-100">
+                  {item.details.map((detail, dIdx) => (
+                    <div key={dIdx} className="px-4 py-2.5 flex items-start gap-3">
+                      <span className="text-gray-400 mt-0.5">├</span>
+                      <div className="flex-1">
+                        {detail.partNumber && (
+                          <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded mr-2">
+                            {detail.partNumber}
+                          </span>
+                        )}
+                        <span className="text-sm text-gray-700 whitespace-pre-wrap">{detail.description}</span>
+                        {detail.quantity && (
+                          <span className="ml-2 text-xs text-gray-400">x{detail.quantity}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
         <div className="px-6 py-4 border-t bg-gray-50">
           <div className="flex justify-end">
@@ -697,31 +719,49 @@ export default function SalesApprovalDetailPage() {
         <div className="px-6 py-4 border-b bg-purple-50">
           <h3 className="text-sm font-semibold text-gray-900">매입 품목 ({approval.purchaseItems?.length || 0}개)</h3>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">P/N</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">품목</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">매입처</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">수량</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">단가</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">금액</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {approval.purchaseItems?.map((item, idx) => (
-                <tr key={idx} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm text-gray-600">{item.partNumber || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{item.description || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{item.vendorCompany || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-right">{item.quantity}</td>
-                  <td className="px-4 py-3 text-sm text-right">{Number(item.unitPrice || 0).toLocaleString()}원</td>
-                  <td className="px-4 py-3 text-sm text-right font-medium">{Number(item.totalPrice || 0).toLocaleString()}원</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="p-4 space-y-3">
+          {approval.purchaseItems?.map((item, idx) => (
+            <div key={idx} className="border border-purple-200 rounded-lg overflow-hidden">
+              {/* 메인 품목 헤더 */}
+              <div className="bg-purple-50 px-4 py-3 flex items-center justify-between border-b border-purple-200">
+                <div className="flex items-center gap-3">
+                  <span className="px-2 py-0.5 bg-purple-600 text-white text-xs font-medium rounded">P/N</span>
+                  <span className="font-semibold text-purple-900">{item.productName || '-'}</span>
+                  {item.vendorCompany && (
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                      {item.vendorCompany}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-6 text-sm">
+                  <span className="text-gray-600">{item.quantity}개</span>
+                  <span className="text-gray-600">{Number(item.unitPrice || 0).toLocaleString()}원</span>
+                  <span className="font-bold text-purple-700">{Number(item.totalPrice || 0).toLocaleString()}원</span>
+                </div>
+              </div>
+              {/* 하위 품목 리스트 */}
+              {item.details && item.details.length > 0 && (
+                <div className="bg-white divide-y divide-gray-100">
+                  {item.details.map((detail, dIdx) => (
+                    <div key={dIdx} className="px-4 py-2.5 flex items-start gap-3">
+                      <span className="text-gray-400 mt-0.5">├</span>
+                      <div className="flex-1">
+                        {detail.partNumber && (
+                          <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded mr-2">
+                            {detail.partNumber}
+                          </span>
+                        )}
+                        <span className="text-sm text-gray-700 whitespace-pre-wrap">{detail.description}</span>
+                        {detail.quantity && (
+                          <span className="ml-2 text-xs text-gray-400">x{detail.quantity}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
         <div className="px-6 py-4 border-t bg-purple-50">
           <div className="flex justify-end">

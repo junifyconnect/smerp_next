@@ -13,6 +13,7 @@ import {
   UilUsersAlt,
   UilUpload,
   UilBracketsCurly,
+  UilCalendarAlt,
 } from '@iconscout/react-unicons'
 
 const navigation = [
@@ -20,6 +21,7 @@ const navigation = [
     title: '대시보드',
     items: [
       { name: '대시보드', href: '/dashboard', icon: UilChart },
+      { name: '캘린더', href: '/calendar', icon: UilCalendarAlt },
     ],
   },
   {

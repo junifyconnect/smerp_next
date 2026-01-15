@@ -140,13 +140,63 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           ceoId: userId,
           ceoSignedAt: now,
           status: 'APPROVED',
+          approvalDate: now,
         },
         include: {
           salesManager: { select: { id: true, name: true, signatureUrl: true } },
           teamLeader: { select: { id: true, name: true, signatureUrl: true } },
           ceo: { select: { id: true, name: true, signatureUrl: true } },
+          items: {
+            include: { details: true },
+            orderBy: { sortOrder: 'asc' },
+          },
+          purchaseItems: {
+            include: { details: true },
+            orderBy: { sortOrder: 'asc' },
+          },
         },
       })
+
+      // 품의서 승인 시 계산서 발행현황 자동 생성
+      const yearMonth = `${String(now.getFullYear()).slice(-2)}.${String(now.getMonth() + 1).padStart(2, '0')}`
+
+      // 매출 품목별로 SalesInvoiceStatus 생성
+      for (const item of updated.items) {
+        await prisma.salesInvoiceStatus.create({
+          data: {
+            salesApprovalId: updated.id,
+            approvalCode: updated.approvalCode,
+            itemName: item.productName || '제품',
+            partNumber: item.details[0]?.partNumber || null,
+            clientCompany: updated.clientCompany || '미지정',
+            quantity: item.quantity,
+            unitPrice: item.unitPrice ?? 0,
+            totalPrice: item.totalPrice ?? 0,
+            remainAmount: item.totalPrice ?? 0,
+            yearMonth,
+            remarks: updated.managerName ? `담당: ${updated.managerName}` : null,
+          },
+        })
+      }
+
+      // 매입 품목별로 PurchaseInvoiceStatus 생성
+      for (const item of updated.purchaseItems) {
+        await prisma.purchaseInvoiceStatus.create({
+          data: {
+            salesApprovalId: updated.id,
+            approvalCode: updated.approvalCode,
+            itemName: item.productName || '제품',
+            partNumber: item.details[0]?.partNumber || null,
+            vendorCompany: item.vendorCompany || '미지정',
+            quantity: item.quantity,
+            unitPrice: item.unitPrice ?? 0,
+            totalPrice: item.totalPrice ?? 0,
+            remainAmount: item.totalPrice ?? 0,
+            yearMonth,
+            remarks: updated.managerName ? `담당: ${updated.managerName}` : null,
+          },
+        })
+      }
 
       return NextResponse.json(updated)
     }
