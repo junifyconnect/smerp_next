@@ -9,19 +9,38 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '50')
     const department = searchParams.get('department')
+    const search = searchParams.get('search')
 
-    const where = department ? { department } : {}
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: any = {}
+
+    if (department) {
+      where.department = department
+    }
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { employeeId: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search, mode: 'insensitive' } },
+      ]
+    }
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where,
         select: {
           id: true,
+          employeeId: true,
           email: true,
           name: true,
           phone: true,
           department: true,
           position: true,
+          role: true,
+          annualLeave: true,
+          additionalLeave: true,
           signatureUrl: true,
           isActive: true,
           createdAt: true,
@@ -35,12 +54,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       users,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+      total,
+      totalPages: Math.ceil(total / limit),
+      page,
+      limit,
     })
   } catch (error) {
     console.error('사용자 목록 조회 오류:', error)
@@ -51,11 +68,22 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/users - 회원가입
+// POST /api/users - 직원 등록
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password, name, phone, department, position } = body
+    const {
+      employeeId,
+      email,
+      password,
+      name,
+      phone,
+      department,
+      position,
+      role,
+      annualLeave,
+      additionalLeave,
+    } = body
 
     // 필수 필드 검증
     if (!email || !password || !name) {
@@ -83,15 +111,29 @@ export async function POST(request: NextRequest) {
     }
 
     // 이메일 중복 확인
-    const existingUser = await prisma.user.findUnique({
+    const existingEmail = await prisma.user.findUnique({
       where: { email },
     })
 
-    if (existingUser) {
+    if (existingEmail) {
       return NextResponse.json(
         { error: '이미 등록된 이메일입니다' },
         { status: 409 }
       )
+    }
+
+    // 사용자 ID 중복 확인
+    if (employeeId) {
+      const existingEmployeeId = await prisma.user.findUnique({
+        where: { employeeId },
+      })
+
+      if (existingEmployeeId) {
+        return NextResponse.json(
+          { error: '이미 등록된 사용자 ID입니다' },
+          { status: 409 }
+        )
+      }
     }
 
     // 비밀번호 해싱
@@ -100,20 +142,28 @@ export async function POST(request: NextRequest) {
     // 사용자 생성
     const user = await prisma.user.create({
       data: {
+        employeeId: employeeId || null,
         email,
         passwordHash,
         name,
         phone: phone || null,
         department: department || null,
         position: position || null,
+        role: role || null,
+        annualLeave: annualLeave || 0,
+        additionalLeave: additionalLeave || 0,
       },
       select: {
         id: true,
+        employeeId: true,
         email: true,
         name: true,
         phone: true,
         department: true,
         position: true,
+        role: true,
+        annualLeave: true,
+        additionalLeave: true,
         isActive: true,
         createdAt: true,
       },
@@ -121,9 +171,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(user, { status: 201 })
   } catch (error) {
-    console.error('회원가입 오류:', error)
+    console.error('직원 등록 오류:', error)
     return NextResponse.json(
-      { error: '회원가입에 실패했습니다' },
+      { error: '직원 등록에 실패했습니다' },
       { status: 500 }
     )
   }

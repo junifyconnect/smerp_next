@@ -52,6 +52,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       clientPhone,
       clientFax,
       clientMobile,
+      clientCP,
       clientEmail,
       quoteDate,
       validUntil,
@@ -60,6 +61,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       notes,
       status,
       items,
+      // 통합 견적
+      isConsolidated,
+      consolidatedName,
+      consolidatedPrice,
     } = body
 
     // 상태 변경 검증: SENT 이후에는 ACCEPTED/REJECTED만 가능
@@ -101,10 +106,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (clientPhone !== undefined) updateData.clientPhone = clientPhone
     if (clientFax !== undefined) updateData.clientFax = clientFax
     if (clientMobile !== undefined) updateData.clientMobile = clientMobile
+    if (clientCP !== undefined) updateData.clientMobile = clientCP
     if (clientEmail !== undefined) updateData.clientEmail = clientEmail
+
+    // 통합 견적
+    if (isConsolidated !== undefined) updateData.isConsolidated = isConsolidated
+    if (consolidatedName !== undefined) updateData.consolidatedName = consolidatedName
+    if (consolidatedPrice !== undefined) updateData.consolidatedPrice = consolidatedPrice
     if (quoteDate !== undefined) updateData.quoteDate = quoteDate ? new Date(quoteDate) : null
     if (validUntil !== undefined) updateData.validUntil = validUntil
-    if (deliveryDate !== undefined) updateData.deliveryDate = deliveryDate ? new Date(deliveryDate) : null
+    if (deliveryDate !== undefined) updateData.deliveryDate = deliveryDate && deliveryDate !== '별도협의' ? new Date(deliveryDate) : null
     if (paymentTerms !== undefined) updateData.paymentTerms = paymentTerms
     if (notes !== undefined) updateData.notes = notes
     if (status !== undefined) updateData.status = status
@@ -128,6 +139,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         }
       })
 
+      // 통합 견적인 경우 통합 금액 사용
+      if (isConsolidated && consolidatedPrice) {
+        totalAmount = consolidatedPrice
+      }
+
       const vatAmount = Math.round(totalAmount * 0.1)
       const totalWithVat = totalAmount + vatAmount
 
@@ -135,7 +151,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       updateData.vatAmount = vatAmount
       updateData.totalWithVat = totalWithVat
 
-      // 기존 아이템 삭제 후 새로 생성
+      // 기존 아이템 삭제 후 새로 생성 (참고용으로 저장)
       await prisma.salesQuoteItem.deleteMany({ where: { quoteId: id } })
       await prisma.salesQuoteItem.createMany({
         data: itemsWithTotal.map((item: { partNumber?: string; description?: string; quantity: number; srpPrice?: number; unitPrice: number; totalPrice: number; sortOrder: number }) => ({

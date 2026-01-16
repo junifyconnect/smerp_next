@@ -22,6 +22,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           orderBy: { sortOrder: 'asc' },
         },
         deal: { select: { id: true, name: true, status: true } },
+        createdBy: { select: { id: true, name: true } },
         salesManager: { select: { id: true, name: true, signatureUrl: true } },
         teamLeader: { select: { id: true, name: true, signatureUrl: true } },
         ceo: { select: { id: true, name: true, signatureUrl: true } },

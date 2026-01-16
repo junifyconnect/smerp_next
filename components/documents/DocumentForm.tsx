@@ -1,8 +1,10 @@
 'use client'
 
-import { UilEdit, UilFileAlt, UilPlus, UilTrashAlt } from '@iconscout/react-unicons'
+import { UilEdit, UilFileAlt, UilPlus, UilSearch, UilTrashAlt } from '@iconscout/react-unicons'
+import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { CustomerSelectModal } from './CustomerSelectModal'
 import { DocumentFormTemplate } from './DocumentFormTemplate'
 
 interface DocumentItem {
@@ -32,10 +34,14 @@ const apiPathMap: Record<string, string> = {
 
 export function DocumentForm({ docType, basePath, title, documentId }: DocumentFormProps) {
   const router = useRouter()
+  const { data: session } = useSession()
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(!!documentId)
   const [mode, setMode] = useState<'web' | 'template'>('web')
-  
+
+  // 거래처 선택 모달 상태
+  const [showCustomerModal, setShowCustomerModal] = useState(false)
+
   // 오늘 날짜를 YYYY.MM.DD 형식으로 가져오기
   const getTodayDate = () => {
     const today = new Date()
@@ -68,9 +74,24 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
     managerPhone: '',
     notes: '',
   })
+
+  // 세션 로드 시 견적담당 기본값 설정 (신규 작성 시에만)
+  useEffect(() => {
+    if (!documentId && session?.user?.name && !formData.managerName) {
+      setFormData(prev => ({ ...prev, managerName: session.user.name || '' }))
+    }
+  }, [session, documentId, formData.managerName])
   const [items, setItems] = useState<DocumentItem[]>([
     { partNumber: '', description: '', quantity: 1, srpPrice: 0, unitPrice: 0, totalPrice: 0 },
   ])
+
+  // 통합 견적 상태
+  const [isConsolidated, setIsConsolidated] = useState(false)
+  const [consolidatedName, setConsolidatedName] = useState('') // 통합 품명
+  const [consolidatedPrice, setConsolidatedPrice] = useState<number | ''>(0) // 통합 금액
+
+  // 납기일 별도 협의 상태
+  const [isDeliveryTBD, setIsDeliveryTBD] = useState(false)
 
   // 수정 모드일 때 기존 데이터 로드
   const fetchDocument = useCallback(async () => {
@@ -99,7 +120,7 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
           vendorPhone: data.vendorPhone || '',
           vendorEmail: data.vendorEmail || '',
           quoteDate: data.quoteDate ? new Date(data.quoteDate).toISOString().split('T')[0].replace(/-/g, '.') : getTodayDate(),
-          deliveryDate: data.deliveryDate ? new Date(data.deliveryDate).toISOString().split('T')[0].replace(/-/g, '.') : '',
+          deliveryDate: data.deliveryDate === '별도협의' ? '' : (data.deliveryDate ? new Date(data.deliveryDate).toISOString().split('T')[0].replace(/-/g, '.') : ''),
           validUntil: data.validUntil || '',
           paymentTerms: data.paymentTerms || '',
           managerName: data.managerName || '',
@@ -118,6 +139,18 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
             unitPrice: item.unitPrice || 0,
             totalPrice: item.totalPrice || 0,
           })))
+        }
+
+        // 통합 견적 설정
+        if (data.isConsolidated) {
+          setIsConsolidated(true)
+          setConsolidatedName(data.consolidatedName || '')
+          setConsolidatedPrice(data.consolidatedPrice || 0)
+        }
+
+        // 납기일이 null이면 별도협의로 설정
+        if (!data.deliveryDate) {
+          setIsDeliveryTBD(true)
         }
 
         // DRAFT 상태가 아니면 수정 불가
@@ -139,6 +172,38 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
   useEffect(() => {
     fetchDocument()
   }, [fetchDocument])
+
+  // 데이터 로드 후 textarea 높이 자동 조절
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const textareas = document.querySelectorAll<HTMLTextAreaElement>('textarea')
+      textareas.forEach((textarea) => {
+        textarea.style.height = 'auto'
+        textarea.style.height = textarea.scrollHeight + 'px'
+      })
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [items])
+
+  // 거래처 모달에서 선택 시 폼 자동 채우기
+  const handleCustomerSelect = (data: {
+    companyName: string
+    contactName: string
+    phone: string
+    fax: string
+    mobile: string
+    email: string
+  }) => {
+    setFormData(prev => ({
+      ...prev,
+      clientCompany: data.companyName,
+      clientContact: data.contactName,
+      clientPhone: data.phone,
+      clientFax: data.fax,
+      clientCP: data.mobile,
+      clientEmail: data.email,
+    }))
+  }
 
   // 전화번호 포맷팅 함수
   const formatPhoneNumber = (value: string): string => {
@@ -249,9 +314,71 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
   }
 
   const calculateTotal = () => {
-    const total = items.reduce((sum, item) => sum + (item.totalPrice || 0), 0)
+    // 통합 견적일 경우 통합 금액 사용
+    const total = isConsolidated
+      ? (typeof consolidatedPrice === 'number' ? consolidatedPrice : 0)
+      : items.reduce((sum, item) => sum + (item.totalPrice || 0), 0)
     const vat = Math.round(total * 0.1)
     return { total, vat, totalWithVat: total + vat }
+  }
+
+  // 거래처 자동 저장 (견적서 저장 시 호출)
+  const autoSaveCustomer = async () => {
+    // 회사명이 없으면 스킵
+    if (!formData.clientCompany.trim()) return
+
+    try {
+      // 기존 거래처 검색
+      const searchRes = await fetch(`/api/customers?search=${encodeURIComponent(formData.clientCompany)}&includeContacts=true&limit=1`)
+      if (!searchRes.ok) return
+
+      const searchData = await searchRes.json()
+      const existingCustomer = searchData.items?.find(
+        (c: { companyName: string }) => c.companyName === formData.clientCompany
+      )
+
+      if (existingCustomer) {
+        // 기존 거래처가 있으면 담당자만 추가 (동일 이름이 없을 경우)
+        if (formData.clientContact.trim()) {
+          const hasContact = existingCustomer.contacts?.some(
+            (contact: { name: string }) => contact.name === formData.clientContact
+          )
+          if (!hasContact) {
+            await fetch(`/api/customers/${existingCustomer.id}/contacts`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: formData.clientContact,
+                phone: formData.clientPhone,
+                mobile: formData.clientCP,
+                email: formData.clientEmail,
+              }),
+            })
+          }
+        }
+      } else {
+        // 새 거래처 생성
+        await fetch('/api/customers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            companyName: formData.clientCompany,
+            phone: formData.clientPhone,
+            fax: formData.clientFax,
+            contacts: formData.clientContact.trim() ? [{
+              name: formData.clientContact,
+              phone: formData.clientPhone,
+              mobile: formData.clientCP,
+              email: formData.clientEmail,
+              isDefault: true,
+            }] : [],
+          }),
+        })
+      }
+    } catch (err) {
+      // 거래처 저장 실패해도 견적서 저장은 계속 진행
+      console.error('거래처 자동 저장 실패:', err)
+    }
   }
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -259,18 +386,28 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
     setLoading(true)
 
     try {
+      // 거래처 자동 저장 (백그라운드)
+      autoSaveCustomer()
+
       const totals = calculateTotal()
       const apiPath = apiPathMap[docType]
-      
+
       // 수정 모드일 때는 PATCH, 생성 모드일 때는 POST
       const method = documentId ? 'PATCH' : 'POST'
       const url = documentId ? `${apiPath}/${documentId}` : apiPath
-      
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
+          // 납기일: 별도 협의 체크 시 문자열로 전송
+          deliveryDate: isDeliveryTBD ? '별도협의' : formData.deliveryDate,
+          // 통합 견적 정보
+          isConsolidated,
+          consolidatedName: isConsolidated ? consolidatedName : undefined,
+          consolidatedPrice: isConsolidated ? (typeof consolidatedPrice === 'number' ? consolidatedPrice : 0) : undefined,
+          // 품목 (통합 견적일 때도 참고용으로 저장)
           items: items.map((item) => ({
             id: item.id,
             partNumber: item.partNumber || undefined,
@@ -384,7 +521,7 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
           <h2 className="text-xl font-bold text-gray-900 mb-6">고객 정보</h2>
           {docType === 'SALES_APPROVAL' ? (
             // Sales 품의서: 매출처/담당/연락처 한 줄 입력
-            <div className="space-y-4">
+            <div className="space-y-4 max-w-3xl">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   매출처 / 담당 / 연락처
@@ -422,17 +559,27 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
             </div>
           ) : (
             // 기본 견적서용 고객 정보
-            <div className="space-y-4">
+            <div className="space-y-4 max-w-3xl">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">회사</label>
-                  <input
-                    type="text"
-                    value={formData.clientCompany}
-                    onChange={(e) => handleInputChange('clientCompany', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                    placeholder="고객사명"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={formData.clientCompany}
+                      onChange={(e) => handleInputChange('clientCompany', e.target.value)}
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+                      placeholder="고객사명"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomerModal(true)}
+                      className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                      title="거래처 검색"
+                    >
+                      <UilSearch size={18} />
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">참조</label>
@@ -494,7 +641,7 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
         {/* 견적 정보 */}
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
           <h2 className="text-xl font-bold text-gray-900 mb-6">견적 정보</h2>
-          <div className="space-y-4">
+          <div className="space-y-4 max-w-3xl">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">견적일</label>
@@ -515,23 +662,45 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">납기일</label>
-                <input
-                  type="text"
-                  value={formData.deliveryDate}
-                  onChange={(e) => handleInputChange('deliveryDate', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                  placeholder="별도협의"
-                />
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={isDeliveryTBD ? '별도협의' : formData.deliveryDate}
+                    onChange={(e) => handleInputChange('deliveryDate', e.target.value)}
+                    disabled={isDeliveryTBD}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base disabled:bg-gray-100 disabled:text-gray-500"
+                    placeholder="2026.01.16"
+                  />
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isDeliveryTBD}
+                      onChange={(e) => {
+                        setIsDeliveryTBD(e.target.checked)
+                        if (e.target.checked) {
+                          handleInputChange('deliveryDate', '')
+                        }
+                      }}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-600">별도 협의</span>
+                  </label>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">유효기간</label>
-                <input
-                  type="text"
-                  value={formData.validUntil}
-                  onChange={(e) => handleInputChange('validUntil', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                  placeholder="견적일로부터 15일"
-                />
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600 whitespace-nowrap">견적일로부터</span>
+                  <input
+                    type="number"
+                    value={formData.validUntil}
+                    onChange={(e) => handleInputChange('validUntil', e.target.value)}
+                    min="1"
+                    className="w-20 px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base text-center"
+                    placeholder="15"
+                  />
+                  <span className="text-gray-600 whitespace-nowrap">일 이내</span>
+                </div>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -584,11 +753,35 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
         {/* 품목 목록 */}
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-900">품목 목록</h2>
+            <div className="flex items-center gap-4">
+              <h2 className="text-xl font-bold text-gray-900">품목 목록</h2>
+              {/* 통합 견적 토글 */}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isConsolidated}
+                  onChange={(e) => {
+                    setIsConsolidated(e.target.checked)
+                    if (e.target.checked) {
+                      // 통합 시 기존 품목 합계를 기본값으로
+                      const total = items.reduce((sum, item) => sum + (item.totalPrice || 0), 0)
+                      setConsolidatedPrice(total)
+                      // 통합 품명 기본값 설정
+                      if (!consolidatedName && items[0]?.description) {
+                        setConsolidatedName(items[0].description + (items.length > 1 ? ' 외' : ''))
+                      }
+                    }
+                  }}
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-600">통합 견적</span>
+              </label>
+            </div>
             <button
               type="button"
               onClick={addItem}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              disabled={isConsolidated}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <UilPlus size={20} />
               품목 추가
@@ -603,8 +796,14 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
                   <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">Description</th>
                   <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">Q&apos;ty</th>
                   <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">SRP</th>
-                  <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">Price</th>
-                  <th className="px-4 py-3 text-right text-sm font-bold text-gray-700" style={{ width: '140px', minWidth: '140px' }}>Sum</th>
+                  {isConsolidated ? (
+                    <th colSpan={2} className="px-4 py-3 text-right text-sm font-bold text-gray-700" style={{ width: '200px', minWidth: '200px' }}>통합 금액</th>
+                  ) : (
+                    <>
+                      <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">Price</th>
+                      <th className="px-4 py-3 text-right text-sm font-bold text-gray-700" style={{ width: '140px', minWidth: '140px' }}>Sum</th>
+                    </>
+                  )}
                   <th className="px-4 py-3 text-center text-sm font-bold text-gray-700" style={{ width: '80px', minWidth: '80px' }}>작업</th>
                 </tr>
               </thead>
@@ -620,13 +819,24 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
                         placeholder="품번"
                       />
                     </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="text"
+                    <td className="px-4 py-3" style={{ minWidth: '250px' }}>
+                      <textarea
                         value={item.description || ''}
-                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        onChange={(e) => {
+                          handleItemChange(index, 'description', e.target.value)
+                          // 자동 높이 조절
+                          e.target.style.height = 'auto'
+                          e.target.style.height = e.target.scrollHeight + 'px'
+                        }}
+                        onFocus={(e) => {
+                          // 포커스 시 높이 조절
+                          e.target.style.height = 'auto'
+                          e.target.style.height = e.target.scrollHeight + 'px'
+                        }}
+                        rows={1}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm resize-none overflow-hidden"
                         placeholder="품목명"
+                        style={{ minHeight: '38px' }}
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -648,19 +858,36 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
                         placeholder="0"
                       />
                     </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        value={item.unitPrice || ''}
-                        onChange={(e) => handleItemChange(index, 'unitPrice', parseInt(e.target.value) || 0)}
-                        min="0"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-right"
-                        placeholder="0"
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold text-gray-900" style={{ width: '140px', minWidth: '140px' }}>
-                      {(item.totalPrice || 0).toLocaleString()}원
-                    </td>
+                    {isConsolidated ? (
+                      // 통합 견적: Price+Sum 컬럼을 병합
+                      <td colSpan={2} className="px-4 py-3 bg-gray-50">
+                        {index === 0 && (
+                          <input
+                            type="number"
+                            value={consolidatedPrice || ''}
+                            onChange={(e) => setConsolidatedPrice(parseInt(e.target.value) || 0)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-right"
+                            placeholder="통합 금액"
+                          />
+                        )}
+                      </td>
+                    ) : (
+                      <>
+                        <td className="px-4 py-3">
+                          <input
+                            type="number"
+                            value={item.unitPrice || ''}
+                            onChange={(e) => handleItemChange(index, 'unitPrice', parseInt(e.target.value) || 0)}
+                            min="0"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-right"
+                            placeholder="0"
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-right font-semibold text-gray-900" style={{ width: '140px', minWidth: '140px' }}>
+                          {(item.totalPrice || 0).toLocaleString()}원
+                        </td>
+                      </>
+                    )}
                     <td className="px-4 py-3 text-center" style={{ width: '80px', minWidth: '80px' }}>
                       <button
                         type="button"
@@ -700,7 +927,7 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
             value={formData.notes}
             onChange={(e) => handleInputChange('notes', e.target.value)}
             rows={4}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base max-w-3xl"
             placeholder="견적서의 상세 내역 or 견적서 추가 내용"
           />
         </div>
@@ -724,6 +951,13 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
         </div>
       </form>
       )}
+
+      {/* 거래처 선택 모달 */}
+      <CustomerSelectModal
+        isOpen={showCustomerModal}
+        onClose={() => setShowCustomerModal(false)}
+        onSelect={handleCustomerSelect}
+      />
     </div>
   )
 }

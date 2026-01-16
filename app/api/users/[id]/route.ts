@@ -15,11 +15,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       where: { id },
       select: {
         id: true,
+        employeeId: true,
         email: true,
         name: true,
         phone: true,
         department: true,
         position: true,
+        role: true,
+        annualLeave: true,
+        additionalLeave: true,
         signatureUrl: true,
         isActive: true,
         createdAt: true,
@@ -54,7 +58,18 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params
     const body = await request.json()
-    const { name, phone, department, position, password, isActive } = body
+    const {
+      employeeId,
+      name,
+      phone,
+      department,
+      position,
+      role,
+      annualLeave,
+      additionalLeave,
+      password,
+      isActive,
+    } = body
 
     // 사용자 존재 확인
     const existingUser = await prisma.user.findUnique({
@@ -68,12 +83,29 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       )
     }
 
+    // employeeId 중복 확인
+    if (employeeId && employeeId !== existingUser.employeeId) {
+      const duplicateEmployeeId = await prisma.user.findUnique({
+        where: { employeeId },
+      })
+      if (duplicateEmployeeId) {
+        return NextResponse.json(
+          { error: '이미 등록된 사용자 ID입니다' },
+          { status: 409 }
+        )
+      }
+    }
+
     const updateData: Record<string, unknown> = {}
 
+    if (employeeId !== undefined) updateData.employeeId = employeeId || null
     if (name !== undefined) updateData.name = name
     if (phone !== undefined) updateData.phone = phone || null
     if (department !== undefined) updateData.department = department || null
     if (position !== undefined) updateData.position = position || null
+    if (role !== undefined) updateData.role = role || null
+    if (annualLeave !== undefined) updateData.annualLeave = annualLeave
+    if (additionalLeave !== undefined) updateData.additionalLeave = additionalLeave
     if (isActive !== undefined) updateData.isActive = isActive
 
     // 비밀번호 변경
@@ -92,11 +124,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       data: updateData,
       select: {
         id: true,
+        employeeId: true,
         email: true,
         name: true,
         phone: true,
         department: true,
         position: true,
+        role: true,
+        annualLeave: true,
+        additionalLeave: true,
         signatureUrl: true,
         isActive: true,
         createdAt: true,

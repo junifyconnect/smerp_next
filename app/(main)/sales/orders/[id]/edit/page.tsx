@@ -1,0 +1,419 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter, useParams } from 'next/navigation'
+import Link from 'next/link'
+
+interface OrderItem {
+  partNumber: string
+  description: string
+  quantity: number
+  srpPrice: number
+  unitPrice: number
+}
+
+export default function EditSalesOrderPage() {
+  const router = useRouter()
+  const params = useParams()
+  const id = params.id as string
+
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  const [formData, setFormData] = useState({
+    orderDate: '',
+    managerName: '',
+    managerPhone: '',
+    deliveryAddress: '',
+    paymentTerms: '',
+    vendorCompany: '',
+    vendorContact: '',
+    vendorPhone: '',
+    vendorEmail: '',
+    notes: '',
+  })
+
+  const [items, setItems] = useState<OrderItem[]>([])
+
+  const fetchOrder = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/sales-orders/${id}`)
+      if (res.ok) {
+        const data = await res.json()
+
+        // DRAFT 상태가 아니면 상세 페이지로 리다이렉트
+        if (data.status !== 'DRAFT') {
+          router.push(`/sales/orders/${id}`)
+          return
+        }
+
+        setFormData({
+          orderDate: data.orderDate ? data.orderDate.split('T')[0] : '',
+          managerName: data.managerName || '',
+          managerPhone: data.managerPhone || '',
+          deliveryAddress: data.deliveryAddress || '',
+          paymentTerms: data.paymentTerms || '',
+          vendorCompany: data.vendorCompany || '',
+          vendorContact: data.vendorContact || '',
+          vendorPhone: data.vendorPhone || '',
+          vendorEmail: data.vendorEmail || '',
+          notes: data.notes || '',
+        })
+
+        setItems(
+          data.items?.length > 0
+            ? data.items.map(
+                (item: {
+                  partNumber?: string
+                  description?: string
+                  quantity: number
+                  srpPrice?: number
+                  unitPrice?: number
+                }) => ({
+                  partNumber: item.partNumber || '',
+                  description: item.description || '',
+                  quantity: item.quantity || 1,
+                  srpPrice: Number(item.srpPrice) || 0,
+                  unitPrice: Number(item.unitPrice) || 0,
+                })
+              )
+            : [{ partNumber: '', description: '', quantity: 1, srpPrice: 0, unitPrice: 0 }]
+        )
+      } else {
+        router.push('/sales/orders')
+      }
+    } catch (err) {
+      console.error('조회 실패:', err)
+      router.push('/sales/orders')
+    } finally {
+      setLoading(false)
+    }
+  }, [id, router])
+
+  useEffect(() => {
+    fetchOrder()
+  }, [fetchOrder])
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleItemChange = (index: number, field: keyof OrderItem, value: string | number) => {
+    setItems((prev) => {
+      const next = [...prev]
+      next[index] = { ...next[index], [field]: value }
+      return next
+    })
+  }
+
+  const addItem = () => {
+    setItems((prev) => [...prev, { partNumber: '', description: '', quantity: 1, srpPrice: 0, unitPrice: 0 }])
+  }
+
+  const removeItem = (index: number) => {
+    if (items.length > 1) {
+      setItems((prev) => prev.filter((_, i) => i !== index))
+    }
+  }
+
+  const calcItemTotal = (item: OrderItem) => item.quantity * item.unitPrice
+  const calcTotal = () => items.reduce((sum, item) => sum + calcItemTotal(item), 0)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+
+    try {
+      const res = await fetch(`/api/sales-orders/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          items: items.filter((item) => item.description || item.unitPrice > 0),
+        }),
+      })
+
+      if (res.ok) {
+        router.push(`/sales/orders/${id}`)
+      } else {
+        const data = await res.json()
+        alert(data.error || '수정에 실패했습니다')
+      }
+    } catch {
+      alert('수정에 실패했습니다')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-gray-500">로딩 중...</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* 헤더 */}
+      <div className="flex items-center gap-4">
+        <Link
+          href={`/sales/orders/${id}`}
+          className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </Link>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">발주서 수정</h1>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* 발주 기본 정보 */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4 pb-2 border-b">발주 정보</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">발주일자</label>
+              <input
+                type="date"
+                value={formData.orderDate}
+                onChange={(e) => handleInputChange('orderDate', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">담당자</label>
+              <input
+                type="text"
+                value={formData.managerName}
+                onChange={(e) => handleInputChange('managerName', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">담당자 연락처</label>
+              <input
+                type="text"
+                value={formData.managerPhone}
+                onChange={(e) => handleInputChange('managerPhone', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">결제조건</label>
+              <input
+                type="text"
+                value={formData.paymentTerms}
+                onChange={(e) => handleInputChange('paymentTerms', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+            </div>
+            <div className="lg:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">배송주소</label>
+              <input
+                type="text"
+                value={formData.deliveryAddress}
+                onChange={(e) => handleInputChange('deliveryAddress', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 매입처 정보 */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4 pb-2 border-b">매입처 정보</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">매입처</label>
+              <input
+                type="text"
+                value={formData.vendorCompany}
+                onChange={(e) => handleInputChange('vendorCompany', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">담당자</label>
+              <input
+                type="text"
+                value={formData.vendorContact}
+                onChange={(e) => handleInputChange('vendorContact', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">연락처</label>
+              <input
+                type="text"
+                value={formData.vendorPhone}
+                onChange={(e) => handleInputChange('vendorPhone', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">이메일</label>
+              <input
+                type="email"
+                value={formData.vendorEmail}
+                onChange={(e) => handleInputChange('vendorEmail', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 발주 품목 */}
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-900">발주 품목</h3>
+            <button
+              type="button"
+              onClick={addItem}
+              className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+            >
+              + 품목 추가
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">P/N</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">품명</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 w-24">수량</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 w-32">정가</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 w-32">단가</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 w-32">합계</th>
+                  <th className="px-4 py-3 w-12"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {items.map((item, index) => (
+                  <tr key={index}>
+                    <td className="px-4 py-2">
+                      <input
+                        type="text"
+                        value={item.partNumber}
+                        onChange={(e) => handleItemChange(index, 'partNumber', e.target.value)}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        type="text"
+                        value={item.description}
+                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        type="number"
+                        value={item.quantity}
+                        onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-right"
+                        min="1"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        type="number"
+                        value={item.srpPrice}
+                        onChange={(e) => handleItemChange(index, 'srpPrice', parseInt(e.target.value) || 0)}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-right"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        type="number"
+                        value={item.unitPrice}
+                        onChange={(e) => handleItemChange(index, 'unitPrice', parseInt(e.target.value) || 0)}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-right"
+                      />
+                    </td>
+                    <td className="px-4 py-2 text-right text-sm font-medium">
+                      {calcItemTotal(item).toLocaleString()}원
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      <button
+                        type="button"
+                        onClick={() => removeItem(index)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="px-6 py-4 border-t bg-gray-50">
+            <div className="flex justify-end text-sm">
+              <span className="text-gray-600">합계: </span>
+              <span className="font-bold text-lg ml-2">{calcTotal().toLocaleString()}원</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 비고 */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4 pb-2 border-b">비고</h3>
+          <textarea
+            value={formData.notes}
+            onChange={(e) => handleInputChange('notes', e.target.value)}
+            rows={3}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+          />
+        </div>
+
+        {/* 금액 요약 */}
+        <div className="bg-blue-50 rounded-xl border border-blue-200 p-6">
+          <div className="grid grid-cols-3 gap-6 text-center">
+            <div>
+              <p className="text-sm text-blue-600">공급가액</p>
+              <p className="text-xl font-bold text-blue-900">{calcTotal().toLocaleString()}원</p>
+            </div>
+            <div>
+              <p className="text-sm text-blue-600">부가세</p>
+              <p className="text-xl font-bold text-blue-900">{Math.floor(calcTotal() * 0.1).toLocaleString()}원</p>
+            </div>
+            <div>
+              <p className="text-sm text-blue-600">합계</p>
+              <p className="text-xl font-bold text-blue-900">{Math.floor(calcTotal() * 1.1).toLocaleString()}원</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 버튼 */}
+        <div className="flex justify-end gap-3">
+          <Link
+            href={`/sales/orders/${id}`}
+            className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+          >
+            취소
+          </Link>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {saving ? '저장 중...' : '저장'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}

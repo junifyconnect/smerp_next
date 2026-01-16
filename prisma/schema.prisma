@@ -22,17 +22,21 @@ model Session {
 // ==================== 사용자 & 권한 ====================
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String?  @map("password_hash")
-  name         String
-  phone        String?
-  department   String?  // SALES, MA, FINANCE, ADMIN
-  position     String?  // 직급
-  signatureUrl String?  @map("signature_url") // S3 서명 이미지 경로
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(uuid())
+  employeeId      String?  @unique @map("employee_id") // 사번 (예: hmlee, shseo)
+  email           String   @unique
+  passwordHash    String?  @map("password_hash")
+  name            String
+  phone           String?
+  department      String?  // SALES, MA, FINANCE, ADMIN (소속팀)
+  position        String?  // 직급 (부장, CEO, 대리, 실장, 사원, 인턴 등)
+  role            String?  // 권한 (영업, CEO, 기술, 관리자)
+  annualLeave     Float    @default(0) @map("annual_leave") // 연차
+  additionalLeave Float    @default(0) @map("additional_leave") // 추가휴가
+  signatureUrl    String?  @map("signature_url") // S3 서명 이미지 경로
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   // NextAuth 관계
   sessions     Session[]
@@ -63,6 +67,9 @@ model User {
   // 캘린더
   calendarEvents       CalendarEvent[]            @relation("CalendarEventOwner")
   calendarParticipants CalendarEventParticipant[] @relation("CalendarEventParticipant")
+
+  // 휴가
+  leaveRequests LeaveRequest[]
 
   @@map("users")
 }
@@ -157,6 +164,49 @@ model Deal {
   @@map("deals")
 }
 
+// ==================== 거래처 (Customer) ====================
+
+model Customer {
+  id            String   @id @default(uuid())
+  companyName   String   @unique @map("company_name") // 회사명
+  phone         String?  // 대표 전화
+  fax           String?  // 대표 팩스
+  address       String?  // 주소
+  notes         String?  @db.Text // 비고
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // 담당자 목록
+  contacts      CustomerContact[]
+
+  @@index([companyName])
+  @@index([isActive])
+  @@map("customers")
+}
+
+// 거래처 담당자
+model CustomerContact {
+  id            String   @id @default(uuid())
+  customerId    String   @map("customer_id")
+  name          String   // 담당자명
+  department    String?  // 부서
+  position      String?  // 직급
+  phone         String?  // 전화
+  mobile        String?  // 휴대폰 (C.P)
+  email         String?  // 이메일
+  isDefault     Boolean  @default(false) @map("is_default") // 기본 담당자 여부
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  customer      Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([isActive])
+  @@map("customer_contacts")
+}
+
 // ==================== 영업 견적서 (SalesQuote) ====================
 
 enum QuoteStatus {
@@ -201,6 +251,11 @@ model SalesQuote {
   // 기타
   notes String? @db.Text
 
+  // 통합 견적
+  isConsolidated     Boolean  @default(false) @map("is_consolidated") // 통합 견적 여부
+  consolidatedName   String?  @map("consolidated_name")               // 통합 품명
+  consolidatedPrice  Decimal? @map("consolidated_price") @db.Decimal(15, 2) // 통합 금액
+
   // 메타
   createdById String?  @map("created_by")
   createdBy   User?    @relation("SalesQuoteCreatedBy", fields: [createdById], references: [id])
@@ -208,8 +263,9 @@ model SalesQuote {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // 관계
-  items SalesQuoteItem[]
-  files SalesQuoteFile[]
+  items          SalesQuoteItem[]
+  files          SalesQuoteFile[]
+  salesApprovals SalesApproval[]   // 이 견적서를 기반으로 생성된 품의서들
 
   @@index([status])
   @@index([dealId])
@@ -277,6 +333,10 @@ model SalesApproval {
   // Deal 연결 (선택 - 기존 데이터 호환)
   dealId String? @map("deal_id")
   deal   Deal?   @relation(fields: [dealId], references: [id])
+
+  // 원본 견적서 연결 (견적서 기반 품의서 작성 시)
+  sourceQuoteId String?     @map("source_quote_id")
+  sourceQuote   SalesQuote? @relation(fields: [sourceQuoteId], references: [id])
 
   // 기본 정보
   approvalCode   String?   @map("approval_code") // 품의코드 (D251202-01)
@@ -1099,4 +1159,55 @@ model CalendarEventParticipant {
   @@unique([eventId, userId])
   @@index([userId])
   @@map("calendar_event_participants")
+}
+
+// ==================== 휴가 관리 시스템 ====================
+
+enum LeaveType {
+  ANNUAL       // 연차
+  HALF_AM      // 오전 반차
+  HALF_PM      // 오후 반차
+  SICK         // 병가
+  FAMILY       // 경조사
+  OFFICIAL     // 공가
+  OTHER        // 기타
+}
+
+enum LeaveStatus {
+  APPROVED     // 승인 (자동 승인 방식)
+  CANCELLED    // 취소
+}
+
+model LeaveRequest {
+  id     String @id @default(uuid())
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 휴가 정보
+  leaveType LeaveType @map("leave_type")
+  startDate DateTime  @map("start_date") @db.Date
+  endDate   DateTime  @map("end_date") @db.Date
+  days      Float     // 사용 일수 (1, 0.5 등)
+
+  // 사유
+  reason String? @db.Text
+
+  // 상태
+  status LeaveStatus @default(APPROVED)
+
+  // 연차 차감 여부 (병가, 공가 등은 연차 미차감)
+  deductFromAnnual Boolean @default(true) @map("deduct_from_annual")
+
+  // 취소 정보
+  cancelledAt     DateTime? @map("cancelled_at")
+  cancelledReason String?   @map("cancelled_reason") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([startDate])
+  @@index([status])
+  @@index([leaveType])
+  @@map("leave_requests")
 }

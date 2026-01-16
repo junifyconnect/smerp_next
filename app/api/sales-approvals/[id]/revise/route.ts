@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { auth } from '@/lib/auth'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -8,7 +9,12 @@ interface RouteParams {
 // POST /api/sales-approvals/[id]/revise - 새 버전 생성 (결재 후 수정)
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
+    const session = await auth()
     const { id } = await params
+
+    // 이메일에서 사용자 ID 추출 (@ 앞부분)
+    const userEmail = session?.user?.email || ''
+    const userId = userEmail.split('@')[0] || ''
 
     // 원본 품의서 조회
     const originalApproval = await prisma.salesApproval.findUnique({
@@ -67,13 +73,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // DRAFT 상태는 이미 위에서 차단됨 (직접 수정 가능하므로 revise 불필요)
     // 따라서 revise가 호출되면 항상 새 코드 생성
     let newApprovalCode = originalApproval.approvalCode
-    if (originalApproval.managerName) {
+    if (userId) {
       const today = new Date()
       const yy = String(today.getFullYear()).slice(-2)
       const mm = String(today.getMonth() + 1).padStart(2, '0')
       const dd = String(today.getDate()).padStart(2, '0')
       const dateStr = `${yy}${mm}${dd}`
-      const initial = originalApproval.managerName.charAt(0).toUpperCase()
+      const initial = userId.charAt(0).toUpperCase()
 
       const prefix = `${initial}${dateStr}-`
       const lastCodeApproval = await prisma.salesApproval.findFirst({

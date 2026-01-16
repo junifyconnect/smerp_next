@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { auth } from '@/lib/auth'
 
 // GET /api/sales-approvals - 목록 조회
 export async function GET(request: NextRequest) {
@@ -56,6 +57,7 @@ export async function GET(request: NextRequest) {
 // POST /api/sales-approvals - 생성
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth()
     const body = await request.json()
     const {
       dealId,
@@ -87,8 +89,11 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // TODO: 실제 인증된 사용자 ID 사용
-    const createdById = 'dummy-user-id'
+    // 인증된 사용자 ID 사용
+    const createdById = session?.user?.id || 'dummy-user-id'
+    // 이메일에서 사용자 ID 추출 (@ 앞부분)
+    const userEmail = session?.user?.email || ''
+    const userId = userEmail.split('@')[0] || ''
 
     // 품의번호 생성 (SA-YYYY-NNNN) - 시스템 내부 고유키
     const year = new Date().getFullYear()
@@ -105,15 +110,15 @@ export async function POST(request: NextRequest) {
     const approvalNumber = `SA-${year}-${sequence.toString().padStart(4, '0')}`
 
     // 품의코드 자동생성 (사용자ID첫글자 + YYMMDD + -순번)
-    // 예: D260115-01 (DaehoonKim이 2026년 1월 15일 첫 번째 품의서)
+    // 예: h260115-01 (hmlee@servermate.net이 2026년 1월 15일 첫 번째 품의서)
     let finalApprovalCode = approvalCode
-    if (!finalApprovalCode && managerName) {
+    if (!finalApprovalCode && userId) {
       const today = new Date()
       const yy = String(today.getFullYear()).slice(-2)
       const mm = String(today.getMonth() + 1).padStart(2, '0')
       const dd = String(today.getDate()).padStart(2, '0')
       const dateStr = `${yy}${mm}${dd}`
-      const initial = managerName.charAt(0).toUpperCase()
+      const initial = userId.charAt(0).toUpperCase()
 
       // 해당 날짜 + 이니셜로 시작하는 품의코드 중 마지막 순번 조회
       const prefix = `${initial}${dateStr}-`

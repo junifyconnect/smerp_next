@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useState } from 'react'
 
 function LoginForm() {
   const router = useRouter()
@@ -11,7 +11,7 @@ function LoginForm() {
   const callbackUrl = searchParams.get('callbackUrl') || '/'
   const error = searchParams.get('error')
 
-  const [email, setEmail] = useState('')
+  const [userId, setUserId] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState(error ? '로그인에 실패했습니다' : '')
@@ -20,6 +20,8 @@ function LoginForm() {
     e.preventDefault()
     setLoading(true)
     setErrorMessage('')
+
+    const email = `${userId}@servermate.net`
 
     try {
       const result = await signIn('credentials', {
@@ -58,19 +60,24 @@ function LoginForm() {
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                이메일
+              <label htmlFor="userId" className="block text-sm font-medium text-gray-700">
+                사용자 ID
               </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="email@example.com"
-              />
+              <div className="mt-1 flex">
+                <input
+                  id="userId"
+                  name="userId"
+                  type="text"
+                  required
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value)}
+                  className="block w-full px-4 py-3 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder=""
+                />
+                <span className="inline-flex items-center px-4 py-3 border border-l-0 border-gray-300 bg-gray-50 text-gray-500 rounded-r-lg text-sm">
+                  @servermate.net
+                </span>
+              </div>
             </div>
 
             <div>

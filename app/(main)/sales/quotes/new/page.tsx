@@ -1,12 +1,13 @@
-import { DocumentForm } from '@/components/documents'
+'use client'
+
+import { DocumentForm } from '@/components/documents/DocumentForm'
 
 export default function NewSalesQuotePage() {
   return (
     <DocumentForm
       docType="SALES_QUOTE"
       basePath="/sales/quotes"
-      title="새 견적서 작성"
+      title="새 견적서"
     />
   )
 }
-

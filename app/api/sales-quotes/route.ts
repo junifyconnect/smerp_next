@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
       clientPhone,
       clientFax,
       clientMobile,
+      clientCP, // 클라이언트에서 보내는 필드명
       clientEmail,
       quoteDate,
       validUntil,
@@ -79,6 +80,10 @@ export async function POST(request: NextRequest) {
       paymentTerms,
       notes,
       items = [],
+      // 통합 견적
+      isConsolidated = false,
+      consolidatedName,
+      consolidatedPrice,
     } = body
 
     // Deal 자동 생성 - 견적서 생성 시 자동으로 Deal 생성
@@ -108,6 +113,11 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // 통합 견적인 경우 통합 금액 사용
+    if (isConsolidated && consolidatedPrice) {
+      totalAmount = consolidatedPrice
+    }
+
     const vatAmount = Math.round(totalAmount * 0.1)
     const totalWithVat = totalAmount + vatAmount
 
@@ -120,16 +130,21 @@ export async function POST(request: NextRequest) {
         clientContact,
         clientPhone,
         clientFax,
-        clientMobile,
+        clientMobile: clientMobile || clientCP, // 둘 중 하나 사용
         clientEmail,
         quoteDate: quoteDate ? new Date(quoteDate) : null,
         validUntil,
-        deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
+        // 납기일: "별도협의" 문자열이면 null 저장 (또는 별도 필드로 관리)
+        deliveryDate: deliveryDate && deliveryDate !== '별도협의' ? new Date(deliveryDate) : null,
         paymentTerms,
         notes,
         totalAmount,
         vatAmount,
         totalWithVat,
+        // 통합 견적
+        isConsolidated,
+        consolidatedName: isConsolidated ? consolidatedName : null,
+        consolidatedPrice: isConsolidated ? consolidatedPrice : null,
         items: {
           create: itemsWithTotal,
         },
