@@ -755,38 +755,82 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
               <h2 className="text-xl font-bold text-gray-900">품목 목록</h2>
-              {/* 통합 견적 토글 */}
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isConsolidated}
-                  onChange={(e) => {
-                    setIsConsolidated(e.target.checked)
-                    if (e.target.checked) {
-                      // 통합 시 기존 품목 합계를 기본값으로
-                      const total = items.reduce((sum, item) => sum + (item.totalPrice || 0), 0)
-                      setConsolidatedPrice(total)
-                      // 통합 품명 기본값 설정
-                      if (!consolidatedName && items[0]?.description) {
-                        setConsolidatedName(items[0].description + (items.length > 1 ? ' 외' : ''))
-                      }
+              {/* 견적 유형 선택 */}
+              <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                <button
+                  type="button"
+                  onClick={() => setIsConsolidated(false)}
+                  className={`px-3 py-1.5 text-sm rounded-md transition-all ${
+                    !isConsolidated
+                      ? 'bg-white text-blue-700 shadow-sm font-medium'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  개별 품목
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsConsolidated(true)
+                    // 통합 시 기존 품목 합계를 기본값으로
+                    const total = items.reduce((sum, item) => sum + (item.totalPrice || 0), 0)
+                    setConsolidatedPrice(total)
+                    // 통합 품명 기본값 설정
+                    if (!consolidatedName && items[0]?.description) {
+                      setConsolidatedName(items[0].description + (items.length > 1 ? ' 외' : ''))
                     }
                   }}
-                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                />
-                <span className="text-sm text-gray-600">통합 견적</span>
-              </label>
+                  className={`px-3 py-1.5 text-sm rounded-md transition-all ${
+                    isConsolidated
+                      ? 'bg-white text-emerald-700 shadow-sm font-medium'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  통합 견적
+                </button>
+              </div>
             </div>
             <button
               type="button"
               onClick={addItem}
-              disabled={isConsolidated}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <UilPlus size={20} />
               품목 추가
             </button>
           </div>
+
+          {/* 통합 견적 설정 */}
+          {isConsolidated && (
+            <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-emerald-700 font-medium">통합 견적</span>
+                <span className="text-xs text-emerald-600">여러 품목을 하나의 대표 품명과 금액으로 표시합니다</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">대표 품명 *</label>
+                  <input
+                    type="text"
+                    value={consolidatedName}
+                    onChange={(e) => setConsolidatedName(e.target.value)}
+                    className="w-full px-3 py-2 border border-emerald-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+                    placeholder="예: IBM DS8000 HDD 외"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">통합 금액 (VAT별도) *</label>
+                  <input
+                    type="number"
+                    value={consolidatedPrice || ''}
+                    onChange={(e) => setConsolidatedPrice(parseInt(e.target.value) || 0)}
+                    className="w-full px-3 py-2 border border-emerald-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm text-right"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -796,9 +840,7 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
                   <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">Description</th>
                   <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">Q&apos;ty</th>
                   <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">SRP</th>
-                  {isConsolidated ? (
-                    <th colSpan={2} className="px-4 py-3 text-right text-sm font-bold text-gray-700" style={{ width: '200px', minWidth: '200px' }}>통합 금액</th>
-                  ) : (
+                  {!isConsolidated && (
                     <>
                       <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">Price</th>
                       <th className="px-4 py-3 text-right text-sm font-bold text-gray-700" style={{ width: '140px', minWidth: '140px' }}>Sum</th>
@@ -858,20 +900,7 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
                         placeholder="0"
                       />
                     </td>
-                    {isConsolidated ? (
-                      // 통합 견적: Price+Sum 컬럼을 병합
-                      <td colSpan={2} className="px-4 py-3 bg-gray-50">
-                        {index === 0 && (
-                          <input
-                            type="number"
-                            value={consolidatedPrice || ''}
-                            onChange={(e) => setConsolidatedPrice(parseInt(e.target.value) || 0)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-right"
-                            placeholder="통합 금액"
-                          />
-                        )}
-                      </td>
-                    ) : (
+                    {!isConsolidated && (
                       <>
                         <td className="px-4 py-3">
                           <input

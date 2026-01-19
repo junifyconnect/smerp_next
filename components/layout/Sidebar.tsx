@@ -16,6 +16,8 @@ import {
   UilCalendarAlt,
   UilMoneyWithdrawal,
   UilPlane,
+  UilReceipt,
+  UilBookOpen,
 } from '@iconscout/react-unicons'
 
 const navigation = [
@@ -42,9 +44,10 @@ const navigation = [
     ],
   },
   {
-    title: '경영팀',
+    title: '경영',
     items: [
       { name: '매출/매입 현황', href: '/management', icon: UilMoneyWithdrawal },
+      { name: '계산서 발행 현황', href: '/management/invoice-issue', icon: UilReceipt },
     ],
   },
   {
@@ -54,6 +57,7 @@ const navigation = [
       { name: '휴가 관리', href: '/admin/leaves', icon: UilPlane },
       { name: '엑셀 일괄 업로드', href: '/admin/import', icon: UilUpload },
       { name: 'API 테스트', href: '/admin/api-test', icon: UilBracketsCurly },
+      { name: '시스템 가이드', href: '/admin/guide', icon: UilBookOpen },
     ],
   },
 ]
