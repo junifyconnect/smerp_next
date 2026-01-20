@@ -3,53 +3,59 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
-type TabType = 'sales' | 'purchase'
-
-interface PaymentHistory {
-  id: string
-  paymentDate: string
-  paymentAmount: string
-  paymentMethod: string | null
-  remarks: string | null
-}
-
-interface InvoiceItem {
-  id: string
-  approvalCode: string | null
-  salesApprovalId: string | null
-  partNumber: string | null
-  itemName: string
-  clientCompany?: string
-  vendorCompany?: string
-  quantity: number
-  unitPrice: string
-  totalPrice: string
-  paidAmount: string
-  remainAmount: string | null
-  invoiceDate: string | null
-  invoiceStatus: string | null
-  paymentStatus: string
-  remarks: string | null
-  yearMonth: string | null
-  createdAt: string
-  paymentHistories: PaymentHistory[]
+interface CombinedRow {
+  rowKey: string
+  approvalCode: string
+  rowIndex: number
+  // 매출 정보
+  salesId: string | null
+  salesPartNumber: string | null
+  salesItemName: string | null
+  salesClientCompany: string | null
+  salesQuantity: number | null
+  salesUnitPrice: number | null
+  salesTotalPrice: number | null
+  salesBatchTotal: number | null
+  salesInvoiceDate: string | null
+  salesInvoiceStatus: string | null
+  salesRemarks: string | null
+  salesPaymentStatus: string | null
+  salesPaidAmount: number | null
+  salesRemainAmount: number | null
+  // 매입 정보
+  purchaseId: string | null
+  purchasePartNumber: string | null
+  purchaseItemName: string | null
+  purchaseVendorCompany: string | null
+  purchaseQuantity: number | null
+  purchaseUnitPrice: number | null
+  purchaseTotalPrice: number | null
+  purchaseBatchTotal: number | null
+  purchaseInvoiceDate: string | null
+  purchaseInvoiceStatus: string | null
+  purchaseRemarks: string | null
+  purchasePaymentStatus: string | null
+  purchasePaidAmount: number | null
+  purchaseRemainAmount: number | null
 }
 
 interface ApiResponse {
-  items: InvoiceItem[]
+  items: CombinedRow[]
   total: number
   page: number
   limit: number
   totalPages: number
   summary: {
-    totalPrice: number
-    paidAmount: number
-    count: number
+    totalSalesPrice: number
+    totalSalesPaid: number
+    totalPurchasePrice: number
+    totalPurchasePaid: number
+    approvalCount: number
+    rowCount: number
   }
 }
 
-export default function InvoiceStatusTestPage() {
-  const [activeTab, setActiveTab] = useState<TabType>('sales')
+export default function InvoiceStatusPage() {
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<ApiResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -57,50 +63,28 @@ export default function InvoiceStatusTestPage() {
   const [filter, setFilter] = useState({
     yearMonth: '',
     search: '',
-    invoiceStatus: '',
-    paymentStatus: '',
   })
 
-  const [editingId, setEditingId] = useState<string | null>(null)
+  // 수정 모드
+  const [editingCell, setEditingCell] = useState<{
+    rowKey: string
+    field: 'salesInvoice' | 'purchaseInvoice'
+  } | null>(null)
   const [editForm, setEditForm] = useState({
     invoiceDate: '',
     invoiceStatus: '',
   })
 
-  // 결제 모달
-  const [paymentModal, setPaymentModal] = useState<{
-    isOpen: boolean
-    invoiceId: string
-    invoice: InvoiceItem | null
-  }>({ isOpen: false, invoiceId: '', invoice: null })
-
-  const [paymentForm, setPaymentForm] = useState({
-    paymentDate: '',
-    paymentAmount: '',
-    paymentMethod: '',
-    remarks: '',
-  })
-
-  // API 경로
-  const getApiPath = () => {
-    return activeTab === 'sales'
-      ? '/api/management/sales-invoice-status'
-      : '/api/management/purchase-invoice-status'
-  }
-
-  // 목록 조회
   const fetchList = async () => {
     setLoading(true)
     setError(null)
     try {
       const params = new URLSearchParams()
-      params.append('limit', '50')
+      params.append('limit', '100')
       if (filter.yearMonth) params.append('yearMonth', filter.yearMonth)
       if (filter.search) params.append('search', filter.search)
-      if (filter.invoiceStatus) params.append('invoiceStatus', filter.invoiceStatus)
-      if (filter.paymentStatus) params.append('paymentStatus', filter.paymentStatus)
 
-      const res = await fetch(`${getApiPath()}?${params.toString()}`)
+      const res = await fetch(`/api/management/invoice-status/combined?${params.toString()}`)
       const json = await res.json()
 
       if (!res.ok) {
@@ -115,16 +99,19 @@ export default function InvoiceStatusTestPage() {
     }
   }
 
-  // 초기 로드 및 탭 변경 시
   useEffect(() => {
     fetchList()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab])
+  }, [])
 
-  // 계산서 발행일/상태 업데이트
-  const updateInvoice = async (id: string) => {
+  // 계산서 발행 업데이트
+  const updateInvoice = async (type: 'sales' | 'purchase', id: string) => {
     try {
-      const res = await fetch(`${getApiPath()}/${id}`, {
+      const apiPath = type === 'sales'
+        ? '/api/management/sales-invoice-status'
+        : '/api/management/purchase-invoice-status'
+
+      const res = await fetch(`${apiPath}/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -138,141 +125,57 @@ export default function InvoiceStatusTestPage() {
         throw new Error(json.error || '업데이트 실패')
       }
 
-      setEditingId(null)
+      setEditingCell(null)
       fetchList()
     } catch (err) {
       alert(String(err))
     }
   }
 
-  // 결제내역 추가
-  const addPayment = async () => {
-    if (!paymentForm.paymentDate || !paymentForm.paymentAmount) {
-      alert('결제일과 결제금액은 필수입니다')
-      return
-    }
-
-    try {
-      const res = await fetch(`${getApiPath()}/${paymentModal.invoiceId}/payment`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          paymentDate: paymentForm.paymentDate,
-          paymentAmount: Number(paymentForm.paymentAmount),
-          paymentMethod: paymentForm.paymentMethod || null,
-          remarks: paymentForm.remarks || null,
-        }),
-      })
-
-      if (!res.ok) {
-        const json = await res.json()
-        throw new Error(json.error || '결제내역 추가 실패')
-      }
-
-      setPaymentForm({ paymentDate: '', paymentAmount: '', paymentMethod: '', remarks: '' })
-      fetchList()
-
-      // 모달 업데이트
-      const updatedRes = await fetch(`${getApiPath()}/${paymentModal.invoiceId}`)
-      const updatedInvoice = await updatedRes.json()
-      setPaymentModal(prev => ({ ...prev, invoice: updatedInvoice }))
-    } catch (err) {
-      alert(String(err))
-    }
-  }
-
-  // 결제내역 삭제
-  const deletePayment = async (paymentId: string) => {
-    if (!confirm('결제내역을 삭제하시겠습니까?')) return
-
-    try {
-      const res = await fetch(`${getApiPath()}/${paymentModal.invoiceId}/payment?paymentId=${paymentId}`, {
-        method: 'DELETE',
-      })
-
-      if (!res.ok) {
-        const json = await res.json()
-        throw new Error(json.error || '결제내역 삭제 실패')
-      }
-
-      fetchList()
-
-      // 모달 업데이트
-      const updatedRes = await fetch(`${getApiPath()}/${paymentModal.invoiceId}`)
-      const updatedInvoice = await updatedRes.json()
-      setPaymentModal(prev => ({ ...prev, invoice: updatedInvoice }))
-    } catch (err) {
-      alert(String(err))
-    }
-  }
-
-  const formatNumber = (num: number | string) => {
+  const formatNumber = (num: number | null) => {
+    if (num === null) return ''
     return Number(num).toLocaleString()
   }
 
   const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '-'
-    return dateStr.split('T')[0]
+    if (!dateStr) return ''
+    const date = new Date(dateStr)
+    const yy = String(date.getFullYear()).slice(-2)
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const dd = String(date.getDate()).padStart(2, '0')
+    return `${yy}.${mm}.${dd}`
   }
 
-  const getCompanyField = (item: InvoiceItem) => {
-    return activeTab === 'sales' ? item.clientCompany : item.vendorCompany
-  }
-
-  const getCompanyLabel = () => {
-    return activeTab === 'sales' ? '매출처' : '매입처'
+  // 품의코드별 rowspan 계산
+  const getRowSpan = (rows: CombinedRow[], index: number) => {
+    if (index === 0 || rows[index].approvalCode !== rows[index - 1].approvalCode) {
+      let span = 1
+      for (let i = index + 1; i < rows.length; i++) {
+        if (rows[i].approvalCode === rows[index].approvalCode) {
+          span++
+        } else {
+          break
+        }
+      }
+      return span
+    }
+    return 0 // 이미 rowspan에 포함됨
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">계산서 발행현황</h1>
-          <p className="text-gray-500 mt-1">승인된 품의서의 매출/매입 계산서 발행 상태 관리</p>
+          <p className="text-gray-500 mt-1">품의코드별 매출/매입 계산서 발행 관리</p>
         </div>
         <Link
-          href="/admin/api-test"
+          href="/management"
           className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
         >
-          ← 목록으로
+          ← 경영관리
         </Link>
-      </div>
-
-      {/* 탭 */}
-      <div className="flex gap-2 border-b border-gray-200">
-        <button
-          onClick={() => setActiveTab('sales')}
-          className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'sales'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          매출 계산서
-        </button>
-        <button
-          onClick={() => setActiveTab('purchase')}
-          className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'purchase'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          매입 계산서
-        </button>
-      </div>
-
-      {/* 안내 */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <span className="text-blue-500 text-lg">i</span>
-          <div className="text-sm text-blue-800">
-            <p className="font-medium mb-1">자동 등록 안내</p>
-            <p>품의서가 <span className="font-bold text-green-700">APPROVED</span> 되면 매출/매입 계산서 발행현황에 자동 등록됩니다.</p>
-            <p>이 페이지에서는 계산서 발행일, 발행 상태, 결제 내역을 관리합니다.</p>
-          </div>
-        </div>
       </div>
 
       {/* 필터 */}
@@ -298,32 +201,6 @@ export default function InvoiceStatusTestPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
             />
           </div>
-          <div className="w-32">
-            <label className="block text-sm text-gray-600 mb-1">발행상태</label>
-            <select
-              value={filter.invoiceStatus}
-              onChange={(e) => setFilter({ ...filter, invoiceStatus: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            >
-              <option value="">전체</option>
-              <option value="발행완료">발행완료</option>
-              <option value="미발행">미발행</option>
-              <option value="반품">반품</option>
-            </select>
-          </div>
-          <div className="w-32">
-            <label className="block text-sm text-gray-600 mb-1">결제상태</label>
-            <select
-              value={filter.paymentStatus}
-              onChange={(e) => setFilter({ ...filter, paymentStatus: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            >
-              <option value="">전체</option>
-              <option value="PENDING">미결제</option>
-              <option value="PARTIAL">부분결제</option>
-              <option value="COMPLETED">결제완료</option>
-            </select>
-          </div>
           <button
             onClick={fetchList}
             disabled={loading}
@@ -334,7 +211,6 @@ export default function InvoiceStatusTestPage() {
         </div>
       </div>
 
-      {/* 결과 */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700">
           {error}
@@ -344,22 +220,26 @@ export default function InvoiceStatusTestPage() {
       {data && (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           {/* 요약 */}
-          <div className="grid grid-cols-4 gap-4 p-4 bg-gray-50 border-b">
+          <div className="grid grid-cols-5 gap-4 p-4 bg-gray-50 border-b text-sm">
             <div>
-              <div className="text-sm text-gray-500">총 건수</div>
-              <div className="text-xl font-bold text-gray-900">{data.summary.count}건</div>
+              <div className="text-gray-500">품의건수</div>
+              <div className="text-lg font-bold text-gray-900">{data.summary.approvalCount}건</div>
             </div>
             <div>
-              <div className="text-sm text-gray-500">총 금액</div>
-              <div className="text-xl font-bold text-blue-700">{formatNumber(data.summary.totalPrice)}원</div>
+              <div className="text-blue-600">매출 합계</div>
+              <div className="text-lg font-bold text-blue-700">{formatNumber(data.summary.totalSalesPrice)}원</div>
             </div>
             <div>
-              <div className="text-sm text-gray-500">결제 금액</div>
-              <div className="text-xl font-bold text-green-700">{formatNumber(data.summary.paidAmount)}원</div>
+              <div className="text-blue-600">매출 수금</div>
+              <div className="text-lg font-bold text-green-700">{formatNumber(data.summary.totalSalesPaid)}원</div>
             </div>
             <div>
-              <div className="text-sm text-gray-500">페이지</div>
-              <div className="text-xl font-bold text-gray-900">{data.page} / {data.totalPages}</div>
+              <div className="text-purple-600">매입 합계</div>
+              <div className="text-lg font-bold text-purple-700">{formatNumber(data.summary.totalPurchasePrice)}원</div>
+            </div>
+            <div>
+              <div className="text-purple-600">매입 지급</div>
+              <div className="text-lg font-bold text-green-700">{formatNumber(data.summary.totalPurchasePaid)}원</div>
             </div>
           </div>
 
@@ -372,286 +252,211 @@ export default function InvoiceStatusTestPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs border-collapse">
                 <thead className="bg-gray-100">
                   <tr>
-                    <th className="px-4 py-3 text-left font-medium text-gray-600">품의코드</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-600">{getCompanyLabel()}</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-600">품목</th>
-                    <th className="px-4 py-3 text-right font-medium text-gray-600">수량</th>
-                    <th className="px-4 py-3 text-right font-medium text-gray-600">금액</th>
-                    <th className="px-4 py-3 text-right font-medium text-gray-600">결제/잔액</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-600">발행일</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-600">발행상태</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-600">결제상태</th>
-                    <th className="px-4 py-3 text-center font-medium text-gray-600">작업</th>
+                    <th rowSpan={2} className="px-2 py-2 text-left font-semibold text-gray-700 border border-gray-300 whitespace-nowrap">품의코드</th>
+                    {/* 매출 */}
+                    <th colSpan={8} className="px-2 py-1 text-center font-semibold text-blue-700 bg-blue-50 border border-gray-300">매출</th>
+                    <th rowSpan={2} className="px-2 py-2 text-center font-semibold bg-yellow-100 border border-gray-300 w-20">매출계산서</th>
+                    <th rowSpan={2} className="px-2 py-2 text-left font-semibold text-gray-600 border border-gray-300 whitespace-nowrap">기타사항</th>
+                    {/* 매입 */}
+                    <th colSpan={7} className="px-2 py-1 text-center font-semibold text-purple-700 bg-purple-50 border border-gray-300">매입</th>
+                    <th rowSpan={2} className="px-2 py-2 text-center font-semibold bg-yellow-100 border border-gray-300 w-20">매입계산서</th>
+                  </tr>
+                  <tr className="bg-gray-50">
+                    {/* 매출 세부 */}
+                    <th className="px-2 py-1 text-left font-medium text-gray-600 border border-gray-300 w-24">P/N</th>
+                    <th className="px-2 py-1 text-left font-medium text-gray-600 border border-gray-300 min-w-[150px]">품목</th>
+                    <th className="px-2 py-1 text-left font-medium text-gray-600 border border-gray-300 w-28">매출처</th>
+                    <th className="px-2 py-1 text-right font-medium text-gray-600 border border-gray-300 w-12">수량</th>
+                    <th className="px-2 py-1 text-right font-medium text-gray-600 border border-gray-300 w-20">단가</th>
+                    <th className="px-2 py-1 text-right font-medium text-gray-600 border border-gray-300 w-24">합계</th>
+                    <th className="px-2 py-1 text-right font-medium text-blue-600 border border-gray-300 w-24">건별합계</th>
+                    <th className="px-2 py-1 text-right font-medium text-gray-600 border border-gray-300 w-16 border-r-2 border-r-gray-400">수금</th>
+                    {/* 매입 세부 */}
+                    <th className="px-2 py-1 text-center font-medium text-gray-600 border border-gray-300 w-16">매입일</th>
+                    <th className="px-2 py-1 text-left font-medium text-gray-600 border border-gray-300 w-28">매입처</th>
+                    <th className="px-2 py-1 text-right font-medium text-gray-600 border border-gray-300 w-12">수량</th>
+                    <th className="px-2 py-1 text-right font-medium text-gray-600 border border-gray-300 w-20">단가</th>
+                    <th className="px-2 py-1 text-right font-medium text-gray-600 border border-gray-300 w-24">합계</th>
+                    <th className="px-2 py-1 text-right font-medium text-purple-600 border border-gray-300 w-24">건별합계</th>
+                    <th className="px-2 py-1 text-right font-medium text-gray-600 border border-gray-300 w-16">지급</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {data.items.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <span className="font-mono text-blue-600">{item.approvalCode || '-'}</span>
-                      </td>
-                      <td className="px-4 py-3">{getCompanyField(item)}</td>
-                      <td className="px-4 py-3 max-w-xs">
-                        <div className="truncate" title={item.itemName}>{item.itemName}</div>
-                        {item.partNumber && (
-                          <div className="text-xs text-gray-400">{item.partNumber}</div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right">{item.quantity}</td>
-                      <td className="px-4 py-3 text-right font-medium">{formatNumber(item.totalPrice)}</td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="text-green-600">{formatNumber(item.paidAmount)}</div>
-                        <div className="text-xs text-gray-400">잔액: {formatNumber(item.remainAmount || 0)}</div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {editingId === item.id ? (
-                          <input
-                            type="date"
-                            value={editForm.invoiceDate}
-                            onChange={(e) => setEditForm({ ...editForm, invoiceDate: e.target.value })}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                          />
-                        ) : (
-                          <span className={item.invoiceDate ? 'text-green-700' : 'text-gray-400'}>
-                            {formatDate(item.invoiceDate)}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {editingId === item.id ? (
-                          <select
-                            value={editForm.invoiceStatus}
-                            onChange={(e) => setEditForm({ ...editForm, invoiceStatus: e.target.value })}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                <tbody>
+                  {data.items.map((row, index) => {
+                    const rowSpan = getRowSpan(data.items, index)
+                    const isFirstRow = row.rowIndex === 0
+                    const bgColor = index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
+
+                    return (
+                      <tr key={row.rowKey} className={`hover:bg-blue-50/30 ${bgColor}`}>
+                        {/* 품의코드 - rowspan */}
+                        {rowSpan > 0 && (
+                          <td
+                            rowSpan={rowSpan}
+                            className="px-2 py-1 font-mono font-medium text-blue-700 border border-gray-300 align-top bg-white"
                           >
-                            <option value="">미발행</option>
-                            <option value="발행완료">발행완료</option>
-                            <option value="반품">반품</option>
-                          </select>
-                        ) : (
-                          <span className={`px-2 py-0.5 rounded-full text-xs ${
-                            item.invoiceStatus === '발행완료'
-                              ? 'bg-green-100 text-green-700'
-                              : item.invoiceStatus === '반품'
-                              ? 'bg-red-100 text-red-700'
-                              : 'bg-gray-100 text-gray-500'
-                          }`}>
-                            {item.invoiceStatus || '미발행'}
-                          </span>
+                            <Link
+                              href={`/sales/approvals`}
+                              className="hover:underline"
+                            >
+                              {row.approvalCode}
+                            </Link>
+                          </td>
                         )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs ${
-                          item.paymentStatus === 'COMPLETED'
-                            ? 'bg-green-100 text-green-700'
-                            : item.paymentStatus === 'PARTIAL'
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : 'bg-gray-100 text-gray-500'
-                        }`}>
-                          {item.paymentStatus === 'COMPLETED' ? '결제완료'
-                            : item.paymentStatus === 'PARTIAL' ? '부분결제'
-                            : '미결제'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {editingId === item.id ? (
-                          <div className="flex gap-1 justify-center">
-                            <button
-                              onClick={() => updateInvoice(item.id)}
-                              className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
-                            >
-                              저장
-                            </button>
-                            <button
-                              onClick={() => setEditingId(null)}
-                              className="px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs hover:bg-gray-400"
-                            >
-                              취소
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex gap-1 justify-center">
+
+                        {/* 매출 정보 */}
+                        <td className="px-2 py-1 border border-gray-200 truncate max-w-[100px]" title={row.salesPartNumber || ''}>
+                          {row.salesPartNumber || ''}
+                        </td>
+                        <td className="px-2 py-1 border border-gray-200 truncate max-w-[150px]" title={row.salesItemName || ''}>
+                          {row.salesItemName || ''}
+                        </td>
+                        <td className="px-2 py-1 border border-gray-200 truncate max-w-[100px]" title={row.salesClientCompany || ''}>
+                          {row.salesClientCompany || ''}
+                        </td>
+                        <td className="px-2 py-1 text-right border border-gray-200">
+                          {row.salesQuantity || ''}
+                        </td>
+                        <td className="px-2 py-1 text-right border border-gray-200">
+                          {formatNumber(row.salesUnitPrice)}
+                        </td>
+                        <td className="px-2 py-1 text-right border border-gray-200">
+                          {formatNumber(row.salesTotalPrice)}
+                        </td>
+                        <td className="px-2 py-1 text-right font-medium text-blue-700 border border-gray-200">
+                          {row.salesBatchTotal !== null ? formatNumber(row.salesBatchTotal) : ''}
+                        </td>
+                        <td className="px-2 py-1 text-right text-green-600 border border-gray-200 border-r-2 border-r-gray-400">
+                          {formatNumber(row.salesPaidAmount)}
+                        </td>
+
+                        {/* 매출계산서 */}
+                        <td className="px-1 py-1 text-center bg-yellow-50 border border-gray-200">
+                          {editingCell?.rowKey === row.rowKey && editingCell.field === 'salesInvoice' ? (
+                            <div className="flex flex-col gap-1">
+                              <input
+                                type="date"
+                                value={editForm.invoiceDate}
+                                onChange={(e) => setEditForm({ ...editForm, invoiceDate: e.target.value })}
+                                className="w-full px-1 py-0.5 border border-blue-300 rounded text-xs"
+                              />
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={() => row.salesId && updateInvoice('sales', row.salesId)}
+                                  className="flex-1 px-1 py-0.5 bg-blue-600 text-white rounded text-xs"
+                                >
+                                  저장
+                                </button>
+                                <button
+                                  onClick={() => setEditingCell(null)}
+                                  className="flex-1 px-1 py-0.5 bg-gray-300 rounded text-xs"
+                                >
+                                  취소
+                                </button>
+                              </div>
+                            </div>
+                          ) : row.salesId ? (
                             <button
                               onClick={() => {
-                                setEditingId(item.id)
+                                setEditingCell({ rowKey: row.rowKey, field: 'salesInvoice' })
                                 setEditForm({
-                                  invoiceDate: item.invoiceDate?.split('T')[0] || '',
-                                  invoiceStatus: item.invoiceStatus || '',
+                                  invoiceDate: row.salesInvoiceDate?.split('T')[0] || '',
+                                  invoiceStatus: row.salesInvoiceStatus || '',
                                 })
                               }}
-                              className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs hover:bg-gray-200"
+                              className={`w-full text-xs ${
+                                row.salesInvoiceDate
+                                  ? 'text-green-700 font-medium'
+                                  : 'text-gray-400 hover:text-blue-600'
+                              }`}
                             >
-                              수정
+                              {row.salesInvoiceDate ? formatDate(row.salesInvoiceDate) : 'X'}
                             </button>
+                          ) : null}
+                        </td>
+
+                        {/* 기타사항 */}
+                        <td className="px-2 py-1 border border-gray-200 truncate max-w-[80px] text-gray-500" title={row.salesRemarks || ''}>
+                          {isFirstRow ? row.salesRemarks : ''}
+                        </td>
+
+                        {/* 매입 정보 */}
+                        <td className="px-2 py-1 text-center border border-gray-200">
+                          {row.purchaseInvoiceDate ? formatDate(row.purchaseInvoiceDate) : ''}
+                        </td>
+                        <td className="px-2 py-1 border border-gray-200 truncate max-w-[100px]" title={row.purchaseVendorCompany || ''}>
+                          {row.purchaseVendorCompany || ''}
+                        </td>
+                        <td className="px-2 py-1 text-right border border-gray-200">
+                          {row.purchaseQuantity || ''}
+                        </td>
+                        <td className="px-2 py-1 text-right border border-gray-200">
+                          {formatNumber(row.purchaseUnitPrice)}
+                        </td>
+                        <td className="px-2 py-1 text-right border border-gray-200">
+                          {formatNumber(row.purchaseTotalPrice)}
+                        </td>
+                        <td className="px-2 py-1 text-right font-medium text-purple-700 border border-gray-200">
+                          {row.purchaseBatchTotal !== null ? formatNumber(row.purchaseBatchTotal) : ''}
+                        </td>
+                        <td className="px-2 py-1 text-right text-green-600 border border-gray-200">
+                          {formatNumber(row.purchasePaidAmount)}
+                        </td>
+
+                        {/* 매입계산서 */}
+                        <td className="px-1 py-1 text-center bg-yellow-50 border border-gray-200">
+                          {editingCell?.rowKey === row.rowKey && editingCell.field === 'purchaseInvoice' ? (
+                            <div className="flex flex-col gap-1">
+                              <input
+                                type="date"
+                                value={editForm.invoiceDate}
+                                onChange={(e) => setEditForm({ ...editForm, invoiceDate: e.target.value })}
+                                className="w-full px-1 py-0.5 border border-purple-300 rounded text-xs"
+                              />
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={() => row.purchaseId && updateInvoice('purchase', row.purchaseId)}
+                                  className="flex-1 px-1 py-0.5 bg-purple-600 text-white rounded text-xs"
+                                >
+                                  저장
+                                </button>
+                                <button
+                                  onClick={() => setEditingCell(null)}
+                                  className="flex-1 px-1 py-0.5 bg-gray-300 rounded text-xs"
+                                >
+                                  취소
+                                </button>
+                              </div>
+                            </div>
+                          ) : row.purchaseId ? (
                             <button
-                              onClick={() => setPaymentModal({ isOpen: true, invoiceId: item.id, invoice: item })}
-                              className="px-2 py-1 bg-blue-100 text-blue-600 rounded text-xs hover:bg-blue-200"
+                              onClick={() => {
+                                setEditingCell({ rowKey: row.rowKey, field: 'purchaseInvoice' })
+                                setEditForm({
+                                  invoiceDate: row.purchaseInvoiceDate?.split('T')[0] || '',
+                                  invoiceStatus: row.purchaseInvoiceStatus || '',
+                                })
+                              }}
+                              className={`w-full text-xs ${
+                                row.purchaseInvoiceDate
+                                  ? 'text-green-700 font-medium'
+                                  : 'text-gray-400 hover:text-purple-600'
+                              }`}
                             >
-                              결제
+                              {row.purchaseInvoiceDate ? formatDate(row.purchaseInvoiceDate) : 'X'}
                             </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                          ) : null}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
           )}
-        </div>
-      )}
-
-      {/* 결제 모달 */}
-      {paymentModal.isOpen && paymentModal.invoice && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold">결제 관리</h2>
-                <button
-                  onClick={() => setPaymentModal({ isOpen: false, invoiceId: '', invoice: null })}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  X
-                </button>
-              </div>
-              <div className="mt-2 text-sm text-gray-500">
-                <span className="font-mono text-blue-600">{paymentModal.invoice.approvalCode}</span>
-                {' - '}
-                {paymentModal.invoice.itemName}
-              </div>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* 금액 현황 */}
-              <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <div className="text-sm text-gray-500">총 금액</div>
-                  <div className="text-lg font-bold">{formatNumber(paymentModal.invoice.totalPrice)}원</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500">결제 금액</div>
-                  <div className="text-lg font-bold text-green-600">{formatNumber(paymentModal.invoice.paidAmount)}원</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500">잔액</div>
-                  <div className="text-lg font-bold text-red-600">{formatNumber(paymentModal.invoice.remainAmount || 0)}원</div>
-                </div>
-              </div>
-
-              {/* 결제 추가 폼 */}
-              <div className="border rounded-lg p-4">
-                <h3 className="text-sm font-medium mb-3">결제 추가</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">결제일 *</label>
-                    <input
-                      type="date"
-                      value={paymentForm.paymentDate}
-                      onChange={(e) => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">결제금액 *</label>
-                    <input
-                      type="number"
-                      value={paymentForm.paymentAmount}
-                      onChange={(e) => setPaymentForm({ ...paymentForm, paymentAmount: e.target.value })}
-                      placeholder="금액 입력"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">결제방법</label>
-                    <select
-                      value={paymentForm.paymentMethod}
-                      onChange={(e) => setPaymentForm({ ...paymentForm, paymentMethod: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    >
-                      <option value="">선택</option>
-                      <option value="계좌이체">계좌이체</option>
-                      <option value="카드">카드</option>
-                      <option value="현금">현금</option>
-                      <option value="어음">어음</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">비고</label>
-                    <input
-                      type="text"
-                      value={paymentForm.remarks}
-                      onChange={(e) => setPaymentForm({ ...paymentForm, remarks: e.target.value })}
-                      placeholder="선금, 중도금, 잔금 등"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    />
-                  </div>
-                </div>
-                <div className="mt-4 flex justify-end">
-                  <button
-                    onClick={addPayment}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
-                  >
-                    결제 추가
-                  </button>
-                </div>
-              </div>
-
-              {/* 결제 내역 */}
-              <div>
-                <h3 className="text-sm font-medium mb-3">결제 내역</h3>
-                {paymentModal.invoice.paymentHistories.length === 0 ? (
-                  <div className="text-center py-6 text-gray-400 text-sm">
-                    결제 내역이 없습니다.
-                  </div>
-                ) : (
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-2 text-left font-medium text-gray-600">결제일</th>
-                          <th className="px-4 py-2 text-right font-medium text-gray-600">금액</th>
-                          <th className="px-4 py-2 text-left font-medium text-gray-600">방법</th>
-                          <th className="px-4 py-2 text-left font-medium text-gray-600">비고</th>
-                          <th className="px-4 py-2 text-center font-medium text-gray-600">삭제</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {paymentModal.invoice.paymentHistories.map((payment) => (
-                          <tr key={payment.id}>
-                            <td className="px-4 py-2">{formatDate(payment.paymentDate)}</td>
-                            <td className="px-4 py-2 text-right font-medium">{formatNumber(payment.paymentAmount)}원</td>
-                            <td className="px-4 py-2">{payment.paymentMethod || '-'}</td>
-                            <td className="px-4 py-2 text-gray-500">{payment.remarks || '-'}</td>
-                            <td className="px-4 py-2 text-center">
-                              <button
-                                onClick={() => deletePayment(payment.id)}
-                                className="text-red-500 hover:text-red-700"
-                              >
-                                삭제
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="p-4 border-t flex justify-end">
-              <button
-                onClick={() => setPaymentModal({ isOpen: false, invoiceId: '', invoice: null })}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300"
-              >
-                닫기
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>

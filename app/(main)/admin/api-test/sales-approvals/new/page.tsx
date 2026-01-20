@@ -183,30 +183,66 @@ function NewSalesApprovalForm() {
   const calcPurchaseTotal = () => items.reduce((sum, item) => sum + calcPurchaseItemTotal(item), 0)
   const calcMargin = (item: SalesItem) => calcItemTotal(item) - calcPurchaseItemTotal(item)
 
-  // 엑셀 업로드 처리
+  // 엑셀 업로드 처리 (파싱된 데이터로 폼 채우기)
   const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     setUploading(true)
     try {
-      const formData = new FormData()
-      formData.append('file', file)
+      const uploadFormData = new FormData()
+      uploadFormData.append('file', file)
 
       const res = await fetch('/api/sales-approvals/upload', {
         method: 'POST',
-        body: formData,
+        body: uploadFormData,
       })
 
       if (res.ok) {
-        const approval = await res.json()
-        router.push(`/admin/api-test/sales-approvals/${approval.id}`)
-      } else {
         const data = await res.json()
-        alert(data.error || '엑셀 업로드에 실패했습니다')
+
+        // 기본 정보 채우기
+        setFormData({
+          approvalCode: data.approvalCode || formData.approvalCode,
+          approvalDate: data.approvalDate || formData.approvalDate,
+          managerName: data.managerName || '',
+          clientCompany: data.clientCompany || '',
+          clientContact: data.clientContact || '',
+          clientPhone: data.clientPhone || '',
+          endUser: data.endUser || '',
+          paymentTerms: data.paymentTerms || '',
+          deliveryAddress: data.deliveryAddress || '',
+          deliveryDate: data.deliveryDate || '',
+          invoiceEmail: data.invoiceEmail || '',
+          receiverName: data.receiverName || '',
+          receiverPhone: data.receiverPhone || '',
+          notes: data.notes || '',
+        })
+
+        // 품목 데이터 채우기
+        if (data.salesItems && data.salesItems.length > 0) {
+          const newItems: SalesItem[] = data.salesItems.map((salesItem: { productName?: string; quantity?: number; unitPrice?: number }, idx: number) => {
+            const purchaseItem = data.purchaseItems?.[idx]
+            return {
+              type: 'single' as const,
+              partNumber: '',
+              productName: salesItem.productName || '',
+              quantity: salesItem.quantity || 1,
+              unitPrice: salesItem.unitPrice || 0,
+              details: [],
+              purchaseVendor: purchaseItem?.vendorCompany || '',
+              purchaseUnitPrice: purchaseItem?.unitPrice || 0,
+            }
+          })
+          setItems(newItems.length > 0 ? newItems : [{ type: 'single', partNumber: '', productName: '', quantity: 1, unitPrice: 0, details: [], purchaseVendor: '', purchaseUnitPrice: 0 }])
+        }
+
+      } else {
+        const errorData = await res.json()
+        console.error('엑셀 업로드 실패:', errorData.error)
       }
-    } catch {
-      alert('엑셀 업로드에 실패했습니다')
+    } catch (err) {
+      console.error('엑셀 업로드 실패:', err)
     } finally {
       setUploading(false)
       if (fileInputRef.current) {

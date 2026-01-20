@@ -339,7 +339,7 @@ model SalesApproval {
   sourceQuote   SalesQuote? @relation(fields: [sourceQuoteId], references: [id])
 
   // 기본 정보
-  approvalCode   String?   @map("approval_code") // 품의코드 (D251202-01)
+  approvalCode   String?   @unique @map("approval_code") // 품의코드 (D251202-01)
   approvalDate   DateTime? @map("approval_date") @db.Date
   managerName    String?   @map("manager_name") // 품의담당
 

@@ -85,7 +85,7 @@ interface SalesApproval {
   items: ApprovalItem[]
   purchaseItems: PurchaseItem[]
   deal?: { id: string; name: string; status: string }
-  createdBy?: { id: string; name: string }
+  createdById?: string
   // 결재 정보
   salesManager?: SignerInfo
   salesManagerSignedAt?: string
@@ -125,7 +125,7 @@ export default function SalesApprovalDetailPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 현재 로그인된 사용자가 작성자인지 확인
-  const isCreator = session?.user?.id && approval?.createdBy?.id === session.user.id
+  const isCreator = session?.user?.id && approval?.createdById === session.user.id
 
   const fetchApproval = useCallback(async () => {
     try {
@@ -481,7 +481,7 @@ export default function SalesApprovalDetailPage() {
                 <p className="text-gray-400">-</p>
               )}
             </div>
-            {approval.status === 'DRAFT' && isCreator && (
+            {approval.status === 'DRAFT' && (
               <button
                 onClick={() => handleSign('SALES_MANAGER')}
                 disabled={updatingStatus}
@@ -571,20 +571,24 @@ export default function SalesApprovalDetailPage() {
       </div>
 
       {/* 마진 요약 */}
-      <div className="bg-blue-50 rounded-xl border border-blue-200 p-6">
+      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200 p-6">
+        <h3 className="text-sm font-semibold text-gray-900 mb-4">마진 요약</h3>
         <div className="grid grid-cols-3 gap-6 text-center">
           <div>
             <p className="text-sm text-blue-600">매출 (VAT별도)</p>
             <p className="text-xl font-bold text-blue-900">{Number(approval.totalAmount || 0).toLocaleString()}원</p>
           </div>
           <div>
-            <p className="text-sm text-blue-600">매입 (VAT별도)</p>
-            <p className="text-xl font-bold text-blue-900">{Number(approval.purchaseTotal || 0).toLocaleString()}원</p>
+            <p className="text-sm text-purple-600">매입 (VAT별도)</p>
+            <p className="text-xl font-bold text-purple-900">{Number(approval.purchaseTotal || 0).toLocaleString()}원</p>
           </div>
           <div>
-            <p className="text-sm text-blue-600">마진</p>
+            <p className="text-sm text-gray-600">마진</p>
             <p className={`text-xl font-bold ${calcMargin() >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
               {calcMargin().toLocaleString()}원
+            </p>
+            <p className="text-xs text-gray-500">
+              ({Number(approval.totalAmount || 0) > 0 ? ((calcMargin() / Number(approval.totalAmount || 0)) * 100).toFixed(1) : 0}%)
             </p>
           </div>
         </div>
@@ -666,132 +670,223 @@ export default function SalesApprovalDetailPage() {
         </div>
       )}
 
-      {/* 매출 품목 */}
+      {/* 통합 품목 테이블 */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b bg-gray-50">
-          <h3 className="text-sm font-semibold text-gray-900">매출 품목 ({approval.items?.length || 0}개)</h3>
-        </div>
-        <div className="p-4 space-y-3">
-          {approval.items?.map((item, idx) => (
-            <div key={idx} className="border border-blue-200 rounded-lg overflow-hidden">
-              {/* 메인 품목 헤더 */}
-              <div className="bg-blue-50 px-4 py-3 flex items-center justify-between border-b border-blue-200">
-                <div className="flex items-center gap-3">
-                  <span className="px-2 py-0.5 bg-blue-600 text-white text-xs font-medium rounded">P/N</span>
-                  <span className="font-semibold text-blue-900">{item.productName || '-'}</span>
-                </div>
-                <div className="flex items-center gap-6 text-sm">
-                  <span className="text-gray-600">{item.quantity}개</span>
-                  <span className="text-gray-600">{Number(item.unitPrice || 0).toLocaleString()}원</span>
-                  <span className="font-bold text-blue-700">{Number(item.totalPrice || 0).toLocaleString()}원</span>
-                </div>
-              </div>
-              {/* 하위 품목 리스트 */}
-              {item.details && item.details.length > 0 && (
-                <div className="bg-white divide-y divide-gray-100">
-                  {item.details.map((detail, dIdx) => (
-                    <div key={dIdx} className="px-4 py-2.5 flex items-start gap-3">
-                      <span className="text-gray-400 mt-0.5">├</span>
-                      <div className="flex-1">
-                        {detail.partNumber && (
-                          <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded mr-2">
-                            {detail.partNumber}
-                          </span>
-                        )}
-                        <span className="text-sm text-gray-700 whitespace-pre-wrap">{detail.description}</span>
-                        {detail.quantity && (
-                          <span className="ml-2 text-xs text-gray-400">x{detail.quantity}</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="px-6 py-4 border-t bg-gray-50">
-          <div className="flex justify-end">
-            <div className="w-72 space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">매출 합계</span>
-                <span className="font-medium">{Number(approval.totalAmount || 0).toLocaleString()}원</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">부가세</span>
-                <span>{Number(approval.vatAmount || 0).toLocaleString()}원</span>
-              </div>
-              <div className="flex justify-between pt-2 border-t text-base">
-                <span className="font-semibold">VAT 포함</span>
-                <span className="font-bold text-blue-600">{Number(approval.totalWithVat || 0).toLocaleString()}원</span>
-              </div>
-            </div>
+        <div className="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-900">품목 내역</h3>
+          <div className="flex items-center gap-4 text-xs">
+            <span className="text-blue-600">매출 {approval.items?.length || 0}건</span>
+            <span className="text-purple-600">매입 {approval.purchaseItems?.length || 0}건</span>
           </div>
         </div>
-      </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-100 border-b">
+              <tr>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 w-24">P/N</th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 w-64">품목</th>
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-16">수량</th>
+                {/* 매출 */}
+                <th className="px-2 py-2 text-right text-xs font-medium text-blue-600 w-24">매출단가</th>
+                <th className="px-2 py-2 text-right text-xs font-medium text-blue-600 w-28 border-r-2 border-gray-300">매출합계</th>
+                {/* 매입 */}
+                <th className="px-2 py-2 text-left text-xs font-medium text-purple-600 w-28">매입처</th>
+                <th className="px-2 py-2 text-right text-xs font-medium text-purple-600 w-24">매입단가</th>
+                <th className="px-2 py-2 text-right text-xs font-medium text-purple-600 w-28">매입합계</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {/* 통합 매출인 경우 (items가 1개이고 details가 있는 경우) */}
+              {approval.items?.length === 1 && approval.items[0].details && approval.items[0].details.length > 0 ? (
+                <>
+                  {/* 통합 매출 행 */}
+                  <tr className="bg-gradient-to-r from-blue-50/50 to-purple-50/50">
+                    <td className="px-2 py-2">
+                      <span className="text-xs font-medium text-gray-600">통합</span>
+                    </td>
+                    <td className="px-2 py-2">
+                      <span className="text-sm font-medium text-blue-900">{approval.items[0].productName}</span>
+                    </td>
+                    <td className="px-2 py-2 text-center text-sm">{approval.items[0].quantity}</td>
+                    <td className="px-2 py-2 text-right text-sm">{Number(approval.items[0].unitPrice || 0).toLocaleString()}</td>
+                    <td className="px-2 py-2 text-right font-medium text-blue-700 border-r-2 border-gray-300">
+                      {Number(approval.items[0].totalPrice || 0).toLocaleString()}
+                    </td>
+                    {/* 통합 매입인 경우 */}
+                    {approval.purchaseItems?.length === 1 && approval.purchaseItems[0].details && approval.purchaseItems[0].details.length > 0 ? (
+                      <>
+                        <td className="px-2 py-2 text-sm">{approval.purchaseItems[0].vendorCompany || '-'}</td>
+                        <td className="px-2 py-2 text-right text-sm">{Number(approval.purchaseItems[0].unitPrice || 0).toLocaleString()}</td>
+                        <td className="px-2 py-2 text-right font-medium text-purple-700">
+                          {Number(approval.purchaseItems[0].totalPrice || 0).toLocaleString()}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-2 py-2"></td>
+                        <td className="px-2 py-2"></td>
+                        <td className="px-2 py-2"></td>
+                      </>
+                    )}
+                  </tr>
+                  {/* 개별 품목 행들 (매출 details 기준) */}
+                  {approval.items[0].details.map((detail, idx) => {
+                    const purchaseDetail = approval.purchaseItems?.[0]?.details?.[idx]
+                    return (
+                      <tr key={idx} className="hover:bg-gray-50">
+                        <td className="px-2 py-2 text-xs text-gray-600">{detail.partNumber || '-'}</td>
+                        <td className="px-2 py-2 text-sm text-gray-700 whitespace-pre-wrap">{detail.description || '-'}</td>
+                        <td className="px-2 py-2 text-center text-sm">{detail.quantity || '-'}</td>
+                        <td className="px-2 py-2 text-right text-xs text-gray-400">-</td>
+                        <td className="px-2 py-2 text-right text-xs text-gray-400 border-r-2 border-gray-300">-</td>
+                        {approval.purchaseItems?.length === 1 && approval.purchaseItems[0].details && approval.purchaseItems[0].details.length > 0 ? (
+                          <>
+                            <td className="px-2 py-2 text-xs text-gray-400">-</td>
+                            <td className="px-2 py-2 text-right text-xs text-gray-400">-</td>
+                            <td className="px-2 py-2 text-right text-xs text-gray-400">-</td>
+                          </>
+                        ) : purchaseDetail ? (
+                          <>
+                            <td className="px-2 py-2 text-sm">{approval.purchaseItems?.[idx]?.vendorCompany || '-'}</td>
+                            <td className="px-2 py-2 text-right text-sm">{Number(approval.purchaseItems?.[idx]?.unitPrice || 0).toLocaleString()}</td>
+                            <td className="px-2 py-2 text-right font-medium text-purple-700">
+                              {Number(approval.purchaseItems?.[idx]?.totalPrice || 0).toLocaleString()}
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-2 py-2"></td>
+                            <td className="px-2 py-2"></td>
+                            <td className="px-2 py-2"></td>
+                          </>
+                        )}
+                      </tr>
+                    )
+                  })}
+                </>
+              ) : (
+                /* 개별 품목 모드 */
+                (() => {
+                  const maxRows = Math.max(approval.items?.length || 0, approval.purchaseItems?.length || 0)
+                  const rows = []
+                  for (let i = 0; i < maxRows; i++) {
+                    const salesItem = approval.items?.[i]
+                    const purchaseItem = approval.purchaseItems?.[i]
 
-      {/* 매입 품목 */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b bg-purple-50">
-          <h3 className="text-sm font-semibold text-gray-900">매입 품목 ({approval.purchaseItems?.length || 0}개)</h3>
-        </div>
-        <div className="p-4 space-y-3">
-          {approval.purchaseItems?.map((item, idx) => (
-            <div key={idx} className="border border-purple-200 rounded-lg overflow-hidden">
-              {/* 메인 품목 헤더 */}
-              <div className="bg-purple-50 px-4 py-3 flex items-center justify-between border-b border-purple-200">
-                <div className="flex items-center gap-3">
-                  <span className="px-2 py-0.5 bg-purple-600 text-white text-xs font-medium rounded">P/N</span>
-                  <span className="font-semibold text-purple-900">{item.productName || '-'}</span>
-                  {item.vendorCompany && (
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                      {item.vendorCompany}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-6 text-sm">
-                  <span className="text-gray-600">{item.quantity}개</span>
-                  <span className="text-gray-600">{Number(item.unitPrice || 0).toLocaleString()}원</span>
-                  <span className="font-bold text-purple-700">{Number(item.totalPrice || 0).toLocaleString()}원</span>
-                </div>
-              </div>
-              {/* 하위 품목 리스트 */}
-              {item.details && item.details.length > 0 && (
-                <div className="bg-white divide-y divide-gray-100">
-                  {item.details.map((detail, dIdx) => (
-                    <div key={dIdx} className="px-4 py-2.5 flex items-start gap-3">
-                      <span className="text-gray-400 mt-0.5">├</span>
-                      <div className="flex-1">
-                        {detail.partNumber && (
-                          <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded mr-2">
-                            {detail.partNumber}
-                          </span>
-                        )}
-                        <span className="text-sm text-gray-700 whitespace-pre-wrap">{detail.description}</span>
-                        {detail.quantity && (
-                          <span className="ml-2 text-xs text-gray-400">x{detail.quantity}</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    // 매출 아이템에 details가 있는 경우
+                    if (salesItem?.details && salesItem.details.length > 0) {
+                      salesItem.details.forEach((detail, dIdx) => {
+                        rows.push(
+                          <tr key={`${i}-${dIdx}`} className="hover:bg-gray-50">
+                            <td className="px-2 py-2 text-xs text-gray-600">{detail.partNumber || '-'}</td>
+                            <td className="px-2 py-2 text-sm text-gray-700 whitespace-pre-wrap">{detail.description || '-'}</td>
+                            <td className="px-2 py-2 text-center text-sm">{detail.quantity || salesItem.quantity}</td>
+                            <td className="px-2 py-2 text-right text-sm">
+                              {dIdx === 0 ? Number(salesItem.unitPrice || 0).toLocaleString() : '-'}
+                            </td>
+                            <td className="px-2 py-2 text-right font-medium text-blue-700 border-r-2 border-gray-300">
+                              {dIdx === 0 ? Number(salesItem.totalPrice || 0).toLocaleString() : '-'}
+                            </td>
+                            {dIdx === 0 && purchaseItem ? (
+                              <>
+                                <td className="px-2 py-2 text-sm">{purchaseItem.vendorCompany || '-'}</td>
+                                <td className="px-2 py-2 text-right text-sm">{Number(purchaseItem.unitPrice || 0).toLocaleString()}</td>
+                                <td className="px-2 py-2 text-right font-medium text-purple-700">
+                                  {Number(purchaseItem.totalPrice || 0).toLocaleString()}
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="px-2 py-2"></td>
+                                <td className="px-2 py-2"></td>
+                                <td className="px-2 py-2"></td>
+                              </>
+                            )}
+                          </tr>
+                        )
+                      })
+                    } else if (salesItem) {
+                      rows.push(
+                        <tr key={i} className="hover:bg-gray-50">
+                          <td className="px-2 py-2 text-xs text-gray-600">{salesItem.productName || '-'}</td>
+                          <td className="px-2 py-2 text-sm text-gray-700">{salesItem.productName || '-'}</td>
+                          <td className="px-2 py-2 text-center text-sm">{salesItem.quantity}</td>
+                          <td className="px-2 py-2 text-right text-sm">{Number(salesItem.unitPrice || 0).toLocaleString()}</td>
+                          <td className="px-2 py-2 text-right font-medium text-blue-700 border-r-2 border-gray-300">
+                            {Number(salesItem.totalPrice || 0).toLocaleString()}
+                          </td>
+                          {purchaseItem ? (
+                            <>
+                              <td className="px-2 py-2 text-sm">{purchaseItem.vendorCompany || '-'}</td>
+                              <td className="px-2 py-2 text-right text-sm">{Number(purchaseItem.unitPrice || 0).toLocaleString()}</td>
+                              <td className="px-2 py-2 text-right font-medium text-purple-700">
+                                {Number(purchaseItem.totalPrice || 0).toLocaleString()}
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="px-2 py-2"></td>
+                              <td className="px-2 py-2"></td>
+                              <td className="px-2 py-2"></td>
+                            </>
+                          )}
+                        </tr>
+                      )
+                    } else if (purchaseItem) {
+                      rows.push(
+                        <tr key={i} className="hover:bg-gray-50">
+                          <td className="px-2 py-2"></td>
+                          <td className="px-2 py-2"></td>
+                          <td className="px-2 py-2"></td>
+                          <td className="px-2 py-2"></td>
+                          <td className="px-2 py-2 border-r-2 border-gray-300"></td>
+                          <td className="px-2 py-2 text-sm">{purchaseItem.vendorCompany || '-'}</td>
+                          <td className="px-2 py-2 text-right text-sm">{Number(purchaseItem.unitPrice || 0).toLocaleString()}</td>
+                          <td className="px-2 py-2 text-right font-medium text-purple-700">
+                            {Number(purchaseItem.totalPrice || 0).toLocaleString()}
+                          </td>
+                        </tr>
+                      )
+                    }
+                  }
+                  return rows
+                })()
               )}
-            </div>
-          ))}
+            </tbody>
+          </table>
         </div>
-        <div className="px-6 py-4 border-t bg-purple-50">
-          <div className="flex justify-end">
-            <div className="w-72 space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">매입 합계</span>
-                <span className="font-medium">{Number(approval.purchaseTotal || 0).toLocaleString()}원</span>
-              </div>
-              <div className="flex justify-between pt-2 border-t text-base">
-                <span className="font-semibold">VAT 포함</span>
-                <span className="font-bold text-purple-600">{Number(approval.purchaseTotalWithVat || 0).toLocaleString()}원</span>
-              </div>
-            </div>
-          </div>
+
+        {/* 합계 영역 */}
+        <div className="bg-gray-50 border-t">
+          <table className="w-full text-sm">
+            <tbody>
+              <tr>
+                <td className="px-2 py-3 w-24"></td>
+                <td className="px-2 py-3 w-64"></td>
+                <td className="px-2 py-3 w-16"></td>
+                <td className="px-2 py-3 w-24 text-right text-sm text-gray-500">매출합계</td>
+                <td className="px-2 py-3 w-28 text-right border-r-2 border-gray-300">
+                  <div className="text-xs text-gray-500">VAT별도</div>
+                  <div className="text-base font-bold text-blue-700">
+                    {Number(approval.totalAmount || 0).toLocaleString()}원
+                  </div>
+                </td>
+                <td className="px-2 py-3 w-28 text-right text-sm text-gray-500">매입합계</td>
+                <td className="px-2 py-3 w-24 text-right">
+                  <div className="text-xs text-gray-500">VAT별도</div>
+                  <div className="text-base font-bold text-purple-700">
+                    {Number(approval.purchaseTotal || 0).toLocaleString()}원
+                  </div>
+                </td>
+                <td className="px-2 py-3 w-28 text-right">
+                  <div className="text-xs text-gray-500">VAT포함</div>
+                  <div className="text-base font-bold text-purple-700">
+                    {Number(approval.purchaseTotalWithVat || 0).toLocaleString()}원
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 

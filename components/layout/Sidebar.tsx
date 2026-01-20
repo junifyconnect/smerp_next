@@ -47,7 +47,7 @@ const navigation = [
     title: '경영',
     items: [
       { name: '매출/매입 현황', href: '/management', icon: UilMoneyWithdrawal },
-      { name: '계산서 발행 현황', href: '/management/invoice-issue', icon: UilReceipt },
+      { name: '계산서 발행 현황', href: '/management/invoice-status', icon: UilReceipt },
     ],
   },
   {

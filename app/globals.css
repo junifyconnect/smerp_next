@@ -37,3 +37,13 @@ textarea::placeholder {
   color: #6b7280 !important;
   opacity: 1;
 }
+
+/* 숫자 입력 스피너 제거 */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}

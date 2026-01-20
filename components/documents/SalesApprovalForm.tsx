@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { UilEdit, UilFileAlt, UilPlus, UilTrashAlt } from '@iconscout/react-unicons'
 import { useRouter } from 'next/navigation'
-import { UilPlus, UilTrashAlt, UilEdit, UilFileAlt } from '@iconscout/react-unicons'
+import { useState } from 'react'
 import { SalesApprovalTemplate } from './SalesApprovalTemplate'
 
 export interface SalesItem {
@@ -324,10 +324,10 @@ export function SalesApprovalForm({ basePath, title }: SalesApprovalFormProps) {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">P/N</th>
-                  <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">품목</th>
-                  <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">수량</th>
-                  <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">단가</th>
+                  <th className="px-4 py-3 text-left text-sm font-bold text-gray-700" style={{ width: '120px', minWidth: '120px' }}>P/N</th>
+                  <th className="px-4 py-3 text-left text-sm font-bold text-gray-700" style={{ width: '200px', minWidth: '150px' }}>품목</th>
+                  <th className="px-4 py-3 text-right text-sm font-bold text-gray-700" style={{ width: '80px', minWidth: '80px' }}>수량</th>
+                  <th className="px-4 py-3 text-right text-sm font-bold text-gray-700" style={{ width: '120px', minWidth: '100px' }}>단가</th>
                   <th className="px-4 py-3 text-right text-sm font-bold text-gray-700" style={{ width: '140px', minWidth: '140px' }}>합계</th>
                   <th className="px-4 py-3 text-center text-sm font-bold text-gray-700" style={{ width: '80px', minWidth: '80px' }}>작업</th>
                 </tr>
@@ -335,7 +335,7 @@ export function SalesApprovalForm({ basePath, title }: SalesApprovalFormProps) {
               <tbody className="divide-y divide-gray-100">
                 {salesItems.map((item, index) => (
                   <tr key={index}>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" style={{ width: '120px', minWidth: '120px' }}>
                       <input
                         type="text"
                         value={item.partNumber || ''}
@@ -344,7 +344,7 @@ export function SalesApprovalForm({ basePath, title }: SalesApprovalFormProps) {
                         placeholder="P/N"
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" style={{ width: '200px', minWidth: '150px' }}>
                       <textarea
                         value={item.description || ''}
                         onChange={(e) => handleSalesItemChange(index, 'description', e.target.value)}
@@ -353,7 +353,7 @@ export function SalesApprovalForm({ basePath, title }: SalesApprovalFormProps) {
                         rows={2}
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" style={{ width: '80px', minWidth: '80px' }}>
                       <input
                         type="number"
                         value={item.quantity}
@@ -362,7 +362,7 @@ export function SalesApprovalForm({ basePath, title }: SalesApprovalFormProps) {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-right"
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" style={{ width: '120px', minWidth: '100px' }}>
                       <input
                         type="number"
                         value={item.unitPrice || ''}
@@ -419,10 +419,10 @@ export function SalesApprovalForm({ basePath, title }: SalesApprovalFormProps) {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">매입일 or 계산서 발행</th>
-                  <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">매입처</th>
-                  <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">수량</th>
-                  <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">단가</th>
+                  <th className="px-4 py-3 text-left text-sm font-bold text-gray-700" style={{ width: '150px', minWidth: '120px' }}>매입일 or 계산서 발행</th>
+                  <th className="px-4 py-3 text-left text-sm font-bold text-gray-700" style={{ width: '200px', minWidth: '150px' }}>매입처</th>
+                  <th className="px-4 py-3 text-right text-sm font-bold text-gray-700" style={{ width: '80px', minWidth: '80px' }}>수량</th>
+                  <th className="px-4 py-3 text-right text-sm font-bold text-gray-700" style={{ width: '120px', minWidth: '100px' }}>단가</th>
                   <th className="px-4 py-3 text-right text-sm font-bold text-gray-700" style={{ width: '140px', minWidth: '140px' }}>합계</th>
                   <th className="px-4 py-3 text-center text-sm font-bold text-gray-700" style={{ width: '80px', minWidth: '80px' }}>작업</th>
                 </tr>
@@ -430,7 +430,7 @@ export function SalesApprovalForm({ basePath, title }: SalesApprovalFormProps) {
               <tbody className="divide-y divide-gray-100">
                 {purchaseItems.map((item, index) => (
                   <tr key={index}>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" style={{ width: '150px', minWidth: '120px' }}>
                       <input
                         type="text"
                         value={item.dateOrInvoice || ''}
@@ -439,7 +439,7 @@ export function SalesApprovalForm({ basePath, title }: SalesApprovalFormProps) {
                         placeholder="예: 2025.12.02"
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" style={{ width: '200px', minWidth: '150px' }}>
                       <input
                         type="text"
                         value={item.vendor || ''}
@@ -448,7 +448,7 @@ export function SalesApprovalForm({ basePath, title }: SalesApprovalFormProps) {
                         placeholder="매입처"
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" style={{ width: '80px', minWidth: '80px' }}>
                       <input
                         type="number"
                         value={item.quantity}
@@ -457,7 +457,7 @@ export function SalesApprovalForm({ basePath, title }: SalesApprovalFormProps) {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-right"
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" style={{ width: '120px', minWidth: '100px' }}>
                       <input
                         type="number"
                         value={item.unitPrice || ''}

@@ -4,6 +4,12 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 
+interface User {
+  id: string
+  name: string
+  signatureUrl?: string
+}
+
 interface ItemDetail {
   id?: string
   partNumber?: string
@@ -119,7 +125,23 @@ export default function SalesApprovalDetailPage() {
   const [versions, setVersions] = useState<ApprovalVersion[]>([])
   const [uploadingFile, setUploadingFile] = useState(false)
   const [creatingRevision, setCreatingRevision] = useState(false)
+  const [users, setUsers] = useState<User[]>([])
+  const [showSignModal, setShowSignModal] = useState<'SALES_MANAGER' | 'TEAM_LEADER' | 'CEO' | null>(null)
+  const [selectedUserId, setSelectedUserId] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // 사용자 목록 조회
+  const fetchUsers = useCallback(async () => {
+    try {
+      const res = await fetch('/api/users')
+      if (res.ok) {
+        const data = await res.json()
+        setUsers(data)
+      }
+    } catch (err) {
+      console.error('사용자 목록 조회 실패:', err)
+    }
+  }, [])
 
   const fetchApproval = useCallback(async () => {
     try {

@@ -4,20 +4,27 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 
-interface SalesItem {
+interface Item {
   partNumber: string
   description: string
   quantity: number
-  unitPrice: number
+  salesUnitPrice: number
+  purchaseUnitPrice: number
+  vendorCompany: string
 }
 
-interface PurchaseItem {
-  partNumber: string
-  description: string
-  quantity: number
-  unitPrice: number
-  vendorCompany: string
-  purchaseDate: string
+interface ApiItem {
+  productName?: string
+  quantity?: number
+  unitPrice?: number | string
+  vendorCompany?: string
+  details?: ApiItemDetail[]
+}
+
+interface ApiItemDetail {
+  partNumber?: string
+  description?: string
+  quantity?: number
 }
 
 export default function EditSalesApprovalPage() {
@@ -45,8 +52,23 @@ export default function EditSalesApprovalPage() {
     notes: '',
   })
 
-  const [items, setItems] = useState<SalesItem[]>([])
-  const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([])
+  // === 통합 품목 (매출+매입) ===
+  const [items, setItems] = useState<Item[]>([
+    { partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '' },
+  ])
+
+  // === 통합 견적 (매출) ===
+  const [isConsolidatedSales, setIsConsolidatedSales] = useState(false)
+  const [consolidatedSalesName, setConsolidatedSalesName] = useState('')
+  const [consolidatedSalesQty, setConsolidatedSalesQty] = useState(1)
+  const [consolidatedSalesPrice, setConsolidatedSalesPrice] = useState(0)
+
+  // === 통합 매입 ===
+  const [isConsolidatedPurchase, setIsConsolidatedPurchase] = useState(false)
+  const [consolidatedPurchaseName, setConsolidatedPurchaseName] = useState('')
+  const [consolidatedPurchaseQty, setConsolidatedPurchaseQty] = useState(1)
+  const [consolidatedPurchaseVendor, setConsolidatedPurchaseVendor] = useState('')
+  const [consolidatedPurchaseAmount, setConsolidatedPurchaseAmount] = useState(0)
 
   const fetchApproval = useCallback(async () => {
     try {
@@ -77,29 +99,77 @@ export default function EditSalesApprovalPage() {
           notes: data.notes || '',
         })
 
-        setItems(
-          data.items?.length > 0
-            ? data.items.map((item: { partNumber?: string; description?: string; quantity: number; unitPrice?: number }) => ({
-                partNumber: item.partNumber || '',
-                description: item.description || '',
-                quantity: item.quantity || 1,
-                unitPrice: Number(item.unitPrice) || 0,
-              }))
-            : [{ partNumber: '', description: '', quantity: 1, unitPrice: 0 }]
-        )
+        // 통합 매출 체크: items가 1개이고 details가 있으면 통합 모드
+        const salesItems = data.items || []
+        const purchaseItems = data.purchaseItems || []
 
-        setPurchaseItems(
-          data.purchaseItems?.length > 0
-            ? data.purchaseItems.map((item: { partNumber?: string; description?: string; quantity: number; unitPrice?: number; vendorCompany?: string; purchaseDate?: string }) => ({
-                partNumber: item.partNumber || '',
-                description: item.description || '',
-                quantity: item.quantity || 1,
-                unitPrice: Number(item.unitPrice) || 0,
-                vendorCompany: item.vendorCompany || '',
-                purchaseDate: item.purchaseDate ? item.purchaseDate.split('T')[0] : '',
-              }))
-            : [{ partNumber: '', description: '', quantity: 1, unitPrice: 0, vendorCompany: '', purchaseDate: '' }]
-        )
+        if (salesItems.length === 1 && salesItems[0].details && salesItems[0].details.length > 0) {
+          // 통합 매출 모드
+          setIsConsolidatedSales(true)
+          setConsolidatedSalesName(salesItems[0].productName || '')
+          setConsolidatedSalesQty(salesItems[0].quantity || 1)
+          setConsolidatedSalesPrice(Number(salesItems[0].unitPrice) || 0)
+
+          // details를 items로 변환
+          const loadedItems: Item[] = salesItems[0].details.map((detail: ApiItemDetail, idx: number) => {
+            const purchaseItem = purchaseItems[0]?.details?.[idx]
+            return {
+              partNumber: detail.partNumber || '',
+              description: detail.description || '',
+              quantity: detail.quantity || 1,
+              salesUnitPrice: 0, // 통합이므로 0
+              purchaseUnitPrice: 0, // 아래에서 처리
+              vendorCompany: '',
+            }
+          })
+
+          // 통합 매입 체크
+          if (purchaseItems.length === 1 && purchaseItems[0].details && purchaseItems[0].details.length > 0) {
+            setIsConsolidatedPurchase(true)
+            setConsolidatedPurchaseName(purchaseItems[0].productName || '')
+            setConsolidatedPurchaseQty(purchaseItems[0].quantity || 1)
+            setConsolidatedPurchaseVendor(purchaseItems[0].vendorCompany || '')
+            setConsolidatedPurchaseAmount(Number(purchaseItems[0].unitPrice) || 0)
+          } else if (purchaseItems.length > 0) {
+            // 개별 매입
+            loadedItems.forEach((item, idx) => {
+              if (purchaseItems[idx]) {
+                item.purchaseUnitPrice = Number(purchaseItems[idx].unitPrice) || 0
+                item.vendorCompany = purchaseItems[idx].vendorCompany || ''
+              }
+            })
+          }
+
+          setItems(loadedItems.length > 0 ? loadedItems : [
+            { partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '' }
+          ])
+        } else {
+          // 개별 매출 모드 - 기존 방식
+          const loadedItems: Item[] = []
+          const maxLen = Math.max(salesItems.length, purchaseItems.length, 1)
+
+          for (let i = 0; i < maxLen; i++) {
+            const salesItem = salesItems[i]
+            const purchaseItem = purchaseItems[i]
+
+            // details가 있으면 첫번째 detail 사용
+            const salesDetail = salesItem?.details?.[0]
+            const purchaseDetail = purchaseItem?.details?.[0]
+
+            loadedItems.push({
+              partNumber: salesDetail?.partNumber || salesItem?.productName || purchaseDetail?.partNumber || '',
+              description: salesDetail?.description || purchaseDetail?.description || '',
+              quantity: salesDetail?.quantity || salesItem?.quantity || purchaseItem?.quantity || 1,
+              salesUnitPrice: Number(salesItem?.unitPrice) || 0,
+              purchaseUnitPrice: Number(purchaseItem?.unitPrice) || 0,
+              vendorCompany: purchaseItem?.vendorCompany || '',
+            })
+          }
+
+          setItems(loadedItems.length > 0 ? loadedItems : [
+            { partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '' }
+          ])
+        }
       } else {
         router.push('/sales/approvals')
       }
@@ -119,7 +189,7 @@ export default function EditSalesApprovalPage() {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleItemChange = (index: number, field: keyof SalesItem, value: string | number) => {
+  const handleItemChange = (index: number, field: keyof Item, value: string | number) => {
     setItems((prev) => {
       const next = [...prev]
       next[index] = { ...next[index], [field]: value }
@@ -128,7 +198,7 @@ export default function EditSalesApprovalPage() {
   }
 
   const addItem = () => {
-    setItems((prev) => [...prev, { partNumber: '', description: '', quantity: 1, unitPrice: 0 }])
+    setItems((prev) => [...prev, { partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '' }])
   }
 
   const removeItem = (index: number) => {
@@ -137,43 +207,87 @@ export default function EditSalesApprovalPage() {
     }
   }
 
-  const handlePurchaseItemChange = (index: number, field: keyof PurchaseItem, value: string | number) => {
-    setPurchaseItems((prev) => {
-      const next = [...prev]
-      next[index] = { ...next[index], [field]: value }
-      return next
-    })
-  }
-
-  const addPurchaseItem = () => {
-    setPurchaseItems((prev) => [
-      ...prev,
-      { partNumber: '', description: '', quantity: 1, unitPrice: 0, vendorCompany: '', purchaseDate: '' },
-    ])
-  }
-
-  const removePurchaseItem = (index: number) => {
-    if (purchaseItems.length > 1) {
-      setPurchaseItems((prev) => prev.filter((_, i) => i !== index))
-    }
-  }
-
-  const calcItemTotal = (item: SalesItem | PurchaseItem) => item.quantity * item.unitPrice
-  const calcSalesTotal = () => items.reduce((sum, item) => sum + calcItemTotal(item), 0)
-  const calcPurchaseTotal = () => purchaseItems.reduce((sum, item) => sum + calcItemTotal(item), 0)
+  const calcSalesItemTotal = (item: Item) => item.quantity * item.salesUnitPrice
+  const calcPurchaseItemTotal = (item: Item) => item.quantity * item.purchaseUnitPrice
+  const calcSalesTotal = () => items.reduce((sum, item) => sum + calcSalesItemTotal(item), 0)
+  const calcPurchaseTotal = () => items.reduce((sum, item) => sum + calcPurchaseItemTotal(item), 0)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
 
     try {
+      // 매출 아이템 구성
+      let salesItemsPayload: ApiItem[] = []
+      let purchaseItemsPayload: ApiItem[] = []
+
+      if (isConsolidatedSales) {
+        // 통합 매출: 하나의 아이템 + details
+        salesItemsPayload = [{
+          productName: consolidatedSalesName || '통합견적',
+          quantity: consolidatedSalesQty || 1,
+          unitPrice: consolidatedSalesPrice,
+          details: items.map((item, idx) => ({
+            partNumber: item.partNumber,
+            description: item.description,
+            quantity: item.quantity,
+            sortOrder: idx,
+          })),
+        }]
+      } else {
+        // 개별 매출
+        salesItemsPayload = items.filter(item => item.description || item.salesUnitPrice > 0).map((item, idx) => ({
+          productName: item.partNumber || item.description || '품목',
+          quantity: item.quantity,
+          unitPrice: item.salesUnitPrice,
+          sortOrder: idx,
+          details: [{
+            partNumber: item.partNumber,
+            description: item.description,
+            quantity: item.quantity,
+            sortOrder: 0,
+          }],
+        }))
+      }
+
+      if (isConsolidatedPurchase) {
+        // 통합 매입
+        purchaseItemsPayload = [{
+          productName: consolidatedPurchaseName || '통합매입',
+          quantity: consolidatedPurchaseQty || 1,
+          unitPrice: consolidatedPurchaseAmount,
+          vendorCompany: consolidatedPurchaseVendor,
+          details: items.map((item, idx) => ({
+            partNumber: item.partNumber,
+            description: item.description,
+            quantity: item.quantity,
+            sortOrder: idx,
+          })),
+        }]
+      } else {
+        // 개별 매입
+        purchaseItemsPayload = items.filter(item => item.description || item.purchaseUnitPrice > 0).map((item, idx) => ({
+          productName: item.partNumber || item.description || '품목',
+          quantity: item.quantity,
+          unitPrice: item.purchaseUnitPrice,
+          vendorCompany: item.vendorCompany,
+          sortOrder: idx,
+          details: [{
+            partNumber: item.partNumber,
+            description: item.description,
+            quantity: item.quantity,
+            sortOrder: 0,
+          }],
+        }))
+      }
+
       const res = await fetch(`/api/sales-approvals/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          items: items.filter((item) => item.description || item.unitPrice > 0),
-          purchaseItems: purchaseItems.filter((item) => item.description || item.unitPrice > 0),
+          items: salesItemsPayload,
+          purchaseItems: purchaseItemsPayload,
         }),
       })
 
@@ -354,186 +468,278 @@ export default function EditSalesApprovalPage() {
           </div>
         </div>
 
-        {/* 매출 품목 */}
+        {/* 통합 품목 */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-900">매출 품목</h3>
-            <button
-              type="button"
-              onClick={addItem}
-              className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
-            >
-              + 품목 추가
-            </button>
+            <h3 className="text-sm font-semibold text-gray-900">품목 내역</h3>
+            <div className="flex items-center gap-4">
+              {/* 통합 견적 토글 */}
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={isConsolidatedSales}
+                  onChange={(e) => setIsConsolidatedSales(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-blue-600 font-medium">통합 매출</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={isConsolidatedPurchase}
+                  onChange={(e) => setIsConsolidatedPurchase(e.target.checked)}
+                  className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                />
+                <span className="text-purple-600 font-medium">통합 매입</span>
+              </label>
+              <button
+                type="button"
+                onClick={addItem}
+                className="px-3 py-1.5 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-900"
+              >
+                + 품목 추가
+              </button>
+            </div>
           </div>
+
+          {/* 품목 테이블 */}
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-100 border-b">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">P/N</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">품목</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 w-24">수량</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 w-32">단가</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 w-32">합계</th>
-                  <th className="px-4 py-3 w-12"></th>
+                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 w-24">P/N</th>
+                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 w-64">품목</th>
+                  <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-16">수량</th>
+                  {/* 매출 */}
+                  <th className="px-2 py-2 text-right text-xs font-medium text-blue-600 w-24">매출단가</th>
+                  <th className="px-2 py-2 text-right text-xs font-medium text-blue-600 w-28 border-r-2 border-gray-300">매출합계</th>
+                  {/* 매입 */}
+                  <th className="px-2 py-2 text-left text-xs font-medium text-purple-600 w-28">매입처</th>
+                  <th className="px-2 py-2 text-right text-xs font-medium text-purple-600 w-24">매입단가</th>
+                  <th className="px-2 py-2 text-right text-xs font-medium text-purple-600 w-28">매입합계</th>
+                  <th className="px-2 py-2 text-center w-10"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-100">
+                {/* 통합 행 (매출 또는 매입 중 하나라도 통합이면 표시) */}
+                {(isConsolidatedSales || isConsolidatedPurchase) && (
+                  <tr className="bg-gradient-to-r from-blue-50/50 to-purple-50/50">
+                    <td className="px-2 py-2">
+                      <span className="text-xs font-medium text-gray-600">통합</span>
+                    </td>
+                    {/* 통합 매출 */}
+                    {isConsolidatedSales ? (
+                      <>
+                        <td className="px-2 py-2">
+                          <input
+                            type="text"
+                            value={consolidatedSalesName}
+                            onChange={(e) => setConsolidatedSalesName(e.target.value)}
+                            className="w-full px-2 py-1 border border-blue-300 rounded text-xs bg-blue-50"
+                            placeholder="제품명"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input
+                            type="number"
+                            value={consolidatedSalesQty || 1}
+                            onChange={(e) => setConsolidatedSalesQty(parseInt(e.target.value) || 1)}
+                            className="w-full px-2 py-1 border border-blue-300 rounded text-xs text-right bg-blue-50"
+                            min="1"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input
+                            type="number"
+                            value={consolidatedSalesPrice || ''}
+                            onChange={(e) => setConsolidatedSalesPrice(parseInt(e.target.value) || 0)}
+                            className="w-full px-2 py-1 border border-blue-300 rounded text-xs text-right bg-blue-50"
+                            placeholder="0"
+                          />
+                        </td>
+                        <td className="px-2 py-2 text-right font-medium text-blue-700 text-xs border-r-2 border-gray-300">
+                          {((consolidatedSalesQty || 1) * (consolidatedSalesPrice || 0)).toLocaleString()}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-2 py-2"></td>
+                        <td className="px-2 py-2"></td>
+                        <td className="px-2 py-2"></td>
+                        <td className="px-2 py-2 border-r-2 border-gray-300"></td>
+                      </>
+                    )}
+                    {/* 통합 매입 */}
+                    {isConsolidatedPurchase ? (
+                      <>
+                        <td className="px-2 py-2">
+                          <input
+                            type="text"
+                            value={consolidatedPurchaseVendor}
+                            onChange={(e) => setConsolidatedPurchaseVendor(e.target.value)}
+                            className="w-full px-2 py-1 border border-purple-300 rounded text-xs bg-purple-50"
+                            placeholder="매입처"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input
+                            type="number"
+                            value={consolidatedPurchaseAmount || ''}
+                            onChange={(e) => setConsolidatedPurchaseAmount(parseInt(e.target.value) || 0)}
+                            className="w-full px-2 py-1 border border-purple-300 rounded text-xs text-right bg-purple-50"
+                            placeholder="0"
+                          />
+                        </td>
+                        <td className="px-2 py-2 text-right font-medium text-purple-700 text-xs">
+                          {((consolidatedPurchaseQty || 1) * (consolidatedPurchaseAmount || 0)).toLocaleString()}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-2 py-2"></td>
+                        <td className="px-2 py-2"></td>
+                        <td className="px-2 py-2"></td>
+                      </>
+                    )}
+                    <td className="px-2 py-2"></td>
+                  </tr>
+                )}
                 {items.map((item, index) => (
-                  <tr key={index}>
-                    <td className="px-4 py-2">
+                  <tr key={index} className="hover:bg-gray-50">
+                    <td className="px-2 py-2">
                       <input
                         type="text"
                         value={item.partNumber}
                         onChange={(e) => handleItemChange(index, 'partNumber', e.target.value)}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
+                        placeholder="P/N"
                       />
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-2 py-2">
                       <input
                         type="text"
                         value={item.description}
                         onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
+                        placeholder="품목명"
                       />
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-2 py-2">
                       <input
                         type="number"
                         value={item.quantity}
                         onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-right"
+                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs text-right"
                         min="1"
                       />
                     </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="number"
-                        value={item.unitPrice}
-                        onChange={(e) => handleItemChange(index, 'unitPrice', parseInt(e.target.value) || 0)}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-right"
-                      />
+                    {/* 매출 */}
+                    <td className="px-2 py-2">
+                      {isConsolidatedSales ? (
+                        <span className="text-xs text-gray-400 block text-right">-</span>
+                      ) : (
+                        <input
+                          type="number"
+                          value={item.salesUnitPrice || ''}
+                          onChange={(e) => handleItemChange(index, 'salesUnitPrice', parseInt(e.target.value) || 0)}
+                          className="w-full px-2 py-1 border border-blue-200 rounded text-xs text-right bg-blue-50/30"
+                          placeholder="0"
+                        />
+                      )}
                     </td>
-                    <td className="px-4 py-2 text-right text-sm font-medium">
-                      {calcItemTotal(item).toLocaleString()}원
+                    <td className="px-2 py-2 text-right font-medium text-blue-700 text-xs border-r-2 border-gray-300">
+                      {isConsolidatedSales ? '-' : calcSalesItemTotal(item).toLocaleString()}
                     </td>
-                    <td className="px-4 py-2 text-center">
-                      <button
-                        type="button"
-                        onClick={() => removeItem(index)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
+                    {/* 매입 */}
+                    <td className="px-2 py-2">
+                      {isConsolidatedPurchase ? (
+                        <span className="text-xs text-gray-400 block">-</span>
+                      ) : (
+                        <input
+                          type="text"
+                          value={item.vendorCompany}
+                          onChange={(e) => handleItemChange(index, 'vendorCompany', e.target.value)}
+                          className="w-full px-2 py-1 border border-purple-200 rounded text-xs bg-purple-50/30"
+                          placeholder="매입처"
+                        />
+                      )}
+                    </td>
+                    <td className="px-2 py-2">
+                      {isConsolidatedPurchase ? (
+                        <span className="text-xs text-gray-400 block text-right">-</span>
+                      ) : (
+                        <input
+                          type="number"
+                          value={item.purchaseUnitPrice || ''}
+                          onChange={(e) => handleItemChange(index, 'purchaseUnitPrice', parseInt(e.target.value) || 0)}
+                          className="w-full px-2 py-1 border border-purple-200 rounded text-xs text-right bg-purple-50/30"
+                          placeholder="0"
+                        />
+                      )}
+                    </td>
+                    <td className="px-2 py-2 text-right font-medium text-purple-700 text-xs">
+                      {isConsolidatedPurchase ? '-' : calcPurchaseItemTotal(item).toLocaleString()}
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      {items.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeItem(index)}
+                          className="p-0.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="px-6 py-4 border-t bg-gray-50">
-            <div className="flex justify-end text-sm">
-              <span className="text-gray-600">매출 합계: </span>
-              <span className="font-bold text-lg ml-2">{calcSalesTotal().toLocaleString()}원</span>
-            </div>
-          </div>
-        </div>
 
-        {/* 매입 품목 */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-900">매입 품목</h3>
-            <button
-              type="button"
-              onClick={addPurchaseItem}
-              className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700"
-            >
-              + 품목 추가
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
+          {/* 합계 영역 */}
+          <div className="bg-gray-50 border-t">
+            <table className="w-full text-sm">
+              <tbody>
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">P/N</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">품목</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">매입처</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 w-24">수량</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 w-32">단가</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 w-32">합계</th>
-                  <th className="px-4 py-3 w-12"></th>
+                  <td className="px-2 py-3 w-24"></td>
+                  <td className="px-2 py-3 w-64"></td>
+                  <td className="px-2 py-3 w-16"></td>
+                  <td className="px-2 py-3 w-24 text-right text-sm text-gray-500">매출합계</td>
+                  <td className="px-2 py-3 w-28 text-right border-r-2 border-gray-300">
+                    <div className="text-xs text-gray-500">VAT별도</div>
+                    <div className="text-base font-bold text-blue-700">
+                      {(isConsolidatedSales
+                        ? (consolidatedSalesQty || 1) * (consolidatedSalesPrice || 0)
+                        : calcSalesTotal()
+                      ).toLocaleString()}원
+                    </div>
+                  </td>
+                  <td className="px-2 py-3 w-28 text-right text-sm text-gray-500">매입합계</td>
+                  <td className="px-2 py-3 w-24 text-right">
+                    <div className="text-xs text-gray-500">VAT별도</div>
+                    <div className="text-base font-bold text-purple-700">
+                      {(isConsolidatedPurchase
+                        ? (consolidatedPurchaseQty || 1) * (consolidatedPurchaseAmount || 0)
+                        : calcPurchaseTotal()
+                      ).toLocaleString()}원
+                    </div>
+                  </td>
+                  <td className="px-2 py-3 w-28 text-right">
+                    <div className="text-xs text-gray-500">VAT포함</div>
+                    <div className="text-base font-bold text-purple-700">
+                      {Math.round((isConsolidatedPurchase
+                        ? (consolidatedPurchaseQty || 1) * (consolidatedPurchaseAmount || 0)
+                        : calcPurchaseTotal()
+                      ) * 1.1).toLocaleString()}원
+                    </div>
+                  </td>
+                  <td className="px-2 py-3 w-10"></td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {purchaseItems.map((item, index) => (
-                  <tr key={index}>
-                    <td className="px-4 py-2">
-                      <input
-                        type="text"
-                        value={item.partNumber}
-                        onChange={(e) => handlePurchaseItemChange(index, 'partNumber', e.target.value)}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="text"
-                        value={item.description}
-                        onChange={(e) => handlePurchaseItemChange(index, 'description', e.target.value)}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="text"
-                        value={item.vendorCompany}
-                        onChange={(e) => handlePurchaseItemChange(index, 'vendorCompany', e.target.value)}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => handlePurchaseItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-right"
-                        min="1"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="number"
-                        value={item.unitPrice}
-                        onChange={(e) => handlePurchaseItemChange(index, 'unitPrice', parseInt(e.target.value) || 0)}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-right"
-                      />
-                    </td>
-                    <td className="px-4 py-2 text-right text-sm font-medium">
-                      {calcItemTotal(item).toLocaleString()}원
-                    </td>
-                    <td className="px-4 py-2 text-center">
-                      <button
-                        type="button"
-                        onClick={() => removePurchaseItem(index)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
               </tbody>
             </table>
-          </div>
-          <div className="px-6 py-4 border-t bg-gray-50">
-            <div className="flex justify-end text-sm">
-              <span className="text-gray-600">매입 합계: </span>
-              <span className="font-bold text-lg ml-2">{calcPurchaseTotal().toLocaleString()}원</span>
-            </div>
           </div>
         </div>
 
@@ -545,27 +751,43 @@ export default function EditSalesApprovalPage() {
             onChange={(e) => handleInputChange('notes', e.target.value)}
             rows={3}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            placeholder="특이사항 입력..."
           />
         </div>
 
         {/* 마진 요약 */}
-        <div className="bg-blue-50 rounded-xl border border-blue-200 p-6">
-          <div className="grid grid-cols-3 gap-6 text-center">
-            <div>
-              <p className="text-sm text-blue-600">매출</p>
-              <p className="text-xl font-bold text-blue-900">{calcSalesTotal().toLocaleString()}원</p>
-            </div>
-            <div>
-              <p className="text-sm text-blue-600">매입</p>
-              <p className="text-xl font-bold text-blue-900">{calcPurchaseTotal().toLocaleString()}원</p>
-            </div>
-            <div>
-              <p className="text-sm text-blue-600">마진</p>
-              <p className={`text-xl font-bold ${calcSalesTotal() - calcPurchaseTotal() >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {(calcSalesTotal() - calcPurchaseTotal()).toLocaleString()}원
-              </p>
-            </div>
-          </div>
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200 p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4">마진 요약</h3>
+          {(() => {
+            const salesTotal = isConsolidatedSales
+              ? (consolidatedSalesQty || 1) * (consolidatedSalesPrice || 0)
+              : calcSalesTotal()
+            const purchaseTotal = isConsolidatedPurchase
+              ? (consolidatedPurchaseQty || 1) * (consolidatedPurchaseAmount || 0)
+              : calcPurchaseTotal()
+            const margin = salesTotal - purchaseTotal
+            return (
+              <div className="grid grid-cols-3 gap-6 text-center">
+                <div>
+                  <p className="text-sm text-blue-600">매출 (VAT별도)</p>
+                  <p className="text-xl font-bold text-blue-900">{salesTotal.toLocaleString()}원</p>
+                </div>
+                <div>
+                  <p className="text-sm text-purple-600">매입 (VAT별도)</p>
+                  <p className="text-xl font-bold text-purple-900">{purchaseTotal.toLocaleString()}원</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">마진</p>
+                  <p className={`text-xl font-bold ${margin >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {margin.toLocaleString()}원
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    ({salesTotal > 0 ? ((margin / salesTotal) * 100).toFixed(1) : 0}%)
+                  </p>
+                </div>
+              </div>
+            )
+          })()}
         </div>
 
         {/* 버튼 */}

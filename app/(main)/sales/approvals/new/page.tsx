@@ -5,18 +5,14 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import QuoteSelectModal from '@/components/modals/QuoteSelectModal'
 
-// 통합 품목 (매출 + 매입 정보를 하나의 행에서 처리)
-interface ApprovalItem {
+// 통합 품목 (매출+매입 같이)
+interface Item {
   partNumber: string
   description: string
   quantity: number
-  // 매출 정보
-  salesUnitPrice: number
-  // 매입 정보
-  purchaseDate: string // 매입일 or 계산서 발행일
-  vendor: string // 매입처
-  purchaseQuantity: number // 매입 수량
-  purchaseUnitPrice: number // 매입단가
+  salesUnitPrice: number  // 매출 단가
+  purchaseUnitPrice: number  // 매입 단가
+  vendorCompany: string  // 매입처
 }
 
 interface SalesQuote {
@@ -28,7 +24,6 @@ interface SalesQuote {
   managerName?: string
   paymentTerms?: string
   dealId?: string
-  // 통합 견적 정보
   isConsolidated?: boolean
   consolidatedName?: string
   consolidatedPrice?: number
@@ -71,14 +66,35 @@ function NewSalesApprovalForm() {
     notes: '',
   })
 
-  // 통합 품목 (매출 + 매입을 한 행에서 처리)
-  const [items, setItems] = useState<ApprovalItem[]>([
-    { partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseDate: '', vendor: '', purchaseQuantity: 1, purchaseUnitPrice: 0 },
+  // === 통합 품목 (매출+매입) ===
+  const [items, setItems] = useState<Item[]>([
+    { partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '' },
   ])
 
-  // 통합 견적 여부 (매출 금액을 통합으로 표시)
-  const [isConsolidatedQuote, setIsConsolidatedQuote] = useState(false)
+  // === 통합 견적 (매출) ===
+  const [isConsolidatedSales, setIsConsolidatedSales] = useState(false)
+  const [consolidatedSalesName, setConsolidatedSalesName] = useState('')
+  const [consolidatedSalesQty, setConsolidatedSalesQty] = useState(1)
   const [consolidatedSalesPrice, setConsolidatedSalesPrice] = useState(0)
+
+  // === 통합 매입 ===
+  const [isConsolidatedPurchase, setIsConsolidatedPurchase] = useState(false)
+  const [consolidatedPurchaseName, setConsolidatedPurchaseName] = useState('')
+  const [consolidatedPurchaseQty, setConsolidatedPurchaseQty] = useState(1)
+  const [consolidatedPurchaseVendor, setConsolidatedPurchaseVendor] = useState('')
+  const [consolidatedPurchaseAmount, setConsolidatedPurchaseAmount] = useState(0)
+
+  // 품의코드 자동생성
+  useEffect(() => {
+    fetch('/api/sales-approvals/next-code')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.approvalCode) {
+          setFormData((prev) => ({ ...prev, approvalCode: data.approvalCode }))
+        }
+      })
+      .catch((err) => console.error('품의코드 생성 실패:', err))
+  }, [])
 
   // 견적서에서 데이터 로드
   useEffect(() => {
@@ -94,7 +110,6 @@ function NewSalesApprovalForm() {
     }
   }, [quoteId])
 
-  // 견적서 데이터 로드 함수 (URL 파라미터 & 모달 선택 공통)
   const loadQuoteData = (quote: SalesQuote) => {
     setLinkedQuote(quote)
     setFormData((prev) => ({
@@ -106,48 +121,41 @@ function NewSalesApprovalForm() {
       paymentTerms: quote.paymentTerms || '',
     }))
 
-    // 통합 견적 여부 확인
+    // 품목 설정
     if (quote.isConsolidated) {
-      setIsConsolidatedQuote(true)
+      setIsConsolidatedSales(true)
+      setConsolidatedSalesName(quote.consolidatedName || '')
       setConsolidatedSalesPrice(quote.consolidatedPrice || quote.totalAmount || 0)
-      // 개별 품목들을 통합 아이템으로 변환 (매출 단가는 0으로, 통합 금액 사용)
       setItems(
         quote.items.map((item) => ({
           partNumber: item.partNumber || '',
           description: item.description || '',
           quantity: item.quantity || 1,
-          salesUnitPrice: 0, // 통합 견적이므로 개별 단가 없음
-          purchaseDate: '',
-          vendor: '',
-          purchaseQuantity: item.quantity || 1,
+          salesUnitPrice: 0,
           purchaseUnitPrice: 0,
+          vendorCompany: '',
         }))
       )
     } else {
-      setIsConsolidatedQuote(false)
-      setConsolidatedSalesPrice(0)
-      // 개별 품목들을 통합 아이템으로 변환
+      setIsConsolidatedSales(false)
       setItems(
         quote.items.map((item) => ({
           partNumber: item.partNumber || '',
           description: item.description || '',
           quantity: item.quantity || 1,
           salesUnitPrice: Number(item.unitPrice) || 0,
-          purchaseDate: '',
-          vendor: '',
-          purchaseQuantity: item.quantity || 1,
           purchaseUnitPrice: 0,
+          vendorCompany: '',
         }))
       )
     }
   }
 
-  // 견적서 선택 모달에서 선택 시
   const handleQuoteSelect = (quote: SalesQuote) => {
     loadQuoteData(quote)
   }
 
-  // 데이터 로드 후 textarea 높이 자동 조절
+  // textarea 높이 자동 조절
   useEffect(() => {
     const timer = setTimeout(() => {
       const textareas = document.querySelectorAll<HTMLTextAreaElement>('textarea')
@@ -163,8 +171,8 @@ function NewSalesApprovalForm() {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  // ===== 품목 관리 =====
-  const handleItemChange = (index: number, field: keyof ApprovalItem, value: string | number) => {
+  // === 품목 관리 ===
+  const handleItemChange = (index: number, field: keyof Item, value: string | number) => {
     setItems((prev) => {
       const next = [...prev]
       next[index] = { ...next[index], [field]: value }
@@ -173,7 +181,7 @@ function NewSalesApprovalForm() {
   }
 
   const addItem = () => {
-    setItems((prev) => [...prev, { partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseDate: '', vendor: '', purchaseQuantity: 1, purchaseUnitPrice: 0 }])
+    setItems((prev) => [...prev, { partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '' }])
   }
 
   const removeItem = (index: number) => {
@@ -182,37 +190,80 @@ function NewSalesApprovalForm() {
     }
   }
 
-  // 금액 계산
-  const calcSalesItemTotal = (item: ApprovalItem) => item.quantity * item.salesUnitPrice
-  const calcPurchaseItemTotal = (item: ApprovalItem) => item.purchaseQuantity * item.purchaseUnitPrice
-  const calcSalesTotal = () => isConsolidatedQuote ? consolidatedSalesPrice : items.reduce((sum, item) => sum + calcSalesItemTotal(item), 0)
-  const calcPurchaseTotal = () => items.reduce((sum, item) => sum + calcPurchaseItemTotal(item), 0)
+  // === 금액 계산 ===
+  const calcSalesItemTotal = (item: Item) => item.quantity * item.salesUnitPrice
+  const calcPurchaseItemTotal = (item: Item) => item.quantity * item.purchaseUnitPrice
+
+  const calcSalesTotal = () =>
+    isConsolidatedSales
+      ? consolidatedSalesPrice
+      : items.reduce((sum, item) => sum + calcSalesItemTotal(item), 0)
+
+  const calcPurchaseTotal = () =>
+    isConsolidatedPurchase
+      ? consolidatedPurchaseAmount
+      : items.reduce((sum, item) => sum + calcPurchaseItemTotal(item), 0)
+
   const calcTotalMargin = () => calcSalesTotal() - calcPurchaseTotal()
 
-  // 엑셀 업로드 처리
+  // 엑셀 업로드 (파싱된 데이터로 폼 채우기)
   const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     setUploading(true)
     try {
-      const formData = new FormData()
-      formData.append('file', file)
+      const uploadFormData = new FormData()
+      uploadFormData.append('file', file)
 
       const res = await fetch('/api/sales-approvals/upload', {
         method: 'POST',
-        body: formData,
+        body: uploadFormData,
       })
 
       if (res.ok) {
-        const approval = await res.json()
-        router.push(`/sales/approvals/${approval.id}`)
-      } else {
         const data = await res.json()
-        alert(data.error || '엑셀 업로드에 실패했습니다')
+
+        // 기본 정보 채우기
+        setFormData({
+          approvalCode: data.approvalCode || formData.approvalCode,
+          approvalDate: data.approvalDate || formData.approvalDate,
+          managerName: data.managerName || '',
+          clientCompany: data.clientCompany || '',
+          clientContact: data.clientContact || '',
+          clientPhone: data.clientPhone || '',
+          endUser: data.endUser || '',
+          paymentTerms: data.paymentTerms || '',
+          deliveryAddress: data.deliveryAddress || '',
+          deliveryDate: data.deliveryDate || '',
+          invoiceEmail: data.invoiceEmail || '',
+          receiverName: data.receiverName || '',
+          receiverPhone: data.receiverPhone || '',
+          notes: data.notes || '',
+        })
+
+        // 품목 데이터 채우기
+        if (data.salesItems && data.salesItems.length > 0) {
+          const newItems: Item[] = data.salesItems.map((salesItem: { productName?: string; quantity?: number; unitPrice?: number }, idx: number) => {
+            const purchaseItem = data.purchaseItems?.[idx]
+            return {
+              partNumber: salesItem.productName || '',
+              description: '',
+              quantity: salesItem.quantity || 1,
+              salesUnitPrice: salesItem.unitPrice || 0,
+              purchaseUnitPrice: purchaseItem?.unitPrice || 0,
+              vendorCompany: purchaseItem?.vendorCompany || '',
+            }
+          })
+          setItems(newItems.length > 0 ? newItems : [{ partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '' }])
+        }
+
+      } else {
+        const errorData = await res.json()
+        console.error('엑셀 업로드 실패:', errorData.error)
       }
-    } catch {
-      alert('엑셀 업로드에 실패했습니다')
+    } catch (err) {
+      console.error('엑셀 업로드 실패:', err)
     } finally {
       setUploading(false)
       if (fileInputRef.current) {
@@ -226,19 +277,33 @@ function NewSalesApprovalForm() {
     setLoading(true)
 
     try {
-      // 품목 변환 (매출 + 매입 통합)
-      const convertedItems = items
-        .filter((item) => item.description || item.partNumber || item.salesUnitPrice > 0 || item.purchaseUnitPrice > 0)
+      // 매출 품목 변환
+      const convertedSalesItems = items
+        .filter((item) => item.description || item.partNumber || item.salesUnitPrice > 0)
         .map((item) => ({
           partNumber: item.partNumber,
           productName: item.description || '제품',
           quantity: item.quantity,
-          salesUnitPrice: item.salesUnitPrice,
-          purchaseDate: item.purchaseDate || undefined,
-          vendorCompany: item.vendor || undefined,
-          purchaseQuantity: item.purchaseQuantity,
-          purchaseUnitPrice: item.purchaseUnitPrice,
+          unitPrice: item.salesUnitPrice,
         }))
+
+      // 매입 데이터 변환
+      const convertedPurchaseGroups = [{
+        vendorName: items[0]?.vendorCompany || '',
+        isConsolidated: isConsolidatedPurchase,
+        consolidatedAmount: isConsolidatedPurchase ? consolidatedPurchaseAmount : undefined,
+        items: isConsolidatedPurchase
+          ? undefined
+          : items
+              .filter((i) => i.description || i.partNumber || i.purchaseUnitPrice > 0)
+              .map((i) => ({
+                partNumber: i.partNumber,
+                productName: i.description || '제품',
+                quantity: i.quantity,
+                unitPrice: i.purchaseUnitPrice,
+                vendorCompany: i.vendorCompany,
+              })),
+      }]
 
       const res = await fetch('/api/sales-approvals', {
         method: 'POST',
@@ -247,9 +312,13 @@ function NewSalesApprovalForm() {
           ...formData,
           quoteId: quoteId || linkedQuote?.id || undefined,
           dealId: linkedQuote?.dealId,
-          isConsolidated: isConsolidatedQuote,
-          consolidatedSalesPrice: isConsolidatedQuote ? consolidatedSalesPrice : undefined,
-          items: convertedItems,
+          // 매출
+          isConsolidatedSales,
+          consolidatedSalesName: isConsolidatedSales ? consolidatedSalesName : undefined,
+          consolidatedSalesPrice: isConsolidatedSales ? consolidatedSalesPrice : undefined,
+          salesItems: convertedSalesItems,
+          // 매입
+          purchaseGroups: convertedPurchaseGroups,
         }),
       })
 
@@ -328,215 +397,254 @@ function NewSalesApprovalForm() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* 품의 기본 정보 */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4 pb-2 border-b">품의 정보</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">품의코드</label>
-              <input
-                type="text"
-                value={formData.approvalCode}
-                onChange={(e) => handleInputChange('approvalCode', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                placeholder="D251202-01"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">품의일자</label>
-              <input
-                type="date"
-                value={formData.approvalDate}
-                onChange={(e) => handleInputChange('approvalDate', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">품의담당</label>
-              <input
-                type="text"
-                value={formData.managerName}
-                onChange={(e) => handleInputChange('managerName', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                placeholder="담당자명"
-              />
-            </div>
-          </div>
+      <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && e.target instanceof HTMLInputElement) e.preventDefault() }} className="space-y-3">
+        {/* 기본 정보 (컴팩트 테이블 스타일) */}
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden inline-block">
+          <table className="text-sm">
+            <tbody className="divide-y divide-gray-100">
+              {/* 1행: 품의코드, 매출처, End User */}
+              <tr>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">품의코드</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <input type="text" value={formData.approvalCode} onChange={(e) => handleInputChange('approvalCode', e.target.value)} className="w-36 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="Y251202-01" />
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">매출처</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <input type="text" value={formData.clientCompany} onChange={(e) => handleInputChange('clientCompany', e.target.value)} className="w-40 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="고객사명" />
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">End User</td>
+                <td className="px-1.5 py-1">
+                  <input type="text" value={formData.endUser} onChange={(e) => handleInputChange('endUser', e.target.value)} className="w-40 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="최종 사용자" />
+                </td>
+              </tr>
+              {/* 2행: 품의일자, 담당자, MT&SN */}
+              <tr className="bg-gray-50/30">
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">품의일자</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <input type="date" value={formData.approvalDate} onChange={(e) => handleInputChange('approvalDate', e.target.value)} className="w-36 px-2 py-1 border border-gray-300 rounded text-xs" />
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">담당자</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <input type="text" value={formData.clientContact} onChange={(e) => handleInputChange('clientContact', e.target.value)} className="w-40 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="담당자명" />
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">MT&SN</td>
+                <td className="px-1.5 py-1">
+                  <input type="text" value={formData.paymentTerms} onChange={(e) => handleInputChange('paymentTerms', e.target.value)} className="w-40 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="" />
+                </td>
+              </tr>
+              {/* 3행: 품의담당, 연락처 */}
+              <tr>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">품의담당</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <input type="text" value={formData.managerName} onChange={(e) => handleInputChange('managerName', e.target.value)} className="w-36 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="담당자명" />
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">연락처</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <input type="text" value={formData.clientPhone} onChange={(e) => handleInputChange('clientPhone', e.target.value)} className="w-40 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="010-0000-0000" />
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap"></td>
+                <td className="px-1.5 py-1"></td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
-        {/* 매출처 정보 */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4 pb-2 border-b">매출처 정보</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">고객사</label>
-              <input
-                type="text"
-                value={formData.clientCompany}
-                onChange={(e) => handleInputChange('clientCompany', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                placeholder="고객사명"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">담당자</label>
-              <input
-                type="text"
-                value={formData.clientContact}
-                onChange={(e) => handleInputChange('clientContact', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                placeholder="담당자명"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">연락처</label>
-              <input
-                type="text"
-                value={formData.clientPhone}
-                onChange={(e) => handleInputChange('clientPhone', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                placeholder="010-0000-0000"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End User</label>
-              <input
-                type="text"
-                value={formData.endUser}
-                onChange={(e) => handleInputChange('endUser', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                placeholder="최종 사용자"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">결제조건</label>
-              <input
-                type="text"
-                value={formData.paymentTerms}
-                onChange={(e) => handleInputChange('paymentTerms', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                placeholder="납품 후 익월 말"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">세금계산서 메일</label>
-              <input
-                type="email"
-                value={formData.invoiceEmail}
-                onChange={(e) => handleInputChange('invoiceEmail', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                placeholder="invoice@company.com"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* 배송 정보 */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4 pb-2 border-b">배송 정보</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">배송주소</label>
-              <input
-                type="text"
-                value={formData.deliveryAddress}
-                onChange={(e) => handleInputChange('deliveryAddress', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                placeholder="배송 주소"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">납기일</label>
-              <input
-                type="date"
-                value={formData.deliveryDate}
-                onChange={(e) => handleInputChange('deliveryDate', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">수령자</label>
-              <input
-                type="text"
-                value={formData.receiverName}
-                onChange={(e) => handleInputChange('receiverName', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                placeholder="수령자명"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">수령자 연락처</label>
-              <input
-                type="text"
-                value={formData.receiverPhone}
-                onChange={(e) => handleInputChange('receiverPhone', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                placeholder="010-0000-0000"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* 품목 테이블 (매출 + 매입 통합) */}
+        {/* ========== 품목 (매출+매입 통합) ========== */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h3 className="text-sm font-semibold text-gray-900">품목 목록</h3>
-              {isConsolidatedQuote && (
-                <span className="px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded">통합 견적</span>
-              )}
+            <div className="flex items-center gap-4">
+              <h3 className="text-sm font-semibold text-gray-900">품목</h3>
+              {/* 매출 유형 선택 */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">매출:</span>
+                <div className="flex items-center gap-1 bg-white rounded-lg p-0.5 border border-blue-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsConsolidatedSales(false)}
+                    className={`px-2 py-0.5 text-xs rounded transition-all ${
+                      !isConsolidatedSales
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    개별
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsConsolidatedSales(true)
+                      if (!consolidatedSalesPrice) {
+                        const total = items.reduce((sum, item) => sum + item.quantity * item.salesUnitPrice, 0)
+                        setConsolidatedSalesPrice(total)
+                      }
+                      if (!consolidatedSalesName && items[0]?.description) {
+                        setConsolidatedSalesName(items[0].description + (items.length > 1 ? ' 외' : ''))
+                      }
+                    }}
+                    className={`px-2 py-0.5 text-xs rounded transition-all ${
+                      isConsolidatedSales
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    통합
+                  </button>
+                </div>
+              </div>
+              {/* 매입 유형 선택 */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">매입:</span>
+                <div className="flex items-center gap-1 bg-white rounded-lg p-0.5 border border-purple-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsConsolidatedPurchase(false)}
+                    className={`px-2 py-0.5 text-xs rounded transition-all ${
+                      !isConsolidatedPurchase
+                        ? 'bg-purple-600 text-white'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    개별
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsConsolidatedPurchase(true)
+                      if (!consolidatedPurchaseAmount) {
+                        const total = items.reduce((sum, item) => sum + item.quantity * item.purchaseUnitPrice, 0)
+                        setConsolidatedPurchaseAmount(total)
+                      }
+                    }}
+                    className={`px-2 py-0.5 text-xs rounded transition-all ${
+                      isConsolidatedPurchase
+                        ? 'bg-purple-600 text-white'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    통합
+                  </button>
+                </div>
+              </div>
             </div>
             <button
               type="button"
               onClick={addItem}
-              className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+              className="px-3 py-1.5 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-900"
             >
               + 품목 추가
             </button>
           </div>
 
-          {/* 테이블 */}
+          {/* 품목 테이블 */}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  {/* 매출 영역 헤더 */}
-                  <th colSpan={5} className="px-3 py-2 text-center text-blue-700 bg-blue-50 border-r-2 border-gray-300">
-                    매출
-                  </th>
-                  {/* 매입 영역 헤더 */}
-                  <th colSpan={5} className="px-3 py-2 text-center text-purple-700 bg-purple-50">
-                    매입
-                  </th>
-                  <th className="w-10"></th>
-                </tr>
-                <tr className="border-b bg-gray-50">
-                  {/* 매출 컬럼 */}
-                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 w-28">P/N</th>
-                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 min-w-[100px]">품목</th>
+              <thead className="bg-gray-100 border-b">
+                <tr>
+                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 w-24">P/N</th>
+                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 w-64">품목</th>
                   <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-16">수량</th>
-                  <th className="px-2 py-2 text-right text-xs font-medium text-gray-600 w-28">단가</th>
-                  <th className="px-2 py-2 text-right text-xs font-medium text-blue-600 w-28 border-r-2 border-gray-300">합계</th>
-                  {/* 매입 컬럼 */}
-                  <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-28">매입일/계산서</th>
-                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 w-32">매입처</th>
-                  <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-16">수량</th>
-                  <th className="px-2 py-2 text-right text-xs font-medium text-gray-600 w-28">단가</th>
-                  <th className="px-2 py-2 text-right text-xs font-medium text-purple-600 w-28">합계</th>
-                  <th className="w-10"></th>
+                  {/* 매출 */}
+                  <th className="px-2 py-2 text-right text-xs font-medium text-blue-600 w-24">매출단가</th>
+                  <th className="px-2 py-2 text-right text-xs font-medium text-blue-600 w-28 border-r-2 border-gray-300">매출합계</th>
+                  {/* 매입 */}
+                  <th className="px-2 py-2 text-left text-xs font-medium text-purple-600 w-28">매입처</th>
+                  <th className="px-2 py-2 text-right text-xs font-medium text-purple-600 w-24">매입단가</th>
+                  <th className="px-2 py-2 text-right text-xs font-medium text-purple-600 w-28">매입합계</th>
+                  <th className="px-2 py-2 text-center w-10"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
+                {/* 통합 행 (매출 또는 매입 중 하나라도 통합이면 표시) */}
+                {(isConsolidatedSales || isConsolidatedPurchase) && (
+                  <tr className="bg-gradient-to-r from-blue-50/50 to-purple-50/50">
+                    <td className="px-2 py-2">
+                      <span className="text-xs font-medium text-gray-600">통합</span>
+                    </td>
+                    {/* 통합 매출 */}
+                    {isConsolidatedSales ? (
+                      <>
+                        <td className="px-2 py-2">
+                          <input
+                            type="text"
+                            value={consolidatedSalesName}
+                            onChange={(e) => setConsolidatedSalesName(e.target.value)}
+                            className="w-full px-2 py-1 border border-blue-300 rounded text-xs bg-blue-50"
+                            placeholder="제품명"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input
+                            type="number"
+                            value={consolidatedSalesQty || 1}
+                            onChange={(e) => setConsolidatedSalesQty(parseInt(e.target.value) || 1)}
+                            className="w-full px-2 py-1 border border-blue-300 rounded text-xs text-right bg-blue-50"
+                            min="1"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input
+                            type="number"
+                            value={consolidatedSalesPrice || ''}
+                            onChange={(e) => setConsolidatedSalesPrice(parseInt(e.target.value) || 0)}
+                            className="w-full px-2 py-1 border border-blue-300 rounded text-xs text-right bg-blue-50"
+                            placeholder="0"
+                          />
+                        </td>
+                        <td className="px-2 py-2 text-right font-medium text-blue-700 text-xs border-r-2 border-gray-300">
+                          {((consolidatedSalesQty || 1) * (consolidatedSalesPrice || 0)).toLocaleString()}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-2 py-2"></td>
+                        <td className="px-2 py-2"></td>
+                        <td className="px-2 py-2"></td>
+                        <td className="px-2 py-2 border-r-2 border-gray-300"></td>
+                      </>
+                    )}
+                    {/* 통합 매입 */}
+                    {isConsolidatedPurchase ? (
+                      <>
+                        <td className="px-2 py-2">
+                          <input
+                            type="text"
+                            value={consolidatedPurchaseVendor}
+                            onChange={(e) => setConsolidatedPurchaseVendor(e.target.value)}
+                            className="w-full px-2 py-1 border border-purple-300 rounded text-xs bg-purple-50"
+                            placeholder="매입처"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input
+                            type="number"
+                            value={consolidatedPurchaseAmount || ''}
+                            onChange={(e) => setConsolidatedPurchaseAmount(parseInt(e.target.value) || 0)}
+                            className="w-full px-2 py-1 border border-purple-300 rounded text-xs text-right bg-purple-50"
+                            placeholder="0"
+                          />
+                        </td>
+                        <td className="px-2 py-2 text-right font-medium text-purple-700 text-xs">
+                          {((consolidatedPurchaseQty || 1) * (consolidatedPurchaseAmount || 0)).toLocaleString()}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-2 py-2"></td>
+                        <td className="px-2 py-2"></td>
+                        <td className="px-2 py-2"></td>
+                      </>
+                    )}
+                    <td className="px-2 py-2"></td>
+                  </tr>
+                )}
                 {items.map((item, index) => (
                   <tr key={index} className="hover:bg-gray-50">
-                    {/* 매출 영역 */}
                     <td className="px-2 py-2">
                       <input
                         type="text"
                         value={item.partNumber}
                         onChange={(e) => handleItemChange(index, 'partNumber', e.target.value)}
-                        className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs"
+                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
                         placeholder="P/N"
                       />
                     </td>
@@ -548,13 +656,9 @@ function NewSalesApprovalForm() {
                           e.target.style.height = 'auto'
                           e.target.style.height = e.target.scrollHeight + 'px'
                         }}
-                        onFocus={(e) => {
-                          e.target.style.height = 'auto'
-                          e.target.style.height = e.target.scrollHeight + 'px'
-                        }}
                         rows={1}
-                        className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs resize-none overflow-hidden"
-                        style={{ minHeight: '32px' }}
+                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs resize-none overflow-hidden"
+                        style={{ minHeight: '28px' }}
                         placeholder="품목명"
                       />
                     </td>
@@ -563,87 +667,63 @@ function NewSalesApprovalForm() {
                         type="number"
                         value={item.quantity}
                         onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
-                        className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-center"
+                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs text-right"
                         min="1"
                       />
                     </td>
+                    {/* 매출 */}
                     <td className="px-2 py-2">
-                      {isConsolidatedQuote ? (
-                        <span className="text-xs text-gray-400">-</span>
+                      {isConsolidatedSales ? (
+                        <span className="text-xs text-gray-400 block text-right">-</span>
                       ) : (
                         <input
                           type="number"
-                          value={item.salesUnitPrice}
+                          value={item.salesUnitPrice || ''}
                           onChange={(e) => handleItemChange(index, 'salesUnitPrice', parseInt(e.target.value) || 0)}
-                          className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-right"
+                          className="w-full px-2 py-1 border border-blue-200 rounded text-xs text-right bg-blue-50/30"
                           placeholder="0"
                         />
                       )}
                     </td>
-                    <td className="px-2 py-2 text-right font-medium text-blue-700 border-r-2 border-gray-300">
-                      {isConsolidatedQuote ? (
-                        index === 0 ? (
-                          <input
-                            type="number"
-                            value={consolidatedSalesPrice}
-                            onChange={(e) => setConsolidatedSalesPrice(parseInt(e.target.value) || 0)}
-                            className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs text-right bg-blue-50"
-                            placeholder="통합금액"
-                          />
-                        ) : (
-                          <span className="text-xs text-gray-400">-</span>
-                        )
+                    <td className="px-2 py-2 text-right font-medium text-blue-700 text-xs border-r-2 border-gray-300">
+                      {isConsolidatedSales ? '-' : calcSalesItemTotal(item).toLocaleString()}
+                    </td>
+                    {/* 매입 */}
+                    <td className="px-2 py-2">
+                      {isConsolidatedPurchase ? (
+                        <span className="text-xs text-gray-400 block">-</span>
                       ) : (
-                        <span className="text-xs">{calcSalesItemTotal(item).toLocaleString()}</span>
+                        <input
+                          type="text"
+                          value={item.vendorCompany}
+                          onChange={(e) => handleItemChange(index, 'vendorCompany', e.target.value)}
+                          className="w-full px-2 py-1 border border-purple-200 rounded text-xs bg-purple-50/30"
+                          placeholder="매입처"
+                        />
                       )}
                     </td>
-                    {/* 매입 영역 */}
-                    <td className="px-2 py-2 bg-purple-50/30">
-                      <input
-                        type="text"
-                        value={item.purchaseDate}
-                        onChange={(e) => handleItemChange(index, 'purchaseDate', e.target.value)}
-                        className="w-full px-2 py-1.5 border border-purple-200 rounded text-xs text-center"
-                        placeholder="2025.01.16"
-                      />
+                    <td className="px-2 py-2">
+                      {isConsolidatedPurchase ? (
+                        <span className="text-xs text-gray-400 block text-right">-</span>
+                      ) : (
+                        <input
+                          type="number"
+                          value={item.purchaseUnitPrice || ''}
+                          onChange={(e) => handleItemChange(index, 'purchaseUnitPrice', parseInt(e.target.value) || 0)}
+                          className="w-full px-2 py-1 border border-purple-200 rounded text-xs text-right bg-purple-50/30"
+                          placeholder="0"
+                        />
+                      )}
                     </td>
-                    <td className="px-2 py-2 bg-purple-50/30">
-                      <input
-                        type="text"
-                        value={item.vendor}
-                        onChange={(e) => handleItemChange(index, 'vendor', e.target.value)}
-                        className="w-full px-2 py-1.5 border border-purple-200 rounded text-xs"
-                        placeholder="매입처"
-                      />
-                    </td>
-                    <td className="px-2 py-2 bg-purple-50/30">
-                      <input
-                        type="number"
-                        value={item.purchaseQuantity}
-                        onChange={(e) => handleItemChange(index, 'purchaseQuantity', parseInt(e.target.value) || 1)}
-                        className="w-full px-2 py-1.5 border border-purple-200 rounded text-xs text-center"
-                        min="1"
-                      />
-                    </td>
-                    <td className="px-2 py-2 bg-purple-50/30">
-                      <input
-                        type="number"
-                        value={item.purchaseUnitPrice}
-                        onChange={(e) => handleItemChange(index, 'purchaseUnitPrice', parseInt(e.target.value) || 0)}
-                        className="w-full px-2 py-1.5 border border-purple-200 rounded text-xs text-right"
-                        placeholder="0"
-                      />
-                    </td>
-                    <td className="px-2 py-2 text-right font-medium text-purple-700 bg-purple-50/30">
-                      <span className="text-xs">{calcPurchaseItemTotal(item).toLocaleString()}</span>
+                    <td className="px-2 py-2 text-right font-medium text-purple-700 text-xs">
+                      {isConsolidatedPurchase ? '-' : calcPurchaseItemTotal(item).toLocaleString()}
                     </td>
                     <td className="px-2 py-2 text-center">
                       {items.length > 1 && (
                         <button
                           type="button"
                           onClick={() => removeItem(index)}
-                          className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
-                          title="품목 삭제"
+                          className="p-0.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -654,24 +734,52 @@ function NewSalesApprovalForm() {
                   </tr>
                 ))}
               </tbody>
-              {/* 합계 행 */}
-              <tfoot>
-                <tr className="border-t-2 border-gray-300 bg-gray-50 font-medium">
-                  <td colSpan={4} className="px-3 py-3 text-right text-sm text-gray-600">
-                    매출금액 합계(VAT별도)
+            </table>
+          </div>
+
+          {/* 합계 영역 - 테이블 컬럼에 맞춤 */}
+          <div className="bg-gray-50 border-t">
+            <table className="w-full text-sm">
+              <tbody>
+                <tr>
+                  {/* P/N + 품목 + 수량 영역 */}
+                  <td className="px-2 py-3 w-24"></td>
+                  <td className="px-2 py-3 w-64"></td>
+                  <td className="px-2 py-3 w-16"></td>
+                  {/* 매출 합계 */}
+                  <td className="px-2 py-3 w-24 text-right text-sm text-gray-500">매출합계</td>
+                  <td className="px-2 py-3 w-28 text-right border-r-2 border-gray-300">
+                    <div className="text-xs text-gray-500">VAT별도</div>
+                    <div className="text-base font-bold text-blue-700">
+                      {(isConsolidatedSales
+                        ? (consolidatedSalesQty || 1) * (consolidatedSalesPrice || 0)
+                        : calcSalesTotal()
+                      ).toLocaleString()}원
+                    </div>
                   </td>
-                  <td className="px-3 py-3 text-right text-blue-700 border-r-2 border-gray-300">
-                    <span className="text-base font-bold">{calcSalesTotal().toLocaleString()}</span>
+                  {/* 매입 합계 */}
+                  <td className="px-2 py-3 w-28 text-right text-sm text-gray-500">매입합계</td>
+                  <td className="px-2 py-3 w-24 text-right">
+                    <div className="text-xs text-gray-500">VAT별도</div>
+                    <div className="text-base font-bold text-purple-700">
+                      {(isConsolidatedPurchase
+                        ? (consolidatedPurchaseQty || 1) * (consolidatedPurchaseAmount || 0)
+                        : calcPurchaseTotal()
+                      ).toLocaleString()}원
+                    </div>
                   </td>
-                  <td colSpan={4} className="px-3 py-3 text-right text-sm text-gray-600 bg-purple-50/30">
-                    매입금액 합계(VAT별도)
+                  <td className="px-2 py-3 w-28 text-right">
+                    <div className="text-xs text-gray-500">VAT포함</div>
+                    <div className="text-base font-bold text-purple-700">
+                      {Math.round((isConsolidatedPurchase
+                        ? (consolidatedPurchaseQty || 1) * (consolidatedPurchaseAmount || 0)
+                        : calcPurchaseTotal()
+                      ) * 1.1).toLocaleString()}원
+                    </div>
                   </td>
-                  <td className="px-3 py-3 text-right text-purple-700 bg-purple-50/30">
-                    <span className="text-base font-bold">{calcPurchaseTotal().toLocaleString()}</span>
-                  </td>
-                  <td></td>
+                  <td className="px-2 py-3 w-10"></td>
                 </tr>
-              </tfoot>
+              </tbody>
             </table>
           </div>
         </div>
@@ -691,25 +799,36 @@ function NewSalesApprovalForm() {
         {/* 마진 요약 */}
         <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200 p-6">
           <h3 className="text-sm font-semibold text-gray-900 mb-4">마진 요약</h3>
-          <div className="grid grid-cols-3 gap-6 text-center">
-            <div>
-              <p className="text-sm text-blue-600">매출 (VAT별도)</p>
-              <p className="text-xl font-bold text-blue-900">{calcSalesTotal().toLocaleString()}원</p>
-            </div>
-            <div>
-              <p className="text-sm text-purple-600">매입 (VAT별도)</p>
-              <p className="text-xl font-bold text-purple-900">{calcPurchaseTotal().toLocaleString()}원</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">마진</p>
-              <p className={`text-xl font-bold ${calcTotalMargin() >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {calcTotalMargin().toLocaleString()}원
-              </p>
-              <p className="text-xs text-gray-500">
-                ({calcSalesTotal() > 0 ? ((calcTotalMargin() / calcSalesTotal()) * 100).toFixed(1) : 0}%)
-              </p>
-            </div>
-          </div>
+          {(() => {
+            const salesTotal = isConsolidatedSales
+              ? (consolidatedSalesQty || 1) * (consolidatedSalesPrice || 0)
+              : calcSalesTotal()
+            const purchaseTotal = isConsolidatedPurchase
+              ? (consolidatedPurchaseQty || 1) * (consolidatedPurchaseAmount || 0)
+              : calcPurchaseTotal()
+            const margin = salesTotal - purchaseTotal
+            return (
+              <div className="grid grid-cols-3 gap-6 text-center">
+                <div>
+                  <p className="text-sm text-blue-600">매출 (VAT별도)</p>
+                  <p className="text-xl font-bold text-blue-900">{salesTotal.toLocaleString()}원</p>
+                </div>
+                <div>
+                  <p className="text-sm text-purple-600">매입 (VAT별도)</p>
+                  <p className="text-xl font-bold text-purple-900">{purchaseTotal.toLocaleString()}원</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">마진</p>
+                  <p className={`text-xl font-bold ${margin >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {margin.toLocaleString()}원
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    ({salesTotal > 0 ? ((margin / salesTotal) * 100).toFixed(1) : 0}%)
+                  </p>
+                </div>
+              </div>
+            )
+          })()}
         </div>
 
         {/* 버튼 */}
