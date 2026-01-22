@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       prisma.mAApproval.findMany({
         where,
         include: {
-          _count: { select: { items: true, purchaseItems: true } },
+          _count: { select: { items: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
@@ -51,6 +51,23 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// 통합 품목 아이템 타입
+interface MAApprovalItemInput {
+  smCode?: string
+  vendorCode?: string
+  clientCompany?: string
+  salesCompany?: string
+  salesPrice?: number
+  quantity?: number
+  salesBillingType?: string
+  startDate?: string
+  endDate?: string
+  purchaseCompany?: string
+  purchasePrice?: number
+  purchaseBillingType?: string
+  sortOrder?: number
+}
+
 // POST /api/ma-approvals - 생성
 export async function POST(request: NextRequest) {
   try {
@@ -60,7 +77,6 @@ export async function POST(request: NextRequest) {
       managerName,
       notes,
       items = [],
-      purchaseItems = [],
     } = body
 
     // TODO: 실제 인증된 사용자 ID 사용
@@ -80,50 +96,32 @@ export async function POST(request: NextRequest) {
     }
     const approvalNumber = `MA-${year}-${sequence.toString().padStart(4, '0')}`
 
-    // 매출 금액 계산
+    // 통합 품목 처리 및 금액 계산
     let totalAmount = 0
-    const itemsWithTotal = items.map((item: {
-      smCode?: string
-      vendorCode?: string
-      customerName?: string
-      clientCompany?: string
-      salesPrice?: number
-      quantity?: number
-      billingType?: string
-      startDate?: string
-      endDate?: string
-      sortOrder?: number
-    }, index: number) => {
+    let purchaseTotal = 0
+
+    const itemsData = items.map((item: MAApprovalItemInput, index: number) => {
       const qty = item.quantity || 1
-      const price = item.salesPrice || 0
-      totalAmount += price * qty
+      const salesPrice = item.salesPrice || 0
+      const purchasePrice = item.purchasePrice || 0
+
+      totalAmount += salesPrice * qty
+      purchaseTotal += purchasePrice * qty
+
       return {
-        ...item,
         sortOrder: item.sortOrder ?? index,
+        smCode: item.smCode,
+        vendorCode: item.vendorCode,
+        clientCompany: item.clientCompany,
+        salesCompany: item.salesCompany,
+        salesPrice: salesPrice,
         quantity: qty,
-        salesPrice: price,
+        salesBillingType: item.salesBillingType,
         startDate: item.startDate ? new Date(item.startDate) : null,
         endDate: item.endDate ? new Date(item.endDate) : null,
-      }
-    })
-
-    // 매입 금액 계산
-    let purchaseTotal = 0
-    const purchaseItemsWithTotal = purchaseItems.map((item: {
-      vendorCompany?: string
-      purchasePrice?: number
-      quantity?: number
-      billingType?: string
-      sortOrder?: number
-    }, index: number) => {
-      const qty = item.quantity || 1
-      const price = item.purchasePrice || 0
-      purchaseTotal += price * qty
-      return {
-        ...item,
-        sortOrder: item.sortOrder ?? index,
-        quantity: qty,
-        purchasePrice: price,
+        purchaseCompany: item.purchaseCompany,
+        purchasePrice: purchasePrice,
+        purchaseBillingType: item.purchaseBillingType,
       }
     })
 
@@ -137,15 +135,11 @@ export async function POST(request: NextRequest) {
         purchaseTotal,
         createdById,
         items: {
-          create: itemsWithTotal,
-        },
-        purchaseItems: {
-          create: purchaseItemsWithTotal,
+          create: itemsData,
         },
       },
       include: {
-        items: true,
-        purchaseItems: true,
+        items: { orderBy: { sortOrder: 'asc' } },
       },
     })
 

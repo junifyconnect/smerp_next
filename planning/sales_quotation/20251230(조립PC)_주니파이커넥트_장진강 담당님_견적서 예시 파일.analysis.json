@@ -1,0 +1,3572 @@
+{
+  "fileName": "20251230(조립PC)_주니파이커넥트_장진강 담당님_견적서 예시 파일.xlsx",
+  "sheetCount": 1,
+  "sheets": [
+    {
+      "name": "조립PC",
+      "rowCount": 51,
+      "columnCount": 11,
+      "mergedCells": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+      ],
+      "cells": [
+        {
+          "address": "B1",
+          "value": " Quotation",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 22,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C1",
+          "value": " Quotation",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 22,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "D1",
+          "value": " Quotation",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 22,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "E1",
+          "value": " Quotation",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 22,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "F1",
+          "value": " Quotation",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 22,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "G1",
+          "value": " Quotation",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 22,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B2",
+          "value": " Quotation",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 22,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C2",
+          "value": " Quotation",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 22,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "D2",
+          "value": " Quotation",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 22,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "E2",
+          "value": " Quotation",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 22,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "F2",
+          "value": " Quotation",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 22,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "G2",
+          "value": " Quotation",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 22,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B3",
+          "value": " Quotation",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 22,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C3",
+          "value": " Quotation",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 22,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "D3",
+          "value": " Quotation",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 22,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "E3",
+          "value": " Quotation",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 22,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "F3",
+          "value": " Quotation",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 22,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "G3",
+          "value": " Quotation",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 22,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B6",
+          "value": "회  사",
+          "type": "richText",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C6",
+          "value": "유니파이커넥트 귀중",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FF000000",
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B7",
+          "value": "참  조",
+          "type": "richText",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C7",
+          "value": "장진강 담당님",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FF000000",
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B8",
+          "value": "전  화",
+          "type": "richText",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "B9",
+          "value": "F a x ",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "B10",
+          "value": "C    P",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "E10",
+          "value": "서울시 금천구 가산디지털1로 131\n(BYC하이시티 B동 1201호)\n<Tel :070-8892-1452  Fax:070-8892-1459>",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "F10",
+          "value": "서울시 금천구 가산디지털1로 131\n(BYC하이시티 B동 1201호)\n<Tel :070-8892-1452  Fax:070-8892-1459>",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "G10",
+          "value": "서울시 금천구 가산디지털1로 131\n(BYC하이시티 B동 1201호)\n<Tel :070-8892-1452  Fax:070-8892-1459>",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "B11",
+          "value": "E-mail",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C11",
+          "value": "kang48@junifyconnect.com",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "E11",
+          "value": "서울시 금천구 가산디지털1로 131\n(BYC하이시티 B동 1201호)\n<Tel :070-8892-1452  Fax:070-8892-1459>",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "F11",
+          "value": "서울시 금천구 가산디지털1로 131\n(BYC하이시티 B동 1201호)\n<Tel :070-8892-1452  Fax:070-8892-1459>",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "G11",
+          "value": "서울시 금천구 가산디지털1로 131\n(BYC하이시티 B동 1201호)\n<Tel :070-8892-1452  Fax:070-8892-1459>",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "E12",
+          "value": "서울시 금천구 가산디지털1로 131\n(BYC하이시티 B동 1201호)\n<Tel :070-8892-1452  Fax:070-8892-1459>",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "F12",
+          "value": "서울시 금천구 가산디지털1로 131\n(BYC하이시티 B동 1201호)\n<Tel :070-8892-1452  Fax:070-8892-1459>",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "G12",
+          "value": "서울시 금천구 가산디지털1로 131\n(BYC하이시티 B동 1201호)\n<Tel :070-8892-1452  Fax:070-8892-1459>",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "E13",
+          "value": "대표   서  서  형   (온라인견적시 직인생략)",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "F13",
+          "value": "대표   서  서  형   (온라인견적시 직인생략)",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "G13",
+          "value": "대표   서  서  형   (온라인견적시 직인생략)",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B14",
+          "value": "견 적 일",
+          "type": "richText",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center"
+            }
+          }
+        },
+        {
+          "address": "C14",
+          "value": "2025-12-30",
+          "type": "date",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B15",
+          "value": "납 기 일",
+          "type": "richText",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center"
+            }
+          }
+        },
+        {
+          "address": "C15",
+          "value": "별도협의",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "color": "FFFF0000",
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B16",
+          "value": "유효기간",
+          "type": "richText",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center"
+            }
+          }
+        },
+        {
+          "address": "C16",
+          "value": "견적일로부터 1일 이내",
+          "type": "richText",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B17",
+          "value": "결제조건",
+          "type": "richText",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center"
+            }
+          }
+        },
+        {
+          "address": "C17",
+          "value": "계산서 발행 후 익월 말 현금 결제",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "color": "FF000000",
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B18",
+          "value": "견적담당",
+          "type": "richText",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center"
+            }
+          }
+        },
+        {
+          "address": "C18",
+          "value": "김대훈 (070-8892-1455)",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "color": "FF000000",
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B19",
+          "value": "프로젝트명",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FF000000",
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center"
+            }
+          }
+        },
+        {
+          "address": "G20",
+          "value": "단위:원 (VAT별도)",
+          "type": "richText",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 9,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "right",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B21",
+          "value": " P/N ",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:3"
+            },
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FFFFFFFF",
+              "name": "Arial"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C21",
+          "value": " Description ",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:3"
+            },
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FFFFFFFF",
+              "name": "Arial"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "D21",
+          "value": " Q'ty ",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:3"
+            },
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FFFFFFFF",
+              "name": "Arial"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "E21",
+          "value": "  SRP  ",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:3"
+            },
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FFFFFFFF",
+              "name": "Arial"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "F21",
+          "value": "  Price  ",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:3"
+            },
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FFFFFFFF",
+              "name": "Arial"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "G21",
+          "value": " Sum ",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:3"
+            },
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FFFFFFFF",
+              "name": "Arial"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C23",
+          "value": "조립PC",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FFFF0000",
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D23",
+          "value": 1,
+          "type": "number",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "G23",
+          "value": 4500000,
+          "type": "number",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "right",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "B24",
+          "value": "CPU",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C24",
+          "value": "[INTEL] 인텔 코어 Ultra 9 프로세서 285K (애로우 레이크/쿨러미포함)",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D24",
+          "value": 1,
+          "type": "number",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "B25",
+          "value": "BOARD",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C25",
+          "value": "[GIGABYTE] Z890 AORUS ELITE WIFI7",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D25",
+          "value": 1,
+          "type": "number",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "B26",
+          "value": "RAM",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFF00"
+            },
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C26",
+          "value": "16GB DDR5 PC5-44800 [5600]",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFF00"
+            },
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D26",
+          "value": 2,
+          "type": "number",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFF00"
+            },
+            "font": {
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "B27",
+          "value": "M.2 SSD",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFF00"
+            },
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C27",
+          "value": "500GB M.2 NVMe [DRAM 탑재 제품]",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFF00"
+            },
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D27",
+          "value": 1,
+          "type": "number",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFF00"
+            },
+            "font": {
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "B28",
+          "value": "M.2 SSD",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFF00"
+            },
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C28",
+          "value": "1TB M.2 NVMe[DRAM 탑재 제품]",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFF00"
+            },
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D28",
+          "value": 1,
+          "type": "number",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFF00"
+            },
+            "font": {
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "B29",
+          "value": "COOLER",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C29",
+          "value": "[3RSYS] Socoool RC1900N 솔더링 쌍철봉 [공랭]",
+          "type": "richText",
+          "style": {
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D29",
+          "value": 1,
+          "type": "number",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "B30",
+          "value": "POWER",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C30",
+          "value": "[MSI] MAG A850GL 80PLUS GOLD 풀모듈러 ATX 3.1 PCIE5 [850W]",
+          "type": "richText",
+          "style": {
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D30",
+          "value": 1,
+          "type": "number",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "B31",
+          "value": "CASE",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C31",
+          "value": "[3RSYS] R200",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D31",
+          "value": 1,
+          "type": "number",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "B32",
+          "value": "GPU",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C32",
+          "value": "[MSI] 지포스 RTX 5060 벤투스 2X OC D7 8GB",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D32",
+          "value": 1,
+          "type": "number",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "B33",
+          "value": "OS",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C33",
+          "value": "[Microsoft] Windows 11 Pro [COEM(DSP)/한글/64bit]",
+          "type": "richText",
+          "style": {
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D33",
+          "value": 1,
+          "type": "number",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 10,
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "B35",
+          "value": "제안금액(VAT별도)",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FF92D050"
+            },
+            "font": {
+              "bold": true,
+              "size": 16,
+              "name": "Arial"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C35",
+          "value": "제안금액(VAT별도)",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FF92D050"
+            },
+            "font": {
+              "bold": true,
+              "size": 16,
+              "name": "Arial"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D35",
+          "value": "제안금액(VAT별도)",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FF92D050"
+            },
+            "font": {
+              "bold": true,
+              "size": 16,
+              "name": "Arial"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "E35",
+          "value": 4500000,
+          "type": "formula",
+          "formula": "SUM(G23)",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FF92D050"
+            },
+            "font": {
+              "bold": true,
+              "size": 16,
+              "name": "Arial"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "F35",
+          "value": 4500000,
+          "type": "formula",
+          "formula": "SUM(G23)",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FF92D050"
+            },
+            "font": {
+              "bold": true,
+              "size": 16,
+              "name": "Arial"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "G35",
+          "value": 4500000,
+          "type": "formula",
+          "formula": "SUM(G23)",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FF92D050"
+            },
+            "font": {
+              "bold": true,
+              "size": 16,
+              "name": "Arial"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B36",
+          "value": "제안금액(VAT포함)",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FF92D050"
+            },
+            "font": {
+              "bold": true,
+              "size": 16,
+              "name": "Arial"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C36",
+          "value": "제안금액(VAT포함)",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FF92D050"
+            },
+            "font": {
+              "bold": true,
+              "size": 16,
+              "name": "Arial"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D36",
+          "value": "제안금액(VAT포함)",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FF92D050"
+            },
+            "font": {
+              "bold": true,
+              "size": 16,
+              "name": "Arial"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "E36",
+          "value": 4950000,
+          "type": "formula",
+          "formula": "E35*1.1",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FF92D050"
+            },
+            "font": {
+              "bold": true,
+              "size": 16,
+              "name": "Arial"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "F36",
+          "value": 4950000,
+          "type": "formula",
+          "formula": "E35*1.1",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FF92D050"
+            },
+            "font": {
+              "bold": true,
+              "size": 16,
+              "name": "Arial"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "G36",
+          "value": 4950000,
+          "type": "formula",
+          "formula": "E35*1.1",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FF92D050"
+            },
+            "font": {
+              "bold": true,
+              "size": 16,
+              "name": "Arial"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B37",
+          "value": "기타사항",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 9,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B38",
+          "value": "* 상기견적은 RAM, M.2 NVMe 외 재고 가능한 목록으로 견적 드립니다.",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "size": 9,
+              "color": "FFFF0000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B39",
+          "value": "* RAM 및 M.2 NVMe 품목은 현재, 시장 공급 불안정한 품목으로 발주 시 재고 가능한 품목으로 납품 드립니다.",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "size": 9,
+              "color": "FFFF0000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B41",
+          "value": "* 당사는 이 견적상의 가격 및 조건들을 수용하고 이 견적서를 귀사에 대한 공식 발주서로  대신 하고자 합니다",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 9,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B43",
+          "value": "* 구매자 확인란 :",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 9,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B45",
+          "value": "    회사명 : ",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 9,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "D45",
+          "value": "명판 및 직인 :",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 9,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B47",
+          "value": "    담당자, 연락처 :",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 9,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B49",
+          "value": "    배송지 :",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 9,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "D49",
+          "value": "결제조건 : ",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFFFF"
+            },
+            "font": {
+              "bold": true,
+              "size": 9,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        }
+      ],
+      "preview": [
+        [
+          null,
+          " Quotation",
+          " Quotation",
+          " Quotation",
+          " Quotation",
+          " Quotation",
+          " Quotation",
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          " Quotation",
+          " Quotation",
+          " Quotation",
+          " Quotation",
+          " Quotation",
+          " Quotation",
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          " Quotation",
+          " Quotation",
+          " Quotation",
+          " Quotation",
+          " Quotation",
+          " Quotation",
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "회  사",
+          "유니파이커넥트 귀중",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "참  조",
+          "장진강 담당님",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "전  화",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "F a x ",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "C    P",
+          null,
+          null,
+          "서울시 금천구 가산디지털1로 131\n(BYC하이시티 B동 1201호)\n<Tel :070-8892-1452  Fax:070-8892-1459>",
+          "서울시 금천구 가산디지털1로 131\n(BYC하이시티 B동 1201호)\n<Tel :070-8892-1452  Fax:070-8892-1459>",
+          "서울시 금천구 가산디지털1로 131\n(BYC하이시티 B동 1201호)\n<Tel :070-8892-1452  Fax:070-8892-1459>",
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "E-mail",
+          "kang48@junifyconnect.com",
+          null,
+          "서울시 금천구 가산디지털1로 131\n(BYC하이시티 B동 1201호)\n<Tel :070-8892-1452  Fax:070-8892-1459>",
+          "서울시 금천구 가산디지털1로 131\n(BYC하이시티 B동 1201호)\n<Tel :070-8892-1452  Fax:070-8892-1459>",
+          "서울시 금천구 가산디지털1로 131\n(BYC하이시티 B동 1201호)\n<Tel :070-8892-1452  Fax:070-8892-1459>",
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          "서울시 금천구 가산디지털1로 131\n(BYC하이시티 B동 1201호)\n<Tel :070-8892-1452  Fax:070-8892-1459>",
+          "서울시 금천구 가산디지털1로 131\n(BYC하이시티 B동 1201호)\n<Tel :070-8892-1452  Fax:070-8892-1459>",
+          "서울시 금천구 가산디지털1로 131\n(BYC하이시티 B동 1201호)\n<Tel :070-8892-1452  Fax:070-8892-1459>",
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          "대표   서  서  형   (온라인견적시 직인생략)",
+          "대표   서  서  형   (온라인견적시 직인생략)",
+          "대표   서  서  형   (온라인견적시 직인생략)",
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "견 적 일",
+          "2025-12-30",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "납 기 일",
+          "별도협의",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "유효기간",
+          "견적일로부터 1일 이내",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "결제조건",
+          "계산서 발행 후 익월 말 현금 결제",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "견적담당",
+          "김대훈 (070-8892-1455)",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "프로젝트명",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          "단위:원 (VAT별도)",
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          " P/N ",
+          " Description ",
+          " Q'ty ",
+          "  SRP  ",
+          "  Price  ",
+          " Sum ",
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "조립PC",
+          1,
+          null,
+          null,
+          4500000,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "CPU",
+          "[INTEL] 인텔 코어 Ultra 9 프로세서 285K (애로우 레이크/쿨러미포함)",
+          1,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "BOARD",
+          "[GIGABYTE] Z890 AORUS ELITE WIFI7",
+          1,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "RAM",
+          "16GB DDR5 PC5-44800 [5600]",
+          2,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "M.2 SSD",
+          "500GB M.2 NVMe [DRAM 탑재 제품]",
+          1,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "M.2 SSD",
+          "1TB M.2 NVMe[DRAM 탑재 제품]",
+          1,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "COOLER",
+          "[3RSYS] Socoool RC1900N 솔더링 쌍철봉 [공랭]",
+          1,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "POWER",
+          "[MSI] MAG A850GL 80PLUS GOLD 풀모듈러 ATX 3.1 PCIE5 [850W]",
+          1,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "CASE",
+          "[3RSYS] R200",
+          1,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "GPU",
+          "[MSI] 지포스 RTX 5060 벤투스 2X OC D7 8GB",
+          1,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "OS",
+          "[Microsoft] Windows 11 Pro [COEM(DSP)/한글/64bit]",
+          1,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "제안금액(VAT별도)",
+          "제안금액(VAT별도)",
+          "제안금액(VAT별도)",
+          4500000,
+          4500000,
+          4500000,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "제안금액(VAT포함)",
+          "제안금액(VAT포함)",
+          "제안금액(VAT포함)",
+          4950000,
+          4950000,
+          4950000,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "기타사항",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "* 상기견적은 RAM, M.2 NVMe 외 재고 가능한 목록으로 견적 드립니다.",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "* RAM 및 M.2 NVMe 품목은 현재, 시장 공급 불안정한 품목으로 발주 시 재고 가능한 품목으로 납품 드립니다.",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "* 당사는 이 견적상의 가격 및 조건들을 수용하고 이 견적서를 귀사에 대한 공식 발주서로  대신 하고자 합니다",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "* 구매자 확인란 :",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "    회사명 : ",
+          null,
+          "명판 및 직인 :",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "    담당자, 연락처 :",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "    배송지 :",
+          null,
+          "결제조건 : ",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      ],
+      "previewHeaders": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K"
+      ],
+      "columnWidths": {
+        "A": 1.08203125,
+        "B": 20,
+        "C": 77.75,
+        "D": 5.25,
+        "E": 14.33203125,
+        "F": 13.58203125,
+        "G": 15,
+        "H": 9.6640625,
+        "I": 11.58203125,
+        "J": 12.58203125,
+        "K": 10.58203125
+      },
+      "rowHeights": {
+        "1": 12,
+        "2": 12,
+        "3": 21,
+        "4": 4.5,
+        "6": 15,
+        "7": 15,
+        "8": 16,
+        "9": 15,
+        "10": 15,
+        "11": 16.5,
+        "12": 16.5,
+        "13": 14.25,
+        "14": 14.25,
+        "15": 14.25,
+        "16": 14.25,
+        "17": 14.25,
+        "18": 14.25,
+        "19": 14.25,
+        "20": 16.5,
+        "21": 16,
+        "22": 15.5,
+        "23": 15,
+        "24": 15.5,
+        "25": 15.5,
+        "26": 15.5,
+        "27": 15.5,
+        "28": 15.5,
+        "29": 15.5,
+        "30": 15.5,
+        "31": 15.5,
+        "32": 15.5,
+        "33": 15.5,
+        "34": 13.5,
+        "35": 20.25,
+        "36": 20.25,
+        "37": 18,
+        "38": 18,
+        "39": 18,
+        "40": 18,
+        "41": 18,
+        "42": 18,
+        "43": 18,
+        "44": 18,
+        "45": 18,
+        "46": 18,
+        "47": 18,
+        "48": 18,
+        "49": 18
+      }
+    }
+  ],
+  "analyzedAt": "2026-01-21T08:45:58.638Z"
+}

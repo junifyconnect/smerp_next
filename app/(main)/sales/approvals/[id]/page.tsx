@@ -74,6 +74,9 @@ interface SalesApproval {
   deliveryAddress?: string
   deliveryDate?: string
   invoiceEmail?: string
+  invoiceDate?: string
+  invoiceDueDate?: string
+  paymentDate?: string
   receiverName?: string
   receiverPhone?: string
   totalAmount?: number
@@ -359,12 +362,6 @@ export default function SalesApprovalDetailPage() {
     return approval.approvalNumber
   }
 
-  const calcMargin = () => {
-    const sales = Number(approval?.totalAmount) || 0
-    const purchase = Number(approval?.purchaseTotal) || 0
-    return sales - purchase
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -401,7 +398,6 @@ export default function SalesApprovalDetailPage() {
                 {statusLabels[approval.status]?.label || approval.status}
               </span>
             </div>
-            <p className="text-sm text-gray-500 mt-1">{approval.approvalNumber}</p>
             {approval.deal && (
               <p className="text-sm text-blue-600 mt-1">Deal: {approval.deal.name}</p>
             )}
@@ -452,228 +448,189 @@ export default function SalesApprovalDetailPage() {
         </div>
       </div>
 
-      {/* 결재선 */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-gray-900">결재선</h3>
+      {/* 기본 정보 + 결재선 (나란히 배치) */}
+      <div className="flex items-start justify-between gap-4">
+        {/* 기본 정보 (컴팩트 테이블 스타일) */}
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <table className="text-sm">
+            <tbody className="divide-y divide-gray-100">
+              {/* 1행: 품의코드, 매출처, End User */}
+              <tr>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">품의코드</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <div className="w-36 px-2 py-1 text-xs">{approval.approvalCode || '-'}</div>
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">매출처</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <div className="w-40 px-2 py-1 text-xs">{approval.clientCompany || '-'}</div>
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">End User</td>
+                <td className="px-1.5 py-1">
+                  <div className="w-40 px-2 py-1 text-xs">{approval.endUser || '-'}</div>
+                </td>
+              </tr>
+              {/* 2행: 품의일자, 담당자/연락처, MT&SN */}
+              <tr className="bg-gray-50/30">
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">품의일자</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <div className="w-36 px-2 py-1 text-xs">
+                    {approval.approvalDate ? new Date(approval.approvalDate).toLocaleDateString('ko-KR') : '-'}
+                  </div>
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">담당자/연락처</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <div className="flex gap-1">
+                    <div className="w-20 px-2 py-1 text-xs">{approval.clientContact || '-'}</div>
+                    <div className="w-28 px-2 py-1 text-xs">{approval.clientPhone || ''}</div>
+                  </div>
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">MT&S/N</td>
+                <td className="px-1.5 py-1">
+                  <div className="w-40 px-2 py-1 text-xs">{approval.paymentTerms || '-'}</div>
+                </td>
+              </tr>
+              {/* 3행: 품의담당 */}
+              <tr>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">품의담당</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <div className="w-36 px-2 py-1 text-xs">{approval.managerName || '-'}</div>
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap"></td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <div className="flex gap-1">
+                    <div className="w-20"></div>
+                    <div className="w-28"></div>
+                  </div>
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap"></td>
+                <td className="px-1.5 py-1">
+                  <div className="w-40"></div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* 결재선 (컴팩트) - 우측 정렬 */}
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden flex-shrink-0">
           {approval.status === 'REJECTED' && approval.rejectionReason && (
-            <div className="text-sm text-red-600 bg-red-50 px-3 py-1 rounded-lg">
-              반려사유: {approval.rejectionReason}
+            <div className="text-xs text-red-600 bg-red-50 px-2 py-1 border-b border-red-100">
+              반려: {approval.rejectionReason}
             </div>
           )}
-        </div>
-        <div className="grid grid-cols-3 gap-4">
-          {/* 영업담당자 */}
-          <div className={`p-4 rounded-lg border-2 ${
-            approval.salesManager ? 'border-emerald-500 bg-emerald-50' :
-            approval.status === 'DRAFT' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-          }`}>
-            <div className="text-center">
-              <p className="text-xs text-gray-500 mb-1">영업담당</p>
-              {approval.salesManager ? (
-                <>
-                  <p className="font-medium text-gray-900">{approval.salesManager.name}</p>
-                  <p className="text-xs text-emerald-600 mt-1">
-                    {approval.salesManagerSignedAt && new Date(approval.salesManagerSignedAt).toLocaleDateString('ko-KR')}
-                  </p>
-                </>
-              ) : (
-                <p className="text-gray-400">-</p>
-              )}
-            </div>
-            {approval.status === 'DRAFT' && (
-              <button
-                onClick={() => handleSign('SALES_MANAGER')}
-                disabled={updatingStatus}
-                className="w-full mt-3 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
-              >
-                {updatingStatus ? '처리중...' : '서명'}
-              </button>
-            )}
-          </div>
-
-          {/* 영업팀장 */}
-          <div className={`p-4 rounded-lg border-2 ${
-            approval.teamLeader ? 'border-emerald-500 bg-emerald-50' :
-            approval.status === 'PENDING_TEAM_LEAD' ? 'border-orange-500 bg-orange-50' : 'border-gray-200'
-          }`}>
-            <div className="text-center">
-              <p className="text-xs text-gray-500 mb-1">영업팀장</p>
-              {approval.teamLeader ? (
-                <>
-                  <p className="font-medium text-gray-900">{approval.teamLeader.name}</p>
-                  <p className="text-xs text-emerald-600 mt-1">
-                    {approval.teamLeaderSignedAt && new Date(approval.teamLeaderSignedAt).toLocaleDateString('ko-KR')}
-                  </p>
-                </>
-              ) : (
-                <p className="text-gray-400">-</p>
-              )}
-            </div>
-            {approval.status === 'PENDING_TEAM_LEAD' && (
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={() => handleSign('TEAM_LEADER')}
-                  disabled={updatingStatus}
-                  className="flex-1 px-3 py-2 bg-orange-600 text-white text-sm rounded-lg hover:bg-orange-700 disabled:opacity-50"
-                >
-                  {updatingStatus ? '...' : '승인'}
-                </button>
-                <button
-                  onClick={handleReject}
-                  disabled={updatingStatus}
-                  className="flex-1 px-3 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 disabled:opacity-50"
-                >
-                  반려
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* 대표이사 */}
-          <div className={`p-4 rounded-lg border-2 ${
-            approval.ceo ? 'border-emerald-500 bg-emerald-50' :
-            approval.status === 'PENDING_CEO' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-          }`}>
-            <div className="text-center">
-              <p className="text-xs text-gray-500 mb-1">대표이사</p>
-              {approval.ceo ? (
-                <>
-                  <p className="font-medium text-gray-900">{approval.ceo.name}</p>
-                  <p className="text-xs text-emerald-600 mt-1">
-                    {approval.ceoSignedAt && new Date(approval.ceoSignedAt).toLocaleDateString('ko-KR')}
-                  </p>
-                </>
-              ) : (
-                <p className="text-gray-400">-</p>
-              )}
-            </div>
-            {approval.status === 'PENDING_CEO' && (
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={() => handleSign('CEO')}
-                  disabled={updatingStatus}
-                  className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {updatingStatus ? '...' : '승인'}
-                </button>
-                <button
-                  onClick={handleReject}
-                  disabled={updatingStatus}
-                  className="flex-1 px-3 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 disabled:opacity-50"
-                >
-                  반려
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* 마진 요약 */}
-      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200 p-6">
-        <h3 className="text-sm font-semibold text-gray-900 mb-4">마진 요약</h3>
-        <div className="grid grid-cols-3 gap-6 text-center">
-          <div>
-            <p className="text-sm text-blue-600">매출 (VAT별도)</p>
-            <p className="text-xl font-bold text-blue-900">{Number(approval.totalAmount || 0).toLocaleString()}원</p>
-          </div>
-          <div>
-            <p className="text-sm text-purple-600">매입 (VAT별도)</p>
-            <p className="text-xl font-bold text-purple-900">{Number(approval.purchaseTotal || 0).toLocaleString()}원</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">마진</p>
-            <p className={`text-xl font-bold ${calcMargin() >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-              {calcMargin().toLocaleString()}원
-            </p>
-            <p className="text-xs text-gray-500">
-              ({Number(approval.totalAmount || 0) > 0 ? ((calcMargin() / Number(approval.totalAmount || 0)) * 100).toFixed(1) : 0}%)
-            </p>
-          </div>
+          <table className="text-xs">
+            <thead>
+              <tr className="bg-gray-50 border-b">
+                <th className="px-3 py-1.5 text-center font-medium text-gray-600 border-r border-gray-200">영업담당</th>
+                <th className="px-3 py-1.5 text-center font-medium text-gray-600 border-r border-gray-200">영업팀장</th>
+                <th className="px-3 py-1.5 text-center font-medium text-gray-600">대표이사</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                {/* 영업담당 */}
+                <td className={`px-3 py-2 text-center border-r border-gray-200 min-w-[80px] ${
+                  approval.salesManager ? 'bg-emerald-50' :
+                  approval.status === 'DRAFT' ? 'bg-blue-50' : ''
+                }`}>
+                  {approval.salesManager ? (
+                    <div>
+                      <p className="font-medium text-gray-900">{approval.salesManager.name}</p>
+                      <p className="text-[10px] text-emerald-600">
+                        {approval.salesManagerSignedAt && new Date(approval.salesManagerSignedAt).toLocaleDateString('ko-KR')}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-gray-400">-</p>
+                  )}
+                  {approval.status === 'DRAFT' && (
+                    <button
+                      onClick={() => handleSign('SALES_MANAGER')}
+                      disabled={updatingStatus}
+                      className="mt-1 px-2 py-1 bg-blue-600 text-white text-[10px] rounded hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {updatingStatus ? '...' : '서명'}
+                    </button>
+                  )}
+                </td>
+                {/* 영업팀장 */}
+                <td className={`px-3 py-2 text-center border-r border-gray-200 min-w-[80px] ${
+                  approval.teamLeader ? 'bg-emerald-50' :
+                  approval.status === 'PENDING_TEAM_LEAD' ? 'bg-orange-50' : ''
+                }`}>
+                  {approval.teamLeader ? (
+                    <div>
+                      <p className="font-medium text-gray-900">{approval.teamLeader.name}</p>
+                      <p className="text-[10px] text-emerald-600">
+                        {approval.teamLeaderSignedAt && new Date(approval.teamLeaderSignedAt).toLocaleDateString('ko-KR')}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-gray-400">-</p>
+                  )}
+                  {approval.status === 'PENDING_TEAM_LEAD' && (
+                    <div className="flex gap-1 mt-1 justify-center">
+                      <button
+                        onClick={() => handleSign('TEAM_LEADER')}
+                        disabled={updatingStatus}
+                        className="px-2 py-1 bg-orange-600 text-white text-[10px] rounded hover:bg-orange-700 disabled:opacity-50"
+                      >
+                        승인
+                      </button>
+                      <button
+                        onClick={handleReject}
+                        disabled={updatingStatus}
+                        className="px-2 py-1 bg-red-600 text-white text-[10px] rounded hover:bg-red-700 disabled:opacity-50"
+                      >
+                        반려
+                      </button>
+                    </div>
+                  )}
+                </td>
+                {/* 대표이사 */}
+                <td className={`px-3 py-2 text-center min-w-[80px] ${
+                  approval.ceo ? 'bg-emerald-50' :
+                  approval.status === 'PENDING_CEO' ? 'bg-blue-50' : ''
+                }`}>
+                  {approval.ceo ? (
+                    <div>
+                      <p className="font-medium text-gray-900">{approval.ceo.name}</p>
+                      <p className="text-[10px] text-emerald-600">
+                        {approval.ceoSignedAt && new Date(approval.ceoSignedAt).toLocaleDateString('ko-KR')}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-gray-400">-</p>
+                  )}
+                  {approval.status === 'PENDING_CEO' && (
+                    <div className="flex gap-1 mt-1 justify-center">
+                      <button
+                        onClick={() => handleSign('CEO')}
+                        disabled={updatingStatus}
+                        className="px-2 py-1 bg-blue-600 text-white text-[10px] rounded hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        승인
+                      </button>
+                      <button
+                        onClick={handleReject}
+                        disabled={updatingStatus}
+                        className="px-2 py-1 bg-red-600 text-white text-[10px] rounded hover:bg-red-700 disabled:opacity-50"
+                      >
+                        반려
+                      </button>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
-
-      {/* 품의 기본 정보 & 매출처 정보 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4 pb-2 border-b">품의 정보</h3>
-          <dl className="space-y-3">
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">품의번호</dt>
-              <dd className="text-sm font-medium text-gray-900">{approval.approvalNumber}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">품의코드</dt>
-              <dd className="text-sm text-gray-900">{approval.approvalCode || '-'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">품의일자</dt>
-              <dd className="text-sm text-gray-900">
-                {approval.approvalDate ? new Date(approval.approvalDate).toLocaleDateString('ko-KR') : '-'}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">품의담당</dt>
-              <dd className="text-sm text-gray-900">{approval.managerName || '-'}</dd>
-            </div>
-          </dl>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4 pb-2 border-b">매출처 정보</h3>
-          <dl className="space-y-3">
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">고객사</dt>
-              <dd className="text-sm font-medium text-gray-900">{approval.clientCompany || '-'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">담당자</dt>
-              <dd className="text-sm text-gray-900">{approval.clientContact || '-'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">연락처</dt>
-              <dd className="text-sm text-gray-900">{approval.clientPhone || '-'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">End User</dt>
-              <dd className="text-sm text-gray-900">{approval.endUser || '-'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">결제조건</dt>
-              <dd className="text-sm text-gray-900">{approval.paymentTerms || '-'}</dd>
-            </div>
-          </dl>
-        </div>
-      </div>
-
-      {/* 배송 정보 */}
-      {(approval.deliveryAddress || approval.receiverName) && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4 pb-2 border-b">배송 정보</h3>
-          <dl className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <dt className="text-sm text-gray-500">배송주소</dt>
-              <dd className="text-sm text-gray-900 mt-1">{approval.deliveryAddress || '-'}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-gray-500">납기일</dt>
-              <dd className="text-sm text-gray-900 mt-1">
-                {approval.deliveryDate ? new Date(approval.deliveryDate).toLocaleDateString('ko-KR') : '-'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm text-gray-500">수령자</dt>
-              <dd className="text-sm text-gray-900 mt-1">{approval.receiverName || '-'} {approval.receiverPhone}</dd>
-            </div>
-          </dl>
-        </div>
-      )}
 
       {/* 통합 품목 테이블 */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-900">품목 내역</h3>
+          <h3 className="text-sm font-semibold text-gray-900">품목</h3>
           <div className="flex items-center gap-4 text-xs">
             <span className="text-blue-600">매출 {approval.items?.length || 0}건</span>
             <span className="text-purple-600">매입 {approval.purchaseItems?.length || 0}건</span>
@@ -712,14 +669,20 @@ export default function SalesApprovalDetailPage() {
                     <td className="px-2 py-2 text-right font-medium text-blue-700 border-r-2 border-gray-300">
                       {Number(approval.items[0].totalPrice || 0).toLocaleString()}
                     </td>
-                    {/* 통합 매입인 경우 */}
-                    {approval.purchaseItems?.length === 1 && approval.purchaseItems[0].details && approval.purchaseItems[0].details.length > 0 ? (
+                    {/* 통합 매입인 경우 (매입 품목이 1개인 경우 - 제품 레벨 매입) */}
+                    {approval.purchaseItems?.length === 1 ? (
                       <>
                         <td className="px-2 py-2 text-sm">{approval.purchaseItems[0].vendorCompany || '-'}</td>
                         <td className="px-2 py-2 text-right text-sm">{Number(approval.purchaseItems[0].unitPrice || 0).toLocaleString()}</td>
                         <td className="px-2 py-2 text-right font-medium text-purple-700">
                           {Number(approval.purchaseItems[0].totalPrice || 0).toLocaleString()}
                         </td>
+                      </>
+                    ) : approval.purchaseItems && approval.purchaseItems.length > 0 ? (
+                      <>
+                        <td className="px-2 py-2 text-xs text-gray-400">개별</td>
+                        <td className="px-2 py-2 text-right text-xs text-gray-400">-</td>
+                        <td className="px-2 py-2 text-right text-xs text-gray-400">-</td>
                       </>
                     ) : (
                       <>
@@ -739,25 +702,26 @@ export default function SalesApprovalDetailPage() {
                         <td className="px-2 py-2 text-center text-sm">{detail.quantity || '-'}</td>
                         <td className="px-2 py-2 text-right text-xs text-gray-400">-</td>
                         <td className="px-2 py-2 text-right text-xs text-gray-400 border-r-2 border-gray-300">-</td>
-                        {approval.purchaseItems?.length === 1 && approval.purchaseItems[0].details && approval.purchaseItems[0].details.length > 0 ? (
+                        {/* 통합 매입 (매입 품목 1개) - 하위 행은 대시 표시 */}
+                        {approval.purchaseItems?.length === 1 ? (
                           <>
                             <td className="px-2 py-2 text-xs text-gray-400">-</td>
                             <td className="px-2 py-2 text-right text-xs text-gray-400">-</td>
                             <td className="px-2 py-2 text-right text-xs text-gray-400">-</td>
                           </>
-                        ) : purchaseDetail ? (
+                        ) : approval.purchaseItems?.[idx] ? (
                           <>
-                            <td className="px-2 py-2 text-sm">{approval.purchaseItems?.[idx]?.vendorCompany || '-'}</td>
-                            <td className="px-2 py-2 text-right text-sm">{Number(approval.purchaseItems?.[idx]?.unitPrice || 0).toLocaleString()}</td>
+                            <td className="px-2 py-2 text-sm">{approval.purchaseItems[idx].vendorCompany || '-'}</td>
+                            <td className="px-2 py-2 text-right text-sm">{Number(approval.purchaseItems[idx].unitPrice || 0).toLocaleString()}</td>
                             <td className="px-2 py-2 text-right font-medium text-purple-700">
-                              {Number(approval.purchaseItems?.[idx]?.totalPrice || 0).toLocaleString()}
+                              {Number(approval.purchaseItems[idx].totalPrice || 0).toLocaleString()}
                             </td>
                           </>
                         ) : (
                           <>
-                            <td className="px-2 py-2"></td>
-                            <td className="px-2 py-2"></td>
-                            <td className="px-2 py-2"></td>
+                            <td className="px-2 py-2 text-xs text-gray-400">-</td>
+                            <td className="px-2 py-2 text-right text-xs text-gray-400">-</td>
+                            <td className="px-2 py-2 text-right text-xs text-gray-400">-</td>
                           </>
                         )}
                       </tr>
@@ -888,15 +852,70 @@ export default function SalesApprovalDetailPage() {
             </tbody>
           </table>
         </div>
+
       </div>
 
-      {/* 비고 */}
-      {approval.notes && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">비고</h3>
-          <p className="text-sm text-gray-700 whitespace-pre-wrap">{approval.notes}</p>
-        </div>
-      )}
+      {/* 기타 정보 (계산서/결제/배송/비고) */}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden inline-block">
+        <table className="text-sm">
+          <tbody className="divide-y divide-gray-100">
+            {/* 1행: 기타 (비고) */}
+            <tr>
+              <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap align-top">기타</td>
+              <td className="px-1.5 py-1" colSpan={5}>
+                <div className="w-full min-h-[40px] px-2 py-1 text-xs text-gray-700 whitespace-pre-wrap">{approval.notes || '-'}</div>
+              </td>
+            </tr>
+            {/* 2행: 계산서 발행일, 계산서 발행예정일, 결제일 */}
+            <tr className="bg-gray-50/30">
+              <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">계산서 발행일</td>
+              <td className="px-1.5 py-1 border-r border-gray-100">
+                <div className="w-36 px-2 py-1 text-xs">
+                  {approval.invoiceDate ? new Date(approval.invoiceDate).toLocaleDateString('ko-KR') : '-'}
+                </div>
+              </td>
+              <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">계산서 발행예정일</td>
+              <td className="px-1.5 py-1 border-r border-gray-100">
+                <div className="w-36 px-2 py-1 text-xs">
+                  {approval.invoiceDueDate ? new Date(approval.invoiceDueDate).toLocaleDateString('ko-KR') : '-'}
+                </div>
+              </td>
+              <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">결제일</td>
+              <td className="px-1.5 py-1">
+                <div className="w-40 px-2 py-1 text-xs">{approval.paymentDate || '-'}</div>
+              </td>
+            </tr>
+            {/* 3행: 계산서 메일 */}
+            <tr>
+              <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">계산서 메일</td>
+              <td className="px-1.5 py-1" colSpan={5}>
+                <div className="w-72 px-2 py-1 text-xs">{approval.invoiceEmail || '-'}</div>
+              </td>
+            </tr>
+            {/* 4행: 배송주소 */}
+            <tr className="bg-gray-50/30">
+              <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">배송주소</td>
+              <td className="px-1.5 py-1" colSpan={5}>
+                <div className="w-full px-2 py-1 text-xs">{approval.deliveryAddress || '-'}</div>
+              </td>
+            </tr>
+            {/* 5행: 받으실분/연락처, 배송일 */}
+            <tr>
+              <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">받으실분/연락처</td>
+              <td className="px-1.5 py-1 border-r border-gray-100">
+                <div className="flex gap-1">
+                  <div className="w-20 px-2 py-1 text-xs">{approval.receiverName || '-'}</div>
+                  <div className="w-28 px-2 py-1 text-xs">{approval.receiverPhone || ''}</div>
+                </div>
+              </td>
+              <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">배송일</td>
+              <td className="px-1.5 py-1" colSpan={3}>
+                <div className="w-36 px-2 py-1 text-xs">{approval.deliveryDate || '-'}</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       {/* 원본 파일 (결재 완료 후) */}
       {approval.status === 'APPROVED' && (
@@ -1029,14 +1048,12 @@ export default function SalesApprovalDetailPage() {
       )}
 
       {/* 메타 정보 */}
-      <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
-        <div className="flex items-center justify-between text-sm text-gray-500">
-          <div className="flex gap-6">
-            <span>생성일: {new Date(approval.createdAt).toLocaleString('ko-KR')}</span>
-            {approval.updatedAt && (
-              <span>수정일: {new Date(approval.updatedAt).toLocaleString('ko-KR')}</span>
-            )}
-          </div>
+      <div className="flex justify-end">
+        <div className="flex gap-6 text-sm text-gray-500">
+          <span>생성일: {new Date(approval.createdAt).toLocaleString('ko-KR')}</span>
+          {approval.updatedAt && (
+            <span>수정일: {new Date(approval.updatedAt).toLocaleString('ko-KR')}</span>
+          )}
         </div>
       </div>
     </div>

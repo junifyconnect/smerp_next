@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -12,6 +12,17 @@ interface QuoteItem {
   srpPrice?: number
   unitPrice?: number
   totalPrice?: number
+  productId?: string | null
+}
+
+interface QuoteProduct {
+  id: string
+  name: string
+  quantity: number
+  srpPrice?: number
+  unitPrice?: number
+  totalPrice?: number
+  items: QuoteItem[]
 }
 
 interface QuoteFile {
@@ -55,6 +66,7 @@ interface SalesQuote {
   vatAmount?: number
   totalWithVat?: number
   notes?: string
+  products?: QuoteProduct[]
   items: QuoteItem[]
   files?: QuoteFile[]
   deal?: { id: string; name: string; status: string }
@@ -314,7 +326,7 @@ export default function SalesQuoteDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -334,7 +346,7 @@ export default function SalesQuoteDetailPage() {
               </span>
             </div>
             {quote.deal && (
-              <p className="text-sm text-gray-500 mt-1">Deal: {quote.deal.name}</p>
+              <p className="text-sm text-blue-600 mt-1">Deal: {quote.deal.name}</p>
             )}
           </div>
         </div>
@@ -394,145 +406,192 @@ export default function SalesQuoteDetailPage() {
         </div>
       </div>
 
-      {/* 상태 변경 */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-700">상태 변경</span>
-          <div className="flex gap-2">
-            {quote.status === 'DRAFT' && (
-              <button
-                onClick={() => handleStatusChange('SENT')}
-                disabled={updatingStatus}
-                className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
-              >
-                {updatingStatus ? '처리중...' : '발송 처리'}
-              </button>
-            )}
-            {quote.status === 'SENT' && (
-              <>
+      {/* 기본 정보 + 상태 변경 (나란히 배치) */}
+      <div className="flex items-start justify-between gap-4">
+        {/* 기본 정보 (컴팩트 테이블 스타일) */}
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <table className="text-sm">
+            <tbody className="divide-y divide-gray-100">
+              {/* 1행: 회사, 참조, 전화 */}
+              <tr>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">회사</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <div className="w-36 px-2 py-1 text-xs">{quote.clientCompany || '-'}</div>
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">참조</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <div className="w-28 px-2 py-1 text-xs">{quote.clientContact || '-'}</div>
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">전화</td>
+                <td className="px-1.5 py-1">
+                  <div className="w-32 px-2 py-1 text-xs">{quote.clientPhone || '-'}</div>
+                </td>
+              </tr>
+              {/* 2행: Fax, CP, E-mail */}
+              <tr className="bg-gray-50/30">
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">Fax</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <div className="w-36 px-2 py-1 text-xs">{quote.clientFax || '-'}</div>
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">C P</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <div className="w-28 px-2 py-1 text-xs">{quote.clientMobile || '-'}</div>
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">E-mail</td>
+                <td className="px-1.5 py-1">
+                  <div className="w-40 px-2 py-1 text-xs">{quote.clientEmail || '-'}</div>
+                </td>
+              </tr>
+              {/* 3행: 견적일, 납기일, 유효기간 */}
+              <tr>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">견적일</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <div className="w-28 px-2 py-1 text-xs">
+                    {quote.quoteDate ? new Date(quote.quoteDate).toLocaleDateString('ko-KR') : '-'}
+                  </div>
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">납기일</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <div className="w-28 px-2 py-1 text-xs">
+                    {quote.deliveryDate === '별도협의' ? '별도협의' : (quote.deliveryDate ? new Date(quote.deliveryDate).toLocaleDateString('ko-KR') : '-')}
+                  </div>
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">유효기간</td>
+                <td className="px-1.5 py-1">
+                  <div className="w-32 px-2 py-1 text-xs">{quote.validUntil ? `견적일로부터 ${quote.validUntil}일` : '-'}</div>
+                </td>
+              </tr>
+              {/* 4행: 결제조건, 견적담당, 프로젝트명 */}
+              <tr className="bg-gray-50/30">
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">결제조건</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <div className="w-36 px-2 py-1 text-xs">{quote.paymentTerms || '-'}</div>
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">견적담당</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <div className="w-28 px-2 py-1 text-xs">{quote.managerName || '-'}</div>
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">프로젝트</td>
+                <td className="px-1.5 py-1">
+                  <div className="w-40 px-2 py-1 text-xs">{quote.projectName || '-'}</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* 상태 변경 (우측 정렬) */}
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden flex-shrink-0 p-4">
+          <div className="flex items-center gap-4">
+            <span className="text-xs font-medium text-gray-600">상태 변경</span>
+            <div className="flex gap-2">
+              {quote.status === 'DRAFT' && (
                 <button
-                  onClick={() => handleStatusChange('ACCEPTED')}
+                  onClick={() => handleStatusChange('SENT')}
                   disabled={updatingStatus}
-                  className="px-4 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+                  className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {updatingStatus ? '처리중...' : '수주 (수락)'}
+                  {updatingStatus ? '처리중...' : '발송'}
                 </button>
-                <button
-                  onClick={() => handleStatusChange('REJECTED')}
-                  disabled={updatingStatus}
-                  className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 disabled:opacity-50"
-                >
-                  {updatingStatus ? '처리중...' : '실주 (거절)'}
-                </button>
-              </>
-            )}
-            {(quote.status === 'ACCEPTED' || quote.status === 'REJECTED') && (
-              <span className="text-sm text-gray-500 py-2">확정된 견적서는 상태를 변경할 수 없습니다</span>
-            )}
+              )}
+              {quote.status === 'SENT' && (
+                <>
+                  <button
+                    onClick={() => handleStatusChange('ACCEPTED')}
+                    disabled={updatingStatus}
+                    className="px-3 py-1.5 bg-emerald-600 text-white text-xs rounded hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {updatingStatus ? '...' : '수주'}
+                  </button>
+                  <button
+                    onClick={() => handleStatusChange('REJECTED')}
+                    disabled={updatingStatus}
+                    className="px-3 py-1.5 bg-red-600 text-white text-xs rounded hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {updatingStatus ? '...' : '실주'}
+                  </button>
+                </>
+              )}
+              {(quote.status === 'ACCEPTED' || quote.status === 'REJECTED') && (
+                <span className="text-xs text-gray-500">확정됨</span>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* 견적 정보 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 수신 (고객 정보) */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4 pb-2 border-b">수신</h3>
-          <dl className="space-y-3">
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">회사명</dt>
-              <dd className="text-sm font-medium text-gray-900">{quote.clientCompany || '-'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">담당자</dt>
-              <dd className="text-sm text-gray-900">{quote.clientContact || '-'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">전화</dt>
-              <dd className="text-sm text-gray-900">{quote.clientPhone || '-'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">팩스</dt>
-              <dd className="text-sm text-gray-900">{quote.clientFax || '-'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">휴대폰</dt>
-              <dd className="text-sm text-gray-900">{quote.clientMobile || '-'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">이메일</dt>
-              <dd className="text-sm text-gray-900">{quote.clientEmail || '-'}</dd>
-            </div>
-          </dl>
-        </div>
-
-        {/* 견적 정보 */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4 pb-2 border-b">견적 정보</h3>
-          <dl className="space-y-3">
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">견적일</dt>
-              <dd className="text-sm text-gray-900">
-                {quote.quoteDate ? new Date(quote.quoteDate).toLocaleDateString('ko-KR') : '-'}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">유효기간</dt>
-              <dd className="text-sm text-gray-900">{quote.validUntil || '-'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">납기일</dt>
-              <dd className="text-sm text-gray-900">
-                {quote.deliveryDate ? new Date(quote.deliveryDate).toLocaleDateString('ko-KR') : '-'}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">결제조건</dt>
-              <dd className="text-sm text-gray-900">{quote.paymentTerms || '-'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">견적 담당</dt>
-              <dd className="text-sm text-gray-900">{quote.managerName || '-'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-sm text-gray-500">프로젝트명</dt>
-              <dd className="text-sm text-gray-900">{quote.projectName || '-'}</dd>
-            </div>
-          </dl>
-        </div>
-      </div>
-
-      {/* 품목 목록 */}
+      {/* 품목 */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b bg-gray-50">
-          <h3 className="text-sm font-semibold text-gray-900">품목 목록 ({quote.items?.length || 0}개)</h3>
+          <h3 className="text-sm font-semibold text-gray-900">품목</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-100 border-b">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">P/N</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Description</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">수량</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">SRP</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">단가</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">금액</th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 w-24">P/N</th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 w-64">Description</th>
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-16">Q&apos;ty</th>
+                <th className="px-2 py-2 text-right text-xs font-medium text-gray-600 w-24">SRP</th>
+                <th className="px-2 py-2 text-right text-xs font-medium text-gray-600 w-24">Price</th>
+                <th className="px-2 py-2 text-right text-xs font-medium text-gray-600 w-28">Sum</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
-              {quote.items?.map((item, idx) => (
-                <tr key={idx} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm text-gray-600">{item.partNumber || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{item.description || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-right">{item.quantity}</td>
-                  <td className="px-4 py-3 text-sm text-right text-gray-600">
+            <tbody className="divide-y divide-gray-100">
+              {/* 제품 그룹 표시 */}
+              {quote.products?.map((product, pIdx) => (
+                <React.Fragment key={product.id}>
+                  {/* 제품 헤더 행 */}
+                  <tr className="bg-emerald-50 border-b border-emerald-200">
+                    <td className="px-2 py-2 text-xs font-medium text-emerald-700" colSpan={2}>
+                      {product.name || `제품 ${pIdx + 1}`}
+                    </td>
+                    <td className="px-2 py-2 text-xs text-emerald-700 text-center">
+                      {product.quantity}
+                    </td>
+                    <td className="px-2 py-2 text-xs text-emerald-600 text-right">
+                      {product.srpPrice ? Number(product.srpPrice).toLocaleString() : '-'}
+                    </td>
+                    <td className="px-2 py-2 text-xs text-emerald-700 text-right">
+                      {product.unitPrice ? Number(product.unitPrice).toLocaleString() : '-'}
+                    </td>
+                    <td className="px-2 py-2 text-xs font-bold text-emerald-700 text-right">
+                      {product.totalPrice ? Number(product.totalPrice).toLocaleString() : '-'}
+                    </td>
+                  </tr>
+                  {/* 제품 소속 품목들 */}
+                  {product.items?.map((item, iIdx) => (
+                    <tr key={item.id || `${product.id}-${iIdx}`} className="bg-gray-50/50">
+                      <td className="pl-6 pr-2 py-1.5 text-xs text-gray-500">{item.partNumber || '-'}</td>
+                      <td className="px-2 py-1.5 text-xs text-gray-600 whitespace-pre-wrap">{item.description || '-'}</td>
+                      <td className="px-2 py-1.5 text-xs text-gray-500 text-center">{item.quantity}</td>
+                      <td className="px-2 py-1.5 text-xs text-gray-400 text-right">
+                        {item.srpPrice ? Number(item.srpPrice).toLocaleString() : '-'}
+                      </td>
+                      <td className="px-2 py-1.5 text-xs text-gray-500 text-right">
+                        {item.unitPrice ? Number(item.unitPrice).toLocaleString() : '-'}
+                      </td>
+                      <td className="px-2 py-1.5 text-xs text-gray-500 text-right">
+                        {item.totalPrice ? Number(item.totalPrice).toLocaleString() : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </React.Fragment>
+              ))}
+              {/* 독립 품목 (productId가 null인 items) */}
+              {quote.items?.filter(item => !item.productId).map((item, idx) => (
+                <tr key={item.id || idx} className="hover:bg-gray-50">
+                  <td className="px-2 py-2 text-xs text-gray-600">{item.partNumber || '-'}</td>
+                  <td className="px-2 py-2 text-xs text-gray-900 whitespace-pre-wrap">{item.description || '-'}</td>
+                  <td className="px-2 py-2 text-xs text-center">{item.quantity}</td>
+                  <td className="px-2 py-2 text-xs text-right text-gray-600">
                     {item.srpPrice?.toLocaleString() || '-'}
                   </td>
-                  <td className="px-4 py-3 text-sm text-right">
-                    {item.unitPrice?.toLocaleString() || 0}원
+                  <td className="px-2 py-2 text-xs text-right">
+                    {item.unitPrice?.toLocaleString() || 0}
                   </td>
-                  <td className="px-4 py-3 text-sm text-right font-medium">
-                    {item.totalPrice?.toLocaleString() || 0}원
+                  <td className="px-2 py-2 text-xs text-right font-medium text-blue-700">
+                    {item.totalPrice?.toLocaleString() || 0}
                   </td>
                 </tr>
               ))}
@@ -540,34 +599,41 @@ export default function SalesQuoteDetailPage() {
           </table>
         </div>
 
-        {/* 합계 */}
-        <div className="px-6 py-4 border-t bg-gray-50">
-          <div className="flex justify-end">
-            <div className="w-72 space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">공급가액</span>
-                <span className="font-medium">{quote.totalAmount?.toLocaleString() || 0}원</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">부가세</span>
-                <span>{quote.vatAmount?.toLocaleString() || 0}원</span>
-              </div>
-              <div className="flex justify-between pt-2 border-t text-base">
-                <span className="font-semibold">총 금액</span>
-                <span className="font-bold text-blue-600">{quote.totalWithVat?.toLocaleString() || 0}원</span>
-              </div>
-            </div>
-          </div>
+        {/* 합계 영역 */}
+        <div className="bg-gray-50 border-t">
+          <table className="w-full text-sm">
+            <tbody>
+              <tr>
+                <td className="px-2 py-3 w-24"></td>
+                <td className="px-2 py-3 w-64"></td>
+                <td className="px-2 py-3 w-16"></td>
+                <td className="px-2 py-3 w-24"></td>
+                <td className="px-2 py-3 w-24 text-right text-xs text-gray-500">합계</td>
+                <td className="px-2 py-3 w-28 text-right">
+                  <div className="text-xs text-gray-500">VAT별도</div>
+                  <div className="text-base font-bold text-blue-700">
+                    {(quote.totalAmount || 0).toLocaleString()}원
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* 비고 */}
-      {quote.notes && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">비고</h3>
-          <p className="text-sm text-gray-700 whitespace-pre-wrap">{quote.notes}</p>
-        </div>
-      )}
+      {/* 기타 정보 */}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden inline-block">
+        <table className="text-sm">
+          <tbody className="divide-y divide-gray-100">
+            <tr>
+              <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap align-top">기타</td>
+              <td className="px-1.5 py-1">
+                <div className="w-[600px] min-h-[40px] px-2 py-1 text-xs text-gray-700 whitespace-pre-wrap">{quote.notes || '-'}</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       {/* 버전 목록 - 같은 Deal의 견적서들 */}
       {versions.length > 1 && (
@@ -690,16 +756,11 @@ export default function SalesQuoteDetailPage() {
       )}
 
       {/* 메타 정보 */}
-      <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
-        <div className="flex items-center justify-between text-sm text-gray-500">
-          <div className="flex gap-6">
-            <span>생성일: {new Date(quote.createdAt).toLocaleString('ko-KR')}</span>
-            {quote.updatedAt && (
-              <span>수정일: {new Date(quote.updatedAt).toLocaleString('ko-KR')}</span>
-            )}
-          </div>
-          {quote.createdBy && (
-            <span>작성자: {quote.createdBy.name}</span>
+      <div className="flex justify-end">
+        <div className="flex gap-6 text-sm text-gray-500">
+          <span>생성일: {new Date(quote.createdAt).toLocaleString('ko-KR')}</span>
+          {quote.updatedAt && (
+            <span>수정일: {new Date(quote.updatedAt).toLocaleString('ko-KR')}</span>
           )}
         </div>
       </div>

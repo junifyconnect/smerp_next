@@ -33,6 +33,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         if (!user.isActive) {
+          
           throw new Error('비활성화된 계정입니다')
         }
 

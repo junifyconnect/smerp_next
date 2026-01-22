@@ -4,7 +4,7 @@ import { UilEdit, UilFileAlt } from '@iconscout/react-unicons'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { SalesApprovalTemplate } from './SalesApprovalTemplate'
 
 interface DocumentItem {
@@ -15,6 +15,17 @@ interface DocumentItem {
   srpPrice?: number
   unitPrice?: number
   totalPrice?: number
+  productId?: string | null
+}
+
+interface ProductGroup {
+  id: string
+  name: string
+  quantity: number
+  srpPrice?: number
+  unitPrice?: number
+  totalPrice?: number
+  items: DocumentItem[]
 }
 
 interface PurchaseItem {
@@ -90,6 +101,7 @@ interface Document {
   vatAmount?: number
   totalWithVat?: number
   items: DocumentItem[]
+  products?: ProductGroup[]
   purchaseItems?: PurchaseItem[]
   deal?: { id: string; name: string; status: string }
   // 품의서 전용 필드
@@ -172,6 +184,8 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
       const res = await fetch(`${apiPath}/${documentId}`)
       if (!res.ok) throw new Error('문서를 찾을 수 없습니다')
       const data = await res.json()
+      console.log('API Response:', data)
+      console.log('Products:', data.products)
       setDocument(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : '오류가 발생했습니다')
@@ -1248,8 +1262,8 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
             {isSalesApproval ? `매출 품목 (${document.items?.length || 0}개)` : '품목 목록'}
           </h3>
         </div>
-        
-        {document.items?.length === 0 ? (
+
+        {(document.products?.length === 0 && document.items?.length === 0) ? (
           <div className="px-5 py-12 text-center text-sm text-gray-400">
             품목이 없습니다
           </div>
@@ -1286,7 +1300,55 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
                   </tr>
                 </thead>
                 <tbody>
-                  {document.items.map((item, idx) => (
+                  {/* 제품 그룹 표시 */}
+                  {isSalesQuote && document.products?.map((product, pIdx) => (
+                    <React.Fragment key={product.id}>
+                      {/* 제품 헤더 행 */}
+                      <tr className="bg-emerald-50 border-b border-emerald-200">
+                        <td className="px-4 py-3 text-sm font-medium text-emerald-700" colSpan={2}>
+                          {product.name || `제품 ${pIdx + 1}`}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-emerald-700 text-right">
+                          {product.quantity}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-emerald-600 text-right">
+                          {product.srpPrice ? `${Number(product.srpPrice).toLocaleString()}원` : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-emerald-700 text-right">
+                          {product.unitPrice ? `${Number(product.unitPrice).toLocaleString()}원` : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-bold text-emerald-700 text-right">
+                          {product.totalPrice ? `${Number(product.totalPrice).toLocaleString()}원` : '-'}
+                        </td>
+                      </tr>
+                      {/* 제품 소속 품목들 */}
+                      {product.items?.map((item, iIdx) => (
+                        <tr key={item.id || `${product.id}-${iIdx}`} className="border-b border-gray-50 bg-gray-50/50">
+                          <td className="pl-8 pr-4 py-2 text-xs text-gray-500 font-mono">
+                            {item.partNumber || '-'}
+                          </td>
+                          <td className="px-4 py-2 text-xs text-gray-600">
+                            {item.description || '-'}
+                          </td>
+                          <td className="px-4 py-2 text-xs text-gray-500 text-right">
+                            {item.quantity}
+                          </td>
+                          <td className="px-4 py-2 text-xs text-gray-400 text-right">
+                            {item.srpPrice ? `${Number(item.srpPrice).toLocaleString()}` : '-'}
+                          </td>
+                          <td className="px-4 py-2 text-xs text-gray-500 text-right">
+                            {item.unitPrice ? `${Number(item.unitPrice).toLocaleString()}` : '-'}
+                          </td>
+                          <td className="px-4 py-2 text-xs text-gray-500 text-right">
+                            {item.totalPrice ? `${Number(item.totalPrice).toLocaleString()}` : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  ))}
+
+                  {/* 독립 품목 (productId가 null인 items) */}
+                  {document.items?.filter(item => !item.productId).map((item, idx) => (
                     <tr key={item.id || idx} className="border-b border-gray-50 last:border-0">
                       {isSalesQuote && (
                         <td className="px-4 py-3 text-sm text-gray-600 font-mono truncate">
@@ -1306,7 +1368,7 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
                       </td>
                       {isSalesQuote && (
                         <td className="px-4 py-3 text-sm text-gray-600 text-right whitespace-nowrap">
-                          {(item as any).srpPrice ? `${(item as any).srpPrice.toLocaleString()}원` : '-'}
+                          {item.srpPrice ? `${Number(item.srpPrice).toLocaleString()}원` : '-'}
                         </td>
                       )}
                       <td className="px-4 py-3 text-sm text-gray-900 text-right whitespace-nowrap">
@@ -1322,34 +1384,32 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
             </div>
 
             {/* 합계 */}
-            {document.items && document.items.length > 0 && (
-              <div className="px-5 py-5 border-t border-gray-100">
-                <div className="flex justify-end">
-                  <div className="w-80">
-                    <div className="space-y-2.5 mb-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500">
-                          {isSalesApproval ? '매출 합계' : '공급가액'}
-                        </span>
-                        <span className="text-sm font-medium text-gray-900">{document.totalAmount?.toLocaleString() || 0}원</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500">부가세 (10%)</span>
-                        <span className="text-sm font-medium text-gray-900">{document.vatAmount?.toLocaleString() || 0}원</span>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center pt-3 border-t border-gray-200">
-                      <span className="text-base font-semibold text-gray-900">
-                        {isSalesApproval ? 'VAT 포함' : '총 금액'}
+            <div className="px-5 py-5 border-t border-gray-100">
+              <div className="flex justify-end">
+                <div className="w-80">
+                  <div className="space-y-2.5 mb-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-500">
+                        {isSalesApproval ? '매출 합계' : '공급가액'}
                       </span>
-                      <span className={`text-lg font-bold ${isSalesApproval ? 'text-blue-600' : 'text-gray-900'}`}>
-                        {document.totalWithVat?.toLocaleString() || 0}원
-                      </span>
+                      <span className="text-sm font-medium text-gray-900">{document.totalAmount?.toLocaleString() || 0}원</span>
                     </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-500">부가세 (10%)</span>
+                      <span className="text-sm font-medium text-gray-900">{document.vatAmount?.toLocaleString() || 0}원</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center pt-3 border-t border-gray-200">
+                    <span className="text-base font-semibold text-gray-900">
+                      {isSalesApproval ? 'VAT 포함' : '총 금액'}
+                    </span>
+                    <span className={`text-lg font-bold ${isSalesApproval ? 'text-blue-600' : 'text-gray-900'}`}>
+                      {document.totalWithVat?.toLocaleString() || 0}원
+                    </span>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
           </>
         )}
       </div>

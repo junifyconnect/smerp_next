@@ -1,0 +1,3741 @@
+{
+  "fileName": "2. Sales품의서 작성 날짜_당일 품의서 작성 순서(물품 명)_(고객사명)_(해당 담당자)_ERP 예시용 품의서.xlsx",
+  "sheetCount": 1,
+  "sheets": [
+    {
+      "name": "SALES",
+      "rowCount": 35,
+      "columnCount": 16,
+      "mergedCells": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10"
+      ],
+      "cells": [
+        {
+          "address": "C5",
+          "value": "SALES 통합 품의서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 28,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "D5",
+          "value": "SALES 통합 품의서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 28,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "E5",
+          "value": "SALES 통합 품의서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 28,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "F5",
+          "value": "SALES 통합 품의서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 28,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "G5",
+          "value": "SALES 통합 품의서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 28,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "H5",
+          "value": "SALES 통합 품의서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 28,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "I5",
+          "value": "SALES 통합 품의서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 28,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "J5",
+          "value": "SALES 통합 품의서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 28,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "K5",
+          "value": "SALES 통합 품의서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 28,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "L5",
+          "value": "SALES 통합 품의서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 28,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C6",
+          "value": "SALES 통합 품의서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 28,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "D6",
+          "value": "SALES 통합 품의서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 28,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "E6",
+          "value": "SALES 통합 품의서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 28,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "F6",
+          "value": "SALES 통합 품의서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 28,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "G6",
+          "value": "SALES 통합 품의서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 28,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "H6",
+          "value": "SALES 통합 품의서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 28,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "I6",
+          "value": "SALES 통합 품의서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 28,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "J6",
+          "value": "SALES 통합 품의서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 28,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "K6",
+          "value": "SALES 통합 품의서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 28,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "L6",
+          "value": "SALES 통합 품의서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 28,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C8",
+          "value": "계산서 발행일",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFF00"
+            },
+            "font": {
+              "bold": true,
+              "size": 11,
+              "color": "FF0000FF",
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C9",
+          "value": "품의 코드",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "D9",
+          "value": "[코드 순서->품의자이니셜/품의날짜/품의작성 날의 품의서 순서] 예시_D251202-01",
+          "type": "richText",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C10",
+          "value": "품의 일자",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "D10",
+          "value": "2025-12-02",
+          "type": "date",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C11",
+          "value": "품의 담당",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "D11",
+          "value": "김대훈",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "G12",
+          "value": null,
+          "type": "empty",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C13",
+          "value": "매출처/담당/연락처",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D13",
+          "value": "견적 나간 회사 / 해당 담당자 / 담당자 연락처",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C14",
+          "value": "End User",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "D14",
+          "value": "[매출처 앞단의 회사 정보가 공개 될 경우에 작성 / 없으면 미작성 or 매출처명]",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C15",
+          "value": "MT&S/N",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "D15",
+          "value": "[서버나 스토리지 등의 모델타입, 시리얼넘버가 있을 경우] 서버의 경우 예시_3A4BCTO1WW / S123Q1W2",
+          "type": "richText",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C16",
+          "value": "P/N",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:8"
+            },
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D16",
+          "value": "품목",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:8"
+            },
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "E16",
+          "value": "수량",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:8"
+            },
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "F16",
+          "value": "단가",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:8"
+            },
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "G16",
+          "value": "합계",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:8"
+            },
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "H16",
+          "value": "매입일or계산서 발행",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "I16",
+          "value": "매입처",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "J16",
+          "value": "수량",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "K16",
+          "value": "단가",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "L16",
+          "value": "합계",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D17",
+          "value": "[제품명]",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "color": "FFFF0000",
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "E17",
+          "value": 1,
+          "type": "number"
+        },
+        {
+          "address": "F17",
+          "value": 3000000,
+          "type": "number",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "G17",
+          "value": 3000000,
+          "type": "formula",
+          "formula": "E17*F17",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "H17",
+          "value": "2025-12-02",
+          "type": "date",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "I17",
+          "value": "RACK 코리아",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "J17",
+          "value": 1,
+          "type": "number",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "K17",
+          "value": 2700000,
+          "type": "number",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "L17",
+          "value": 2700000,
+          "type": "formula",
+          "formula": "J17*K17",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C18",
+          "value": "[품목명]\n예시_서버랙",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D18",
+          "value": " -19인치표준랙 (ANSI/EIA-310-D 규격)\n -(H)2,000*(W)600*(D)1,070 mm / 42U /Black\n -케이지너트 타입 마운트프레임( 유닛넘버링)\n -재질: SPCC 냉간압연강판\n -두께 : 1.2T, 1.5T, 2.0T\n -전면도어 : 벌집타공도어 & 스윙핸들 잠금장치\n -후면도어 : 양문형 벌집타공도어 & 스윙핸들 잠금장치\n -사이드판넬 : 스틸판넬 * 4개  ( 별도포장납품 )\n -하중선반 :  선반 2개\n -전원 : -",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "E18",
+          "value": 1,
+          "type": "number"
+        },
+        {
+          "address": "C19",
+          "value": "[품목명]\n예시_전원",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D19",
+          "value": "AL 10구 16A MCCB 랙전원\n>단상3선식, 220V, 30A 배선용차단기(MCCB), 단자대\n>3C*4.0SQ*2.5M\n>출력소켓 : KS 타입소켓 * 10개\n>입력플러그 : 220V 16A IP67 플러그(TYP 290)\n>인입선용 소켓 : 220V 16A IP67 소켓(TYP 552) 제공",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "Arial"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "E19",
+          "value": 2,
+          "type": "number"
+        },
+        {
+          "address": "C20",
+          "value": "[품목명]\n예시_전원",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "color": "FF000000",
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": false,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D20",
+          "value": "BYC, 1층 인도조건, 배송기사 1인, 하차 시 도움필요",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "E20",
+          "value": 1,
+          "type": "number"
+        },
+        {
+          "address": "C22",
+          "value": "매출금액 합계(VAT별도)",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 14,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D22",
+          "value": "매출금액 합계(VAT별도)",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 14,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "E22",
+          "value": "매출금액 합계(VAT별도)",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 14,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "F22",
+          "value": 3000000,
+          "type": "formula",
+          "formula": "G17",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 14,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "right",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "G22",
+          "value": 3000000,
+          "type": "formula",
+          "formula": "G17",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 14,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "right",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "H22",
+          "value": "매입금액 합계(VAT별도)",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 14,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "I22",
+          "value": "매입금액 합계(VAT별도)",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 14,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "J22",
+          "value": "매입금액 합계(VAT별도)",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 14,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "K22",
+          "value": "매입금액 합계(VAT별도)",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 14,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "L22",
+          "value": 2700000,
+          "type": "formula",
+          "formula": "L17",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 14,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "H23",
+          "value": "매입금액 합계(VAT포함)",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 14,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "I23",
+          "value": "매입금액 합계(VAT포함)",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 14,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "J23",
+          "value": "매입금액 합계(VAT포함)",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 14,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "K23",
+          "value": "매입금액 합계(VAT포함)",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 14,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "L23",
+          "value": 2970000.0000000005,
+          "type": "formula",
+          "formula": "L22*1.1",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "bold": true,
+              "size": 14,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C24",
+          "value": "기타",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D24",
+          "value": "예시_배송기사 별도 납품",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "E24",
+          "value": "예시_배송기사 별도 납품",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "F24",
+          "value": "예시_배송기사 별도 납품",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "G24",
+          "value": "예시_배송기사 별도 납품",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "H24",
+          "value": "예시_배송기사 별도 납품",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "I24",
+          "value": "예시_배송기사 별도 납품",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "J24",
+          "value": "예시_배송기사 별도 납품",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "K24",
+          "value": "예시_배송기사 별도 납품",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "L24",
+          "value": "예시_배송기사 별도 납품",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C25",
+          "value": "계산서 발행예정일",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFF00"
+            },
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D25",
+          "value": "매출처 측으로 발주서 받기 전 협의 or 납품 이후 발행",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "pattern",
+              "color": "FFFFFF00"
+            },
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C26",
+          "value": "계산서 메일",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D26",
+          "value": "[매출처 측 계산서 이메일]",
+          "type": "hyperlink",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "E26",
+          "value": "[매출처 측 계산서 이메일]",
+          "type": "hyperlink",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "F26",
+          "value": "[매출처 측 계산서 이메일]",
+          "type": "hyperlink",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "G26",
+          "value": "[매출처 측 계산서 이메일]",
+          "type": "hyperlink",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "H26",
+          "value": "[매출처 측 계산서 이메일]",
+          "type": "hyperlink",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "I26",
+          "value": "[매출처 측 계산서 이메일]",
+          "type": "hyperlink",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "J26",
+          "value": "[매출처 측 계산서 이메일]",
+          "type": "hyperlink",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "K26",
+          "value": "[매출처 측 계산서 이메일]",
+          "type": "hyperlink",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "L26",
+          "value": "[매출처 측 계산서 이메일]",
+          "type": "hyperlink",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C27",
+          "value": "결제일",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D27",
+          "value": "[견적서의 결제조건으로 따라감] 예시_계산서 발행 후 익월 말 현금 조건",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C29",
+          "value": "배송주소",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D29",
+          "value": "[발주 시에 협의 후 정해지지만, 도중 배송 주소 변경 될 경우도 있음] 예시_가산디지털1로 131 BYC하이시티 B동 12층 1201호, 서버메이트",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "E29",
+          "value": "[발주 시에 협의 후 정해지지만, 도중 배송 주소 변경 될 경우도 있음] 예시_가산디지털1로 131 BYC하이시티 B동 12층 1201호, 서버메이트",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "F29",
+          "value": "[발주 시에 협의 후 정해지지만, 도중 배송 주소 변경 될 경우도 있음] 예시_가산디지털1로 131 BYC하이시티 B동 12층 1201호, 서버메이트",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "G29",
+          "value": "[발주 시에 협의 후 정해지지만, 도중 배송 주소 변경 될 경우도 있음] 예시_가산디지털1로 131 BYC하이시티 B동 12층 1201호, 서버메이트",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "H29",
+          "value": "[발주 시에 협의 후 정해지지만, 도중 배송 주소 변경 될 경우도 있음] 예시_가산디지털1로 131 BYC하이시티 B동 12층 1201호, 서버메이트",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "I29",
+          "value": "[발주 시에 협의 후 정해지지만, 도중 배송 주소 변경 될 경우도 있음] 예시_가산디지털1로 131 BYC하이시티 B동 12층 1201호, 서버메이트",
+          "type": "richText",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C30",
+          "value": "받으실분 / 연락처",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D30",
+          "value": "받는 사람의 이름 / 연락처",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "E30",
+          "value": "받는 사람의 이름 / 연락처",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "F30",
+          "value": "받는 사람의 이름 / 연락처",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "G30",
+          "value": "받는 사람의 이름 / 연락처",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C31",
+          "value": "배 송 일",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D31",
+          "value": "[딜리버리가 정해져있을 경우 작성 / 딜리버리가 불분명 할 경우 별도협의 작성, 이후 서버메이트 사무실로 입고 시 협의 후 납품]",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "E32",
+          "value": null,
+          "type": "empty",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "F32",
+          "value": null,
+          "type": "empty",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "G32",
+          "value": null,
+          "type": "empty",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "H32",
+          "value": null,
+          "type": "empty",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "I32",
+          "value": null,
+          "type": "empty",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "J32",
+          "value": null,
+          "type": "empty",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "K32",
+          "value": null,
+          "type": "empty",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "L32",
+          "value": null,
+          "type": "empty",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:0"
+            },
+            "font": {
+              "size": 11,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "I33",
+          "value": "대표이사",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "J33",
+          "value": "영업팀장",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "K33",
+          "value": "영업담당",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "L33",
+          "value": "출고",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "P33",
+          "value": " ",
+          "type": "string"
+        },
+        {
+          "address": "C34",
+          "value": "*** 퀵/택배는 월간리스트에서 맞으면 관리부에서 매입 한번에 기록",
+          "type": "string",
+          "style": {
+            "fill": {
+              "type": "theme",
+              "color": "theme:9"
+            },
+            "font": {
+              "size": 12,
+              "color": "FFFF0000",
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "H34",
+          "value": "서명",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        }
+      ],
+      "preview": [
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "SALES 통합 품의서",
+          "SALES 통합 품의서",
+          "SALES 통합 품의서",
+          "SALES 통합 품의서",
+          "SALES 통합 품의서",
+          "SALES 통합 품의서",
+          "SALES 통합 품의서",
+          "SALES 통합 품의서",
+          "SALES 통합 품의서",
+          "SALES 통합 품의서",
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "SALES 통합 품의서",
+          "SALES 통합 품의서",
+          "SALES 통합 품의서",
+          "SALES 통합 품의서",
+          "SALES 통합 품의서",
+          "SALES 통합 품의서",
+          "SALES 통합 품의서",
+          "SALES 통합 품의서",
+          "SALES 통합 품의서",
+          "SALES 통합 품의서",
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "계산서 발행일",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "품의 코드",
+          "[코드 순서->품의자이니셜/품의날짜/품의작성 날의 품의서 순서] 예시_D251202-01",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "품의 일자",
+          "2025-12-02",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "품의 담당",
+          "김대훈",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "매출처/담당/연락처",
+          "견적 나간 회사 / 해당 담당자 / 담당자 연락처",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "End User",
+          "[매출처 앞단의 회사 정보가 공개 될 경우에 작성 / 없으면 미작성 or 매출처명]",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "MT&S/N",
+          "[서버나 스토리지 등의 모델타입, 시리얼넘버가 있을 경우] 서버의 경우 예시_3A4BCTO1WW / S123Q1W2",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "P/N",
+          "품목",
+          "수량",
+          "단가",
+          "합계",
+          "매입일or계산서 발행",
+          "매입처",
+          "수량",
+          "단가",
+          "합계",
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "[제품명]",
+          1,
+          3000000,
+          3000000,
+          "2025-12-02",
+          "RACK 코리아",
+          1,
+          2700000,
+          2700000,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "[품목명]\n예시_서버랙",
+          " -19인치표준랙 (ANSI/EIA-310-D 규격)\n -(H)2,000*(W)600*(D)1,070 mm / 42U /Black\n -케이지너트 타입 마운트프레임( 유닛넘버링)\n -재질: SPCC 냉간압연강판\n -두께 : 1.2T, 1.5T, 2.0T\n -전면도어 : 벌집타공도어 & 스윙핸들 잠금장치\n -후면도어 : 양문형 벌집타공도어 & 스윙핸들 잠금장치\n -사이드판넬 : 스틸판넬 * 4개  ( 별도포장납품 )\n -하중선반 :  선반 2개\n -전원 : -",
+          1,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "[품목명]\n예시_전원",
+          "AL 10구 16A MCCB 랙전원\n>단상3선식, 220V, 30A 배선용차단기(MCCB), 단자대\n>3C*4.0SQ*2.5M\n>출력소켓 : KS 타입소켓 * 10개\n>입력플러그 : 220V 16A IP67 플러그(TYP 290)\n>인입선용 소켓 : 220V 16A IP67 소켓(TYP 552) 제공",
+          2,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "[품목명]\n예시_전원",
+          "BYC, 1층 인도조건, 배송기사 1인, 하차 시 도움필요",
+          1,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "매출금액 합계(VAT별도)",
+          "매출금액 합계(VAT별도)",
+          "매출금액 합계(VAT별도)",
+          3000000,
+          3000000,
+          "매입금액 합계(VAT별도)",
+          "매입금액 합계(VAT별도)",
+          "매입금액 합계(VAT별도)",
+          "매입금액 합계(VAT별도)",
+          2700000,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          "매입금액 합계(VAT포함)",
+          "매입금액 합계(VAT포함)",
+          "매입금액 합계(VAT포함)",
+          "매입금액 합계(VAT포함)",
+          2970000.0000000005,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "기타",
+          "예시_배송기사 별도 납품",
+          "예시_배송기사 별도 납품",
+          "예시_배송기사 별도 납품",
+          "예시_배송기사 별도 납품",
+          "예시_배송기사 별도 납품",
+          "예시_배송기사 별도 납품",
+          "예시_배송기사 별도 납품",
+          "예시_배송기사 별도 납품",
+          "예시_배송기사 별도 납품",
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "계산서 발행예정일",
+          "매출처 측으로 발주서 받기 전 협의 or 납품 이후 발행",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "계산서 메일",
+          "[매출처 측 계산서 이메일]",
+          "[매출처 측 계산서 이메일]",
+          "[매출처 측 계산서 이메일]",
+          "[매출처 측 계산서 이메일]",
+          "[매출처 측 계산서 이메일]",
+          "[매출처 측 계산서 이메일]",
+          "[매출처 측 계산서 이메일]",
+          "[매출처 측 계산서 이메일]",
+          "[매출처 측 계산서 이메일]",
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "결제일",
+          "[견적서의 결제조건으로 따라감] 예시_계산서 발행 후 익월 말 현금 조건",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "배송주소",
+          "[발주 시에 협의 후 정해지지만, 도중 배송 주소 변경 될 경우도 있음] 예시_가산디지털1로 131 BYC하이시티 B동 12층 1201호, 서버메이트",
+          "[발주 시에 협의 후 정해지지만, 도중 배송 주소 변경 될 경우도 있음] 예시_가산디지털1로 131 BYC하이시티 B동 12층 1201호, 서버메이트",
+          "[발주 시에 협의 후 정해지지만, 도중 배송 주소 변경 될 경우도 있음] 예시_가산디지털1로 131 BYC하이시티 B동 12층 1201호, 서버메이트",
+          "[발주 시에 협의 후 정해지지만, 도중 배송 주소 변경 될 경우도 있음] 예시_가산디지털1로 131 BYC하이시티 B동 12층 1201호, 서버메이트",
+          "[발주 시에 협의 후 정해지지만, 도중 배송 주소 변경 될 경우도 있음] 예시_가산디지털1로 131 BYC하이시티 B동 12층 1201호, 서버메이트",
+          "[발주 시에 협의 후 정해지지만, 도중 배송 주소 변경 될 경우도 있음] 예시_가산디지털1로 131 BYC하이시티 B동 12층 1201호, 서버메이트",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "받으실분 / 연락처",
+          "받는 사람의 이름 / 연락처",
+          "받는 사람의 이름 / 연락처",
+          "받는 사람의 이름 / 연락처",
+          "받는 사람의 이름 / 연락처",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "배 송 일",
+          "[딜리버리가 정해져있을 경우 작성 / 딜리버리가 불분명 할 경우 별도협의 작성, 이후 서버메이트 사무실로 입고 시 협의 후 납품]",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          "대표이사",
+          "영업팀장",
+          "영업담당",
+          "출고",
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "*** 퀵/택배는 월간리스트에서 맞으면 관리부에서 매입 한번에 기록",
+          null,
+          null,
+          null,
+          null,
+          "서명",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      ],
+      "previewHeaders": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M",
+        "N",
+        "O"
+      ],
+      "columnWidths": {
+        "A": 4.5,
+        "C": 19.33203125,
+        "D": 76.1640625,
+        "E": 5.75,
+        "F": 12.5,
+        "G": 12.83203125,
+        "H": 19.58203125,
+        "I": 16.58203125,
+        "J": 16.58203125,
+        "K": 16.58203125,
+        "L": 17.25,
+        "M": 10.83203125,
+        "N": 12.33203125,
+        "P": 12.33203125
+      },
+      "rowHeights": {
+        "1": 17.5,
+        "7": 39.5,
+        "8": 17.5,
+        "9": 17.5,
+        "10": 17.5,
+        "11": 17.5,
+        "12": 23.25,
+        "13": 23.25,
+        "14": 23.25,
+        "15": 18,
+        "16": 18,
+        "18": 125,
+        "19": 75,
+        "20": 26,
+        "21": 17.5,
+        "22": 21.5,
+        "23": 21.5,
+        "24": 17.5,
+        "25": 17.5,
+        "26": 17.5,
+        "27": 17.5,
+        "28": 17.5,
+        "29": 17.5,
+        "30": 17.5,
+        "31": 34,
+        "32": 18,
+        "33": 34.5,
+        "34": 63,
+        "35": 17.5
+      }
+    }
+  ],
+  "analyzedAt": "2026-01-22T05:38:35.279Z"
+}

@@ -5,6 +5,24 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
+// 통합 품목 아이템 타입
+interface MAApprovalItemInput {
+  id?: string
+  smCode?: string
+  vendorCode?: string
+  clientCompany?: string
+  salesCompany?: string
+  salesPrice?: number
+  quantity?: number
+  salesBillingType?: string
+  startDate?: string
+  endDate?: string
+  purchaseCompany?: string
+  purchasePrice?: number
+  purchaseBillingType?: string
+  sortOrder?: number
+}
+
 // GET /api/ma-approvals/[id] - 상세 조회
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
@@ -14,7 +32,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       where: { id },
       include: {
         items: { orderBy: { sortOrder: 'asc' } },
-        purchaseItems: { orderBy: { sortOrder: 'asc' } },
       },
     })
 
@@ -46,7 +63,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       notes,
       status,
       items,
-      purchaseItems,
     } = body
 
     const updateData: Record<string, unknown> = {}
@@ -56,93 +72,43 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (notes !== undefined) updateData.notes = notes
     if (status !== undefined) updateData.status = status
 
-    // 매출 아이템이 제공된 경우
+    // 통합 아이템이 제공된 경우
     if (items !== undefined) {
       let totalAmount = 0
-      const itemsWithTotal = items.map((item: {
-        smCode?: string
-        vendorCode?: string
-        customerName?: string
-        clientCompany?: string
-        salesPrice?: number
-        quantity?: number
-        billingType?: string
-        startDate?: string
-        endDate?: string
-        sortOrder?: number
-      }, index: number) => {
+      let purchaseTotal = 0
+
+      const itemsData = items.map((item: MAApprovalItemInput, index: number) => {
         const qty = item.quantity || 1
-        const price = item.salesPrice || 0
-        totalAmount += price * qty
+        const salesPrice = item.salesPrice || 0
+        const purchasePrice = item.purchasePrice || 0
+
+        totalAmount += salesPrice * qty
+        purchaseTotal += purchasePrice * qty
+
         return {
           smCode: item.smCode,
           vendorCode: item.vendorCode,
-          customerName: item.customerName,
           clientCompany: item.clientCompany,
-          salesPrice: price,
+          salesCompany: item.salesCompany,
+          salesPrice: salesPrice,
           quantity: qty,
-          billingType: item.billingType,
+          salesBillingType: item.salesBillingType,
           startDate: item.startDate ? new Date(item.startDate) : null,
           endDate: item.endDate ? new Date(item.endDate) : null,
+          purchaseCompany: item.purchaseCompany,
+          purchasePrice: purchasePrice,
+          purchaseBillingType: item.purchaseBillingType,
           sortOrder: item.sortOrder ?? index,
         }
       })
 
       updateData.totalAmount = totalAmount
-
-      await prisma.mAApprovalItem.deleteMany({ where: { approvalId: id } })
-      await prisma.mAApprovalItem.createMany({
-        data: itemsWithTotal.map((item: {
-          smCode?: string
-          vendorCode?: string
-          customerName?: string
-          clientCompany?: string
-          salesPrice: number
-          quantity: number
-          billingType?: string
-          startDate: Date | null
-          endDate: Date | null
-          sortOrder: number
-        }) => ({
-          ...item,
-          approvalId: id,
-        })),
-      })
-    }
-
-    // 매입 아이템이 제공된 경우
-    if (purchaseItems !== undefined) {
-      let purchaseTotal = 0
-      const purchaseItemsWithTotal = purchaseItems.map((item: {
-        vendorCompany?: string
-        purchasePrice?: number
-        quantity?: number
-        billingType?: string
-        sortOrder?: number
-      }, index: number) => {
-        const qty = item.quantity || 1
-        const price = item.purchasePrice || 0
-        purchaseTotal += price * qty
-        return {
-          vendorCompany: item.vendorCompany,
-          purchasePrice: price,
-          quantity: qty,
-          billingType: item.billingType,
-          sortOrder: item.sortOrder ?? index,
-        }
-      })
-
       updateData.purchaseTotal = purchaseTotal
 
-      await prisma.mAApprovalPurchaseItem.deleteMany({ where: { approvalId: id } })
-      await prisma.mAApprovalPurchaseItem.createMany({
-        data: purchaseItemsWithTotal.map((item: {
-          vendorCompany?: string
-          purchasePrice: number
-          quantity: number
-          billingType?: string
-          sortOrder: number
-        }) => ({
+      // 기존 아이템 삭제 후 새로 생성
+      await prisma.mAApprovalItem.deleteMany({ where: { approvalId: id } })
+      await prisma.mAApprovalItem.createMany({
+        data: itemsData.map((item) => ({
           ...item,
           approvalId: id,
         })),
@@ -154,7 +120,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       data: updateData,
       include: {
         items: { orderBy: { sortOrder: 'asc' } },
-        purchaseItems: { orderBy: { sortOrder: 'asc' } },
       },
     })
 

@@ -5,6 +5,29 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
+// 품목 타입
+interface ItemInput {
+  partNumber?: string
+  description?: string
+  quantity?: number
+  srpPrice?: number
+  unitPrice?: number
+  sortOrder?: number
+}
+
+// 제품 그룹 타입
+interface ProductInput {
+  id?: string
+  name: string
+  quantity?: number
+  srpPrice?: number
+  unitPrice?: number
+  isConsolidated?: boolean
+  consolidatedPrice?: number // 레거시 호환
+  items?: ItemInput[]
+  sortOrder?: number
+}
+
 // GET /api/sales-quotes/[id] - 상세 조회
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
@@ -13,7 +36,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const quote = await prisma.salesQuote.findUnique({
       where: { id },
       include: {
-        items: { orderBy: { sortOrder: 'asc' } },
+        products: {
+          include: { items: { orderBy: { sortOrder: 'asc' } } },
+          orderBy: { sortOrder: 'asc' },
+        },
+        items: {
+          where: { productId: null }, // 독립 품목만
+          orderBy: { sortOrder: 'asc' },
+        },
         files: true,
         deal: { select: { id: true, name: true, status: true } },
         createdBy: { select: { id: true, name: true } },
@@ -26,6 +56,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         { status: 404 }
       )
     }
+
+    console.log('[API] Quote products:', quote.products?.length, quote.products)
 
     return NextResponse.json(quote)
   } catch (error) {
@@ -60,8 +92,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       paymentTerms,
       notes,
       status,
+      // 새 구조: 제품 그룹 + 독립 품목
+      products,
+      standaloneItems,
+      // 레거시 호환: 기존 flat items 구조
       items,
-      // 통합 견적
+      // 통합 견적 (레거시)
       isConsolidated,
       consolidatedName,
       consolidatedPrice,
@@ -109,7 +145,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (clientCP !== undefined) updateData.clientMobile = clientCP
     if (clientEmail !== undefined) updateData.clientEmail = clientEmail
 
-    // 통합 견적
+    // 통합 견적 (레거시)
     if (isConsolidated !== undefined) updateData.isConsolidated = isConsolidated
     if (consolidatedName !== undefined) updateData.consolidatedName = consolidatedName
     if (consolidatedPrice !== undefined) updateData.consolidatedPrice = consolidatedPrice
@@ -120,10 +156,96 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (notes !== undefined) updateData.notes = notes
     if (status !== undefined) updateData.status = status
 
-    // 아이템이 제공된 경우 재계산 및 교체
-    if (items !== undefined) {
+    // 새 구조 사용 여부 판단
+    const useNewStructure = products !== undefined || standaloneItems !== undefined
+
+    if (useNewStructure) {
+      // 새 구조: 제품 그룹 + 독립 품목
       let totalAmount = 0
-      const itemsWithTotal = items.map((item: { quantity?: number; unitPrice?: number; partNumber?: string; description?: string; srpPrice?: number; sortOrder?: number }, index: number) => {
+
+      // 기존 제품 및 품목 삭제
+      await prisma.salesQuoteProduct.deleteMany({ where: { quoteId: id } })
+      await prisma.salesQuoteItem.deleteMany({ where: { quoteId: id } })
+
+      // 제품 그룹 처리
+      if (products && products.length > 0) {
+        for (let pIdx = 0; pIdx < products.length; pIdx++) {
+          const product: ProductInput = products[pIdx]
+          const qty = product.quantity || 1
+          const unitPrice = product.unitPrice || product.consolidatedPrice || 0
+          const productTotal = qty * unitPrice
+
+          totalAmount += productTotal
+
+          // 제품 생성
+          const createdProduct = await prisma.salesQuoteProduct.create({
+            data: {
+              quoteId: id,
+              sortOrder: product.sortOrder ?? pIdx,
+              name: product.name,
+              quantity: qty,
+              srpPrice: product.srpPrice,
+              unitPrice: unitPrice,
+              totalPrice: productTotal,
+              isConsolidated: true,
+              consolidatedPrice: productTotal, // 레거시 호환
+            },
+          })
+
+          // 참고용 상세 품목 생성
+          if (product.items && product.items.length > 0) {
+            const productItems = product.items.map((item: ItemInput, iIdx: number) => {
+              return {
+                quoteId: id,
+                productId: createdProduct.id,
+                sortOrder: item.sortOrder ?? iIdx,
+                partNumber: item.partNumber,
+                description: item.description,
+                quantity: item.quantity || 1,
+                srpPrice: item.srpPrice,
+                unitPrice: item.unitPrice || 0,
+                totalPrice: (item.quantity || 1) * (item.unitPrice || 0),
+              }
+            })
+
+            await prisma.salesQuoteItem.createMany({ data: productItems })
+          }
+        }
+      }
+
+      // 독립 품목 처리
+      if (standaloneItems && standaloneItems.length > 0) {
+        const standaloneItemsData = standaloneItems.map((item: ItemInput, idx: number) => {
+          const qty = item.quantity || 1
+          const price = item.unitPrice || 0
+          const itemTotal = qty * price
+          totalAmount += itemTotal
+          return {
+            quoteId: id,
+            productId: null,
+            sortOrder: item.sortOrder ?? (idx + 1000),
+            partNumber: item.partNumber,
+            description: item.description,
+            quantity: qty,
+            srpPrice: item.srpPrice,
+            unitPrice: price,
+            totalPrice: itemTotal,
+          }
+        })
+
+        await prisma.salesQuoteItem.createMany({ data: standaloneItemsData })
+      }
+
+      const vatAmount = Math.round(totalAmount * 0.1)
+      const totalWithVat = totalAmount + vatAmount
+
+      updateData.totalAmount = totalAmount
+      updateData.vatAmount = vatAmount
+      updateData.totalWithVat = totalWithVat
+    } else if (items !== undefined) {
+      // 레거시 구조: 기존 flat items
+      let totalAmount = 0
+      const itemsWithTotal = items.map((item: ItemInput, index: number) => {
         const qty = item.quantity || 1
         const price = item.unitPrice || 0
         const itemTotal = qty * price
@@ -151,10 +273,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       updateData.vatAmount = vatAmount
       updateData.totalWithVat = totalWithVat
 
-      // 기존 아이템 삭제 후 새로 생성 (참고용으로 저장)
+      // 기존 제품 및 아이템 삭제 후 새로 생성
+      await prisma.salesQuoteProduct.deleteMany({ where: { quoteId: id } })
       await prisma.salesQuoteItem.deleteMany({ where: { quoteId: id } })
       await prisma.salesQuoteItem.createMany({
-        data: itemsWithTotal.map((item: { partNumber?: string; description?: string; quantity: number; srpPrice?: number; unitPrice: number; totalPrice: number; sortOrder: number }) => ({
+        data: itemsWithTotal.map((item) => ({
           ...item,
           quoteId: id,
         })),
@@ -165,7 +288,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       where: { id },
       data: updateData,
       include: {
-        items: { orderBy: { sortOrder: 'asc' } },
+        products: {
+          include: { items: { orderBy: { sortOrder: 'asc' } } },
+          orderBy: { sortOrder: 'asc' },
+        },
+        items: {
+          where: { productId: null },
+          orderBy: { sortOrder: 'asc' },
+        },
         deal: { select: { id: true, name: true, status: true } },
         createdBy: { select: { id: true, name: true } },
       },

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
+import VendorAutocomplete from '@/components/inputs/VendorAutocomplete'
 
 interface Item {
   partNumber: string
@@ -44,11 +45,16 @@ export default function EditSalesApprovalPage() {
     clientPhone: '',
     endUser: '',
     paymentTerms: '',
-    deliveryAddress: '',
-    deliveryDate: '',
-    invoiceEmail: '',
-    receiverName: '',
-    receiverPhone: '',
+    // 계산서 관련
+    invoiceDate: '',           // 계산서 발행일
+    invoiceDueDate: '',        // 계산서 발행예정일
+    invoiceEmail: '',          // 계산서 메일
+    paymentDate: '',           // 결제일
+    // 배송 관련
+    deliveryAddress: '',       // 배송주소
+    deliveryDate: '',          // 배송일
+    receiverName: '',          // 받으실분
+    receiverPhone: '',         // 받으실분 연락처
     notes: '',
   })
 
@@ -91,9 +97,14 @@ export default function EditSalesApprovalPage() {
           clientPhone: data.clientPhone || '',
           endUser: data.endUser || '',
           paymentTerms: data.paymentTerms || '',
-          deliveryAddress: data.deliveryAddress || '',
-          deliveryDate: data.deliveryDate ? data.deliveryDate.split('T')[0] : '',
+          // 계산서 관련
+          invoiceDate: data.invoiceDate ? data.invoiceDate.split('T')[0] : '',
+          invoiceDueDate: data.invoiceDueDate ? data.invoiceDueDate.split('T')[0] : '',
           invoiceEmail: data.invoiceEmail || '',
+          paymentDate: data.paymentDate || '',
+          // 배송 관련
+          deliveryAddress: data.deliveryAddress || '',
+          deliveryDate: data.deliveryDate || '',
           receiverName: data.receiverName || '',
           receiverPhone: data.receiverPhone || '',
           notes: data.notes || '',
@@ -185,6 +196,18 @@ export default function EditSalesApprovalPage() {
     fetchApproval()
   }, [fetchApproval])
 
+  // textarea 높이 자동 조절
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const textareas = document.querySelectorAll<HTMLTextAreaElement>('textarea')
+      textareas.forEach((textarea) => {
+        textarea.style.height = 'auto'
+        textarea.style.height = textarea.scrollHeight + 'px'
+      })
+    }, 50)
+    return () => clearTimeout(timer)
+  }, [items])
+
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
@@ -205,6 +228,19 @@ export default function EditSalesApprovalPage() {
     if (items.length > 1) {
       setItems((prev) => prev.filter((_, i) => i !== index))
     }
+  }
+
+  // 숫자 포맷팅 (천 단위 쉼표)
+  const formatNumber = (value: number | string): string => {
+    const num = typeof value === 'string' ? parseFloat(value.replace(/,/g, '')) : value
+    if (isNaN(num) || num === 0) return ''
+    return num.toLocaleString()
+  }
+
+  // 숫자 파싱 (쉼표 제거)
+  const parseNumber = (value: string): number => {
+    const num = parseInt(value.replace(/,/g, ''), 10)
+    return isNaN(num) ? 0 : num
   }
 
   const calcSalesItemTotal = (item: Item) => item.quantity * item.salesUnitPrice
@@ -329,177 +365,143 @@ export default function EditSalesApprovalPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* 품의 기본 정보 */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4 pb-2 border-b">품의 정보</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">품의코드</label>
-              <input
-                type="text"
-                value={formData.approvalCode}
-                onChange={(e) => handleInputChange('approvalCode', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">품의일자</label>
-              <input
-                type="date"
-                value={formData.approvalDate}
-                onChange={(e) => handleInputChange('approvalDate', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">품의담당</label>
-              <input
-                type="text"
-                value={formData.managerName}
-                onChange={(e) => handleInputChange('managerName', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </div>
-          </div>
+      <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && e.target instanceof HTMLInputElement) e.preventDefault() }} className="space-y-3">
+        {/* 기본 정보 (컴팩트 테이블 스타일) */}
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden inline-block">
+          <table className="text-sm">
+            <tbody className="divide-y divide-gray-100">
+              {/* 1행: 품의코드, 매출처, End User */}
+              <tr>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">품의코드</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <input type="text" value={formData.approvalCode} onChange={(e) => handleInputChange('approvalCode', e.target.value)} className="w-36 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="D251202-01" />
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">매출처</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <input type="text" value={formData.clientCompany} onChange={(e) => handleInputChange('clientCompany', e.target.value)} className="w-40 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="고객사명" />
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">End User</td>
+                <td className="px-1.5 py-1">
+                  <input type="text" value={formData.endUser} onChange={(e) => handleInputChange('endUser', e.target.value)} className="w-40 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="최종 사용자" />
+                </td>
+              </tr>
+              {/* 2행: 품의일자, 담당자/연락처, MT&SN */}
+              <tr className="bg-gray-50/30">
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">품의일자</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <input type="date" value={formData.approvalDate} onChange={(e) => handleInputChange('approvalDate', e.target.value)} className="w-36 px-2 py-1 border border-gray-300 rounded text-xs" />
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">담당자/연락처</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <div className="flex gap-1">
+                    <input type="text" value={formData.clientContact} onChange={(e) => handleInputChange('clientContact', e.target.value)} className="w-20 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="담당자명" />
+                    <input type="text" value={formData.clientPhone} onChange={(e) => handleInputChange('clientPhone', e.target.value)} className="w-28 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="010-0000-0000" />
+                  </div>
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">MT&S/N</td>
+                <td className="px-1.5 py-1">
+                  <input type="text" value={formData.paymentTerms} onChange={(e) => handleInputChange('paymentTerms', e.target.value)} className="w-40 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="프로젝트명/용도" />
+                </td>
+              </tr>
+              {/* 3행: 품의담당 */}
+              <tr>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">품의담당</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <input type="text" value={formData.managerName} onChange={(e) => handleInputChange('managerName', e.target.value)} className="w-36 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="담당자명" />
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap"></td>
+                <td className="px-1.5 py-1 border-r border-gray-100"></td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap"></td>
+                <td className="px-1.5 py-1"></td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
-        {/* 매출처 정보 */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4 pb-2 border-b">매출처 정보</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">고객사</label>
-              <input
-                type="text"
-                value={formData.clientCompany}
-                onChange={(e) => handleInputChange('clientCompany', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">담당자</label>
-              <input
-                type="text"
-                value={formData.clientContact}
-                onChange={(e) => handleInputChange('clientContact', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">연락처</label>
-              <input
-                type="text"
-                value={formData.clientPhone}
-                onChange={(e) => handleInputChange('clientPhone', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End User</label>
-              <input
-                type="text"
-                value={formData.endUser}
-                onChange={(e) => handleInputChange('endUser', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">결제조건</label>
-              <input
-                type="text"
-                value={formData.paymentTerms}
-                onChange={(e) => handleInputChange('paymentTerms', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">세금계산서 메일</label>
-              <input
-                type="email"
-                value={formData.invoiceEmail}
-                onChange={(e) => handleInputChange('invoiceEmail', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* 배송 정보 */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4 pb-2 border-b">배송 정보</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">배송주소</label>
-              <input
-                type="text"
-                value={formData.deliveryAddress}
-                onChange={(e) => handleInputChange('deliveryAddress', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">납기일</label>
-              <input
-                type="date"
-                value={formData.deliveryDate}
-                onChange={(e) => handleInputChange('deliveryDate', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">수령자</label>
-              <input
-                type="text"
-                value={formData.receiverName}
-                onChange={(e) => handleInputChange('receiverName', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">수령자 연락처</label>
-              <input
-                type="text"
-                value={formData.receiverPhone}
-                onChange={(e) => handleInputChange('receiverPhone', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* 통합 품목 */}
+        {/* 품목 */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-900">품목 내역</h3>
             <div className="flex items-center gap-4">
-              {/* 통합 견적 토글 */}
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={isConsolidatedSales}
-                  onChange={(e) => setIsConsolidatedSales(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <span className="text-blue-600 font-medium">통합 매출</span>
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={isConsolidatedPurchase}
-                  onChange={(e) => setIsConsolidatedPurchase(e.target.checked)}
-                  className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                />
-                <span className="text-purple-600 font-medium">통합 매입</span>
-              </label>
-              <button
-                type="button"
-                onClick={addItem}
-                className="px-3 py-1.5 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-900"
-              >
-                + 품목 추가
-              </button>
+              <h3 className="text-sm font-semibold text-gray-900">품목</h3>
+              {/* 매출 유형 선택 */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">매출:</span>
+                <div className="flex items-center gap-1 bg-white rounded-lg p-0.5 border border-blue-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsConsolidatedSales(false)}
+                    className={`px-2 py-0.5 text-xs rounded transition-all ${
+                      !isConsolidatedSales
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    개별
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsConsolidatedSales(true)
+                      if (!consolidatedSalesPrice) {
+                        const total = items.reduce((sum, item) => sum + item.quantity * item.salesUnitPrice, 0)
+                        setConsolidatedSalesPrice(total)
+                      }
+                      if (!consolidatedSalesName && items[0]?.description) {
+                        setConsolidatedSalesName(items[0].description + (items.length > 1 ? ' 외' : ''))
+                      }
+                    }}
+                    className={`px-2 py-0.5 text-xs rounded transition-all ${
+                      isConsolidatedSales
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    통합
+                  </button>
+                </div>
+              </div>
+              {/* 매입 유형 선택 */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">매입:</span>
+                <div className="flex items-center gap-1 bg-white rounded-lg p-0.5 border border-purple-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsConsolidatedPurchase(false)}
+                    className={`px-2 py-0.5 text-xs rounded transition-all ${
+                      !isConsolidatedPurchase
+                        ? 'bg-purple-600 text-white'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    개별
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsConsolidatedPurchase(true)
+                      if (!consolidatedPurchaseAmount) {
+                        const total = items.reduce((sum, item) => sum + item.quantity * item.purchaseUnitPrice, 0)
+                        setConsolidatedPurchaseAmount(total)
+                      }
+                    }}
+                    className={`px-2 py-0.5 text-xs rounded transition-all ${
+                      isConsolidatedPurchase
+                        ? 'bg-purple-600 text-white'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    통합
+                  </button>
+                </div>
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={addItem}
+              className="px-3 py-1.5 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-900"
+            >
+              + 품목 추가
+            </button>
           </div>
 
           {/* 품목 테이블 */}
@@ -550,9 +552,9 @@ export default function EditSalesApprovalPage() {
                         </td>
                         <td className="px-2 py-2">
                           <input
-                            type="number"
-                            value={consolidatedSalesPrice || ''}
-                            onChange={(e) => setConsolidatedSalesPrice(parseInt(e.target.value) || 0)}
+                            type="text"
+                            value={formatNumber(consolidatedSalesPrice)}
+                            onChange={(e) => setConsolidatedSalesPrice(parseNumber(e.target.value))}
                             className="w-full px-2 py-1 border border-blue-300 rounded text-xs text-right bg-blue-50"
                             placeholder="0"
                           />
@@ -573,19 +575,18 @@ export default function EditSalesApprovalPage() {
                     {isConsolidatedPurchase ? (
                       <>
                         <td className="px-2 py-2">
-                          <input
-                            type="text"
+                          <VendorAutocomplete
                             value={consolidatedPurchaseVendor}
-                            onChange={(e) => setConsolidatedPurchaseVendor(e.target.value)}
+                            onChange={(val) => setConsolidatedPurchaseVendor(val)}
                             className="w-full px-2 py-1 border border-purple-300 rounded text-xs bg-purple-50"
                             placeholder="매입처"
                           />
                         </td>
                         <td className="px-2 py-2">
                           <input
-                            type="number"
-                            value={consolidatedPurchaseAmount || ''}
-                            onChange={(e) => setConsolidatedPurchaseAmount(parseInt(e.target.value) || 0)}
+                            type="text"
+                            value={formatNumber(consolidatedPurchaseAmount)}
+                            onChange={(e) => setConsolidatedPurchaseAmount(parseNumber(e.target.value))}
                             className="w-full px-2 py-1 border border-purple-300 rounded text-xs text-right bg-purple-50"
                             placeholder="0"
                           />
@@ -616,11 +617,16 @@ export default function EditSalesApprovalPage() {
                       />
                     </td>
                     <td className="px-2 py-2">
-                      <input
-                        type="text"
+                      <textarea
                         value={item.description}
-                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
+                        onChange={(e) => {
+                          handleItemChange(index, 'description', e.target.value)
+                          e.target.style.height = 'auto'
+                          e.target.style.height = e.target.scrollHeight + 'px'
+                        }}
+                        rows={1}
+                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs resize-none overflow-hidden"
+                        style={{ minHeight: '28px' }}
                         placeholder="품목명"
                       />
                     </td>
@@ -639,9 +645,9 @@ export default function EditSalesApprovalPage() {
                         <span className="text-xs text-gray-400 block text-right">-</span>
                       ) : (
                         <input
-                          type="number"
-                          value={item.salesUnitPrice || ''}
-                          onChange={(e) => handleItemChange(index, 'salesUnitPrice', parseInt(e.target.value) || 0)}
+                          type="text"
+                          value={formatNumber(item.salesUnitPrice)}
+                          onChange={(e) => handleItemChange(index, 'salesUnitPrice', parseNumber(e.target.value))}
                           className="w-full px-2 py-1 border border-blue-200 rounded text-xs text-right bg-blue-50/30"
                           placeholder="0"
                         />
@@ -655,10 +661,9 @@ export default function EditSalesApprovalPage() {
                       {isConsolidatedPurchase ? (
                         <span className="text-xs text-gray-400 block">-</span>
                       ) : (
-                        <input
-                          type="text"
+                        <VendorAutocomplete
                           value={item.vendorCompany}
-                          onChange={(e) => handleItemChange(index, 'vendorCompany', e.target.value)}
+                          onChange={(val) => handleItemChange(index, 'vendorCompany', val)}
                           className="w-full px-2 py-1 border border-purple-200 rounded text-xs bg-purple-50/30"
                           placeholder="매입처"
                         />
@@ -669,9 +674,9 @@ export default function EditSalesApprovalPage() {
                         <span className="text-xs text-gray-400 block text-right">-</span>
                       ) : (
                         <input
-                          type="number"
-                          value={item.purchaseUnitPrice || ''}
-                          onChange={(e) => handleItemChange(index, 'purchaseUnitPrice', parseInt(e.target.value) || 0)}
+                          type="text"
+                          value={formatNumber(item.purchaseUnitPrice)}
+                          onChange={(e) => handleItemChange(index, 'purchaseUnitPrice', parseNumber(e.target.value))}
                           className="w-full px-2 py-1 border border-purple-200 rounded text-xs text-right bg-purple-50/30"
                           placeholder="0"
                         />
@@ -743,51 +748,68 @@ export default function EditSalesApprovalPage() {
           </div>
         </div>
 
-        {/* 비고 */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4 pb-2 border-b">비고</h3>
-          <textarea
-            value={formData.notes}
-            onChange={(e) => handleInputChange('notes', e.target.value)}
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            placeholder="특이사항 입력..."
-          />
-        </div>
-
-        {/* 마진 요약 */}
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4">마진 요약</h3>
-          {(() => {
-            const salesTotal = isConsolidatedSales
-              ? (consolidatedSalesQty || 1) * (consolidatedSalesPrice || 0)
-              : calcSalesTotal()
-            const purchaseTotal = isConsolidatedPurchase
-              ? (consolidatedPurchaseQty || 1) * (consolidatedPurchaseAmount || 0)
-              : calcPurchaseTotal()
-            const margin = salesTotal - purchaseTotal
-            return (
-              <div className="grid grid-cols-3 gap-6 text-center">
-                <div>
-                  <p className="text-sm text-blue-600">매출 (VAT별도)</p>
-                  <p className="text-xl font-bold text-blue-900">{salesTotal.toLocaleString()}원</p>
-                </div>
-                <div>
-                  <p className="text-sm text-purple-600">매입 (VAT별도)</p>
-                  <p className="text-xl font-bold text-purple-900">{purchaseTotal.toLocaleString()}원</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">마진</p>
-                  <p className={`text-xl font-bold ${margin >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {margin.toLocaleString()}원
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    ({salesTotal > 0 ? ((margin / salesTotal) * 100).toFixed(1) : 0}%)
-                  </p>
-                </div>
-              </div>
-            )
-          })()}
+        {/* 기타 정보 (계산서/결제/배송/비고) */}
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden inline-block">
+          <table className="text-sm">
+            <tbody className="divide-y divide-gray-100">
+              {/* 1행: 기타 (비고) */}
+              <tr>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap align-top">기타</td>
+                <td className="px-1.5 py-1" colSpan={5}>
+                  <textarea
+                    value={formData.notes}
+                    onChange={(e) => handleInputChange('notes', e.target.value)}
+                    rows={2}
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs resize-none"
+                    placeholder="특이사항 입력..."
+                  />
+                </td>
+              </tr>
+              {/* 2행: 계산서 발행일, 계산서 발행예정일, 결제일 */}
+              <tr className="bg-gray-50/30">
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">계산서 발행일</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <input type="date" value={formData.invoiceDate} onChange={(e) => handleInputChange('invoiceDate', e.target.value)} className="w-36 px-2 py-1 border border-gray-300 rounded text-xs" />
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">계산서 발행예정일</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <input type="date" value={formData.invoiceDueDate} onChange={(e) => handleInputChange('invoiceDueDate', e.target.value)} className="w-36 px-2 py-1 border border-gray-300 rounded text-xs" />
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">결제일</td>
+                <td className="px-1.5 py-1">
+                  <input type="text" value={formData.paymentDate} onChange={(e) => handleInputChange('paymentDate', e.target.value)} className="w-40 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="납품 전 선입금 현금 결제" />
+                </td>
+              </tr>
+              {/* 3행: 계산서 메일 */}
+              <tr>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">계산서 메일</td>
+                <td className="px-1.5 py-1" colSpan={5}>
+                  <input type="email" value={formData.invoiceEmail} onChange={(e) => handleInputChange('invoiceEmail', e.target.value)} className="w-72 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="example@company.com" />
+                </td>
+              </tr>
+              {/* 4행: 배송주소 */}
+              <tr className="bg-gray-50/30">
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">배송주소</td>
+                <td className="px-1.5 py-1" colSpan={5}>
+                  <input type="text" value={formData.deliveryAddress} onChange={(e) => handleInputChange('deliveryAddress', e.target.value)} className="w-full px-2 py-1 border border-gray-300 rounded text-xs" placeholder="배송지 주소" />
+                </td>
+              </tr>
+              {/* 5행: 받으실분/연락처, 배송일 */}
+              <tr>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">받으실분/연락처</td>
+                <td className="px-1.5 py-1 border-r border-gray-100">
+                  <div className="flex gap-1">
+                    <input type="text" value={formData.receiverName} onChange={(e) => handleInputChange('receiverName', e.target.value)} className="w-20 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="받으실분" />
+                    <input type="text" value={formData.receiverPhone} onChange={(e) => handleInputChange('receiverPhone', e.target.value)} className="w-28 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="010-0000-0000" />
+                  </div>
+                </td>
+                <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">배송일</td>
+                <td className="px-1.5 py-1" colSpan={3}>
+                  <input type="text" value={formData.deliveryDate} onChange={(e) => handleInputChange('deliveryDate', e.target.value)} className="w-36 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="별도 협의" />
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
         {/* 버튼 */}

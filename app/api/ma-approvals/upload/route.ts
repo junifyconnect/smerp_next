@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
-import { parseExcel, ParsedItem, ParsedPurchaseItem } from '@/lib/excel/parser'
+import { parseExcel, ParsedMAApprovalItem } from '@/lib/excel/parser'
 
 // POST /api/ma-approvals/upload - 엑셀 업로드
 export async function POST(request: NextRequest) {
@@ -36,32 +36,35 @@ export async function POST(request: NextRequest) {
     }
     const approvalNumber = `MA-${year}-${sequence.toString().padStart(4, '0')}`
 
-    // 매출 금액 계산
-    let totalAmount = 0
-    const itemsWithTotal = (parsed.items || []).map((item: ParsedItem, index: number) => {
-      const qty = item.quantity || 1
-      const price = item.unitPrice || 0
-      totalAmount += price * qty
-      return {
-        smCode: item.partNumber,
-        customerName: item.description,
-        salesPrice: price,
-        quantity: qty,
-        sortOrder: index,
-      }
-    })
+    // 통합 품목 데이터 처리
+    const maApprovalItems = parsed.maApprovalItems || []
 
-    // 매입 금액 계산
+    // 금액 계산
+    let totalAmount = 0
     let purchaseTotal = 0
-    const purchaseItemsWithTotal = (parsed.purchaseItems || []).map((item: ParsedPurchaseItem, index: number) => {
+
+    const itemsData = maApprovalItems.map((item: ParsedMAApprovalItem, index: number) => {
       const qty = item.quantity || 1
-      const price = item.unitPrice || 0
-      purchaseTotal += price * qty
+      const salesPrice = item.salesPrice || 0
+      const purchasePrice = item.purchasePrice || 0
+
+      totalAmount += salesPrice * qty
+      purchaseTotal += purchasePrice * qty
+
       return {
-        vendorCompany: item.vendorCompany,
-        purchasePrice: price,
-        quantity: qty,
         sortOrder: index,
+        smCode: item.smCode,
+        vendorCode: item.vendorCode,
+        clientCompany: item.clientCompany,
+        salesCompany: item.salesCompany,
+        salesPrice: salesPrice,
+        quantity: qty,
+        salesBillingType: item.salesBillingType,
+        startDate: item.startDate || null,
+        endDate: item.endDate || null,
+        purchaseCompany: item.purchaseCompany,
+        purchasePrice: purchasePrice,
+        purchaseBillingType: item.purchaseBillingType,
       }
     })
 
@@ -75,15 +78,11 @@ export async function POST(request: NextRequest) {
         purchaseTotal,
         createdById,
         items: {
-          create: itemsWithTotal,
-        },
-        purchaseItems: {
-          create: purchaseItemsWithTotal,
+          create: itemsData,
         },
       },
       include: {
         items: true,
-        purchaseItems: true,
       },
     })
 

@@ -2,6 +2,16 @@ import * as ExcelJS from 'exceljs'
 
 export type DocType = 'SALES_QUOTE' | 'SALES_APPROVAL' | 'SALES_ORDER' | 'MA_QUOTE' | 'MA_APPROVAL'
 
+// 제품 그룹 (품목들을 묶어서 통합 견적)
+export interface ParsedProduct {
+  name: string
+  quantity: number
+  srpPrice?: number
+  unitPrice?: number
+  totalPrice?: number
+  items: ParsedItem[] // 참고용 상세 내역
+}
+
 export interface ParsedDocument {
   // 공통 필드
   clientCompany?: string
@@ -22,7 +32,8 @@ export interface ParsedDocument {
   validUntil?: string
   paymentTerms?: string
   notes?: string
-  items: ParsedItem[]
+  products?: ParsedProduct[] // 제품 그룹 (새 구조)
+  items: ParsedItem[] // 레거시 호환용
   totalAmount?: number
   vatAmount?: number
   totalWithVat?: number
@@ -52,6 +63,9 @@ export interface ParsedDocument {
   serviceTerms?: string // 서비스기간 조건
   contractTerms?: string // 계약 조건
   specialTerms?: string // 특약사항
+
+  // MA 품의서 전용 (통합 구조)
+  maApprovalItems?: ParsedMAApprovalItem[]
 }
 
 export interface ParsedItem {
@@ -86,6 +100,22 @@ export interface ParsedMAItem {
   totalPrice?: number // 계약기간 총계
 }
 
+// MA 품의서 통합 아이템 (엑셀 구조: 매출/매입 한 행)
+export interface ParsedMAApprovalItem {
+  smCode?: string           // SM코드
+  vendorCode?: string       // 벤더코드
+  clientCompany?: string    // 고객사
+  salesCompany?: string     // 매출처
+  salesPrice?: number       // 매출가
+  quantity?: number         // 수량
+  salesBillingType?: string // 청구구분(매출)
+  startDate?: Date          // 계약기간 시작
+  endDate?: Date            // 계약기간 종료
+  purchaseCompany?: string  // 매입처
+  purchasePrice?: number    // 매입가
+  purchaseBillingType?: string // 청구구분(매입)
+}
+
 // 셀 값 추출 헬퍼
 function getCellValue(sheet: ExcelJS.Worksheet, address: string): string {
   const cell = sheet.getCell(address)
@@ -116,8 +146,21 @@ function getNumericValue(sheet: ExcelJS.Worksheet, address: string): number {
     const num = parseFloat(value.replace(/,/g, ''))
     return isNaN(num) ? 0 : num
   }
-  if (value && typeof value === 'object' && 'result' in value) {
-    return typeof value.result === 'number' ? value.result : 0
+  if (value && typeof value === 'object') {
+    // 수식 결과값 처리
+    if ('result' in value) {
+      const result = value.result
+      if (typeof result === 'number') return result
+      if (typeof result === 'string') {
+        const num = parseFloat(result.replace(/,/g, ''))
+        return isNaN(num) ? 0 : num
+      }
+    }
+    // formula 객체 처리 (ExcelJS에서 수식은 {formula: '=...', result: 값} 형태)
+    if ('formula' in value && 'result' in value) {
+      const result = (value as { formula: string; result: unknown }).result
+      if (typeof result === 'number') return result
+    }
   }
   return 0
 }
@@ -191,9 +234,24 @@ function parseSalesQuote(sheet: ExcelJS.Worksheet): ParsedDocument {
   const managerName = getCellValue(sheet, 'C18') || undefined // 견적 담당
   const projectName = getCellValue(sheet, 'C19') || undefined
 
-  // 품목 파싱 (R23부터 데이터)
-  const items: ParsedItem[] = []
-  let row = 23
+  // 헤더 행 찾기 (B열에 "P/N" 또는 C열에 "Description"이 있는 행)
+  let headerRow = 21 // 기본값
+  for (let r = 15; r <= 30; r++) {
+    const colB = getCellValue(sheet, `B${r}`)
+    const colC = getCellValue(sheet, `C${r}`)
+    if (colB.includes('P/N') || colC.toLowerCase().includes('description')) {
+      headerRow = r
+      break
+    }
+  }
+
+  // 제품 + 품목 파싱 (헤더 다음 행부터)
+  // 규칙: B열(P/N) 비어있고 C열(Description)과 G열(Sum)에 값 있으면 제품
+  //       B열(P/N)에 값 있으면 하위 품목
+  const products: ParsedProduct[] = []
+  const items: ParsedItem[] = [] // 레거시 호환용
+  let currentProduct: ParsedProduct | null = null
+  let row = headerRow + 1
 
   while (row < 100) {
     const partNumber = getCellValue(sheet, `B${row}`)
@@ -204,7 +262,8 @@ function parseSalesQuote(sheet: ExcelJS.Worksheet): ParsedDocument {
     const totalPrice = getNumericValue(sheet, `G${row}`)
 
     // 합계 행 확인
-    if (partNumber.includes('제안금액') || partNumber.includes('합계')) {
+    if (partNumber.includes('제안금액') || partNumber.includes('합계') ||
+        description.includes('제안금액') || description.includes('합계')) {
       break
     }
 
@@ -213,8 +272,59 @@ function parseSalesQuote(sheet: ExcelJS.Worksheet): ParsedDocument {
       break
     }
 
-    // 실제 데이터가 있는 행만 추가
-    if (description || totalPrice > 0) {
+    // 제품 행 판별: B열(P/N) 비어있고, C열(Description)과 G열(Sum)에 값 있음
+    const isProductRow = !partNumber && description && totalPrice > 0
+
+    // 품목 행 판별: B열(P/N)에 값 있음
+    const isItemRow = !!partNumber
+
+    if (isProductRow) {
+      // 이전 제품 저장
+      if (currentProduct) {
+        products.push(currentProduct)
+      }
+
+      // 새 제품 생성
+      currentProduct = {
+        name: description,
+        quantity: quantity || 1,
+        srpPrice: srpPrice || undefined,
+        unitPrice: unitPrice || totalPrice, // 단가가 없으면 합계를 단가로
+        totalPrice: totalPrice,
+        items: [],
+      }
+
+      // 레거시 호환: 제품도 items에 추가
+      items.push({
+        partNumber: undefined,
+        description: description,
+        quantity: quantity || 1,
+        srpPrice: srpPrice || undefined,
+        unitPrice: unitPrice || totalPrice,
+        totalPrice: totalPrice,
+      })
+    } else if (isItemRow && currentProduct) {
+      // 현재 제품의 하위 품목으로 추가
+      currentProduct.items.push({
+        partNumber: partNumber,
+        description: description || undefined,
+        quantity: quantity || 1,
+        srpPrice: srpPrice || undefined,
+        unitPrice: unitPrice || undefined,
+        totalPrice: totalPrice || undefined,
+      })
+
+      // 레거시 호환: 품목도 items에 추가
+      items.push({
+        partNumber: partNumber,
+        description: description || undefined,
+        quantity: quantity || 1,
+        srpPrice: srpPrice || undefined,
+        unitPrice: unitPrice || undefined,
+        totalPrice: totalPrice || undefined,
+      })
+    } else if (description || totalPrice > 0) {
+      // 제품 없이 품목만 있는 경우 (레거시 형식)
       items.push({
         partNumber: partNumber || undefined,
         description: description || undefined,
@@ -228,13 +338,48 @@ function parseSalesQuote(sheet: ExcelJS.Worksheet): ParsedDocument {
     row++
   }
 
-  // 합계 금액 파싱
-  const totalAmount = getNumericValue(sheet, 'E28') || getNumericValue(sheet, 'G28')
-  const totalWithVat = getNumericValue(sheet, 'E29') || getNumericValue(sheet, 'G29')
-  const vatAmount = totalWithVat - totalAmount
+  // 마지막 제품 저장
+  if (currentProduct) {
+    products.push(currentProduct)
+  }
 
-  // 기타사항
-  const notes = getCellValue(sheet, 'B31') || undefined
+  // 합계 금액 파싱 (동적으로 찾기)
+  let totalAmount = 0
+  let totalWithVat = 0
+  for (let r = row; r < row + 10; r++) {
+    const labelB = getCellValue(sheet, `B${r}`)
+    const labelE = getCellValue(sheet, `E${r}`)
+
+    if (labelB.includes('제안금액') || labelE.includes('VAT별도')) {
+      totalAmount = getNumericValue(sheet, `G${r}`) || getNumericValue(sheet, `E${r}`)
+    }
+    if (labelB.includes('합계') || labelE.includes('VAT포함')) {
+      totalWithVat = getNumericValue(sheet, `G${r}`) || getNumericValue(sheet, `E${r}`)
+    }
+  }
+
+  // 레거시 위치에서도 확인
+  if (!totalAmount) {
+    totalAmount = getNumericValue(sheet, 'E28') || getNumericValue(sheet, 'G28')
+  }
+  if (!totalWithVat) {
+    totalWithVat = getNumericValue(sheet, 'E29') || getNumericValue(sheet, 'G29')
+  }
+
+  const vatAmount = totalWithVat > totalAmount ? totalWithVat - totalAmount : Math.round(totalAmount * 0.1)
+
+  // 기타사항 (동적으로 찾기)
+  let notes = ''
+  for (let r = row; r < row + 15; r++) {
+    const labelB = getCellValue(sheet, `B${r}`)
+    if (labelB.includes('기타') || labelB.includes('비고')) {
+      notes = getCellValue(sheet, `C${r}`) || getCellValue(sheet, `B${r + 1}`) || ''
+      break
+    }
+  }
+  if (!notes) {
+    notes = getCellValue(sheet, 'B31') || undefined
+  }
 
   return {
     clientCompany,
@@ -249,7 +394,8 @@ function parseSalesQuote(sheet: ExcelJS.Worksheet): ParsedDocument {
     deliveryDate,
     validUntil,
     paymentTerms,
-    notes,
+    notes: notes || undefined,
+    products: products.length > 0 ? products : undefined,
     items,
     totalAmount,
     vatAmount,
@@ -276,25 +422,28 @@ interface ParsedApprovalPurchaseItem extends ParsedApprovalItem {
 }
 
 // ==================== Sales 품의서 파싱 ====================
+// 분석 결과 실제 열 매핑 (R16이 헤더):
+// C열 = P/N, D열 = 품목, E열 = 수량, F열 = 단가, G열 = 합계
+// H열 = 매입일, I열 = 매입처, J열 = 매입수량, K열 = 매입단가, L열 = 매입합계
 function parseSalesApproval(sheet: ExcelJS.Worksheet): ParsedDocument {
-  // 기본 정보
+  // 기본 정보 (R9~R11) - D열에 값이 있음 (C열은 라벨)
   const approvalCode = getCellValue(sheet, 'D9').replace(/^\[.*\].*$/, '').trim()
   const approvalDate = getDateValue(sheet, 'D10')
   const approvalManager = getCellValue(sheet, 'D11')
 
-  // 매출처 정보
-  const clientInfo = getCellValue(sheet, 'D13') // "견적 나간 회사 / 해당 담당자 / 담당자 연락처"
+  // 매출처 정보 (R13~R15) - D열에 값이 있음
+  // D13: "주니파이커넥트 / 장진강 담당님 / 010-1234-5678"
+  const clientInfo = getCellValue(sheet, 'D13')
   const clientParts = clientInfo.split('/').map(s => s.trim())
   const clientCompany = clientParts[0]?.replace(/^\[.*\].*$/, '') || undefined
   const clientContact = clientParts[1] || undefined
   const clientPhone = clientParts[2] || undefined
 
   const endUser = getCellValue(sheet, 'D14').replace(/^\[.*\].*$/, '')
-  const modelTypeSerial = getCellValue(sheet, 'D15') // "M/T / S/N"
+  const modelTypeSerial = getCellValue(sheet, 'D15') // "MT&S/N"
 
   // 매출 품목 파싱 (R16이 헤더, R17부터 데이터)
-  // 새로운 로직: P/N이 비어있고 단가가 있는 행 = 메인 품목
-  //             P/N에 값이 있고 단가가 없는 행 = 하위 품목
+  // 실제 구조: C=P/N, D=품목, E=수량, F=단가, G=합계, H=매입일, I=매입처, J=매입수량, K=매입단가, L=매입합계
   const approvalItems: ParsedApprovalItem[] = []
   const approvalPurchaseItems: ParsedApprovalPurchaseItem[] = []
   let currentItem: ParsedApprovalItem | null = null
@@ -302,14 +451,14 @@ function parseSalesApproval(sheet: ExcelJS.Worksheet): ParsedDocument {
   let row = 17
 
   while (row < 50) {
-    const partNumber = getCellValue(sheet, `C${row}`)
-    const description = getCellValue(sheet, `D${row}`)
-    const quantity = getNumericValue(sheet, `E${row}`)
-    const unitPrice = getNumericValue(sheet, `F${row}`)
-    const totalPrice = getNumericValue(sheet, `G${row}`)
+    const partNumber = getCellValue(sheet, `C${row}`)  // P/N (Chassis, CPU 등)
+    const description = getCellValue(sheet, `D${row}`) // 품목명 (R660XS, 상세설명 등)
+    const quantity = getNumericValue(sheet, `E${row}`) // 수량
+    const unitPrice = getNumericValue(sheet, `F${row}`) // 단가
+    const totalPrice = getNumericValue(sheet, `G${row}`) // 합계
 
-    // 합계 행 확인
-    if (partNumber.includes('합계') || description.includes('합계')) {
+    // 합계 행 확인 (B열에 "매출금액 합계" 등이 있으면 중단)
+    if (partNumber.includes('합계') || partNumber.includes('매출금액')) {
       break
     }
 
@@ -318,13 +467,11 @@ function parseSalesApproval(sheet: ExcelJS.Worksheet): ParsedDocument {
       break
     }
 
-    // 메인 품목 판단:
-    // 1. P/N이 비어있고 단가/합계가 있는 행 (묶음의 메인)
-    // 2. P/N에 값이 있고 단가/합계도 있는 행 (단일 품목)
+    // 메인 품목 판단: 단가/합계가 있는 행 (예: R660XS 행)
     const isMainItem = (unitPrice > 0 || totalPrice > 0)
 
-    // 하위 품목 판단: P/N에 값이 있고 단가가 없는 행 (메인 품목 아래의 하위 품목)
-    const isSubItem = partNumber && unitPrice === 0 && totalPrice === 0 && currentItem
+    // 하위 품목 판단: B열에 카테고리(예: Chassis, CPU)가 있고 단가가 없는 행
+    const isSubItem = (partNumber || description) && unitPrice === 0 && totalPrice === 0 && currentItem
 
     if (isMainItem) {
       // 이전 메인 품목 저장
@@ -336,7 +483,7 @@ function parseSalesApproval(sheet: ExcelJS.Worksheet): ParsedDocument {
         currentPurchaseItem = null
       }
 
-      // 새 메인 품목 생성
+      // 새 메인 품목 생성 (C열의 제품명 사용)
       const cleanDescription = description
         ?.replace(/^\[제품명\]/, '')
         ?.replace(/^ProductCode/, '')
@@ -369,7 +516,7 @@ function parseSalesApproval(sheet: ExcelJS.Worksheet): ParsedDocument {
         }
       }
     } else if (isSubItem && currentItem) {
-      // 하위 품목 추가
+      // 하위 품목 추가 (C열=카테고리, D열=상세설명)
       const cleanPartNumber = partNumber
         ?.replace(/^\[품목명\]\s*/, '')
         ?.replace(/^예시_/, '')
@@ -381,12 +528,27 @@ function parseSalesApproval(sheet: ExcelJS.Worksheet): ParsedDocument {
         quantity: quantity || undefined,
       })
 
-      // 매입 하위 품목도 추가
-      if (currentPurchaseItem) {
-        currentPurchaseItem.details.push({
-          partNumber: cleanPartNumber || undefined,
-          description: description || undefined,
-          quantity: quantity || undefined,
+      // 하위 품목별 매입 정보 확인 (각 품목마다 다른 매입처 가능)
+      const subPurchaseDate = getDateValue(sheet, `H${row}`)
+      const subVendorCompany = getCellValue(sheet, `I${row}`)
+      const subPurchaseQty = getNumericValue(sheet, `J${row}`)
+      const subPurchaseUnitPrice = getNumericValue(sheet, `K${row}`)
+      const subPurchaseTotalPrice = getNumericValue(sheet, `L${row}`)
+
+      // 하위 품목에 매입 정보가 있으면 별도 매입 품목으로 추가
+      if (subVendorCompany || subPurchaseTotalPrice > 0) {
+        approvalPurchaseItems.push({
+          productName: `${currentItem.productName} - ${cleanPartNumber || description || '품목'}`,
+          quantity: subPurchaseQty || quantity || 1,
+          unitPrice: subPurchaseUnitPrice || undefined,
+          totalPrice: subPurchaseTotalPrice || undefined,
+          purchaseDate: subPurchaseDate,
+          vendorCompany: subVendorCompany || undefined,
+          details: [{
+            partNumber: cleanPartNumber || undefined,
+            description: description || undefined,
+            quantity: quantity || undefined,
+          }],
         })
       }
     }
@@ -428,19 +590,57 @@ function parseSalesApproval(sheet: ExcelJS.Worksheet): ParsedDocument {
     _details: item.details,
   } as ParsedPurchaseItem & { _details?: typeof item.details }))
 
-  // 합계 금액
-  const totalAmount = getNumericValue(sheet, 'G22') || getNumericValue(sheet, 'F22')
-  const purchaseTotal = getNumericValue(sheet, 'L22')
-  const purchaseTotalWithVat = getNumericValue(sheet, 'L23')
+  // 합계 금액 - F/G열에 매출합계, L열에 매입합계 (행은 동적으로 찾음)
+  let totalAmount = 0
+  let purchaseTotal = 0
+  let purchaseTotalWithVat = 0
 
-  // 기타 정보
-  const notes = getCellValue(sheet, 'D24').replace(/^예시_/, '')
-  const invoiceDate = getCellValue(sheet, 'D25')
-  const invoiceEmail = getCellValue(sheet, 'D26').replace(/^\[.*\]$/, '')
-  const paymentDate = getCellValue(sheet, 'D27').replace(/^\[.*\].*$/, '')
-  const deliveryAddress = getCellValue(sheet, 'D29').replace(/^\[.*\].*$/, '')
-  const receiverInfo = getCellValue(sheet, 'D30')
-  const deliveryDateStr = getCellValue(sheet, 'D31')
+  // 합계 행 찾기 (row부터 탐색)
+  for (let r = row; r < row + 10; r++) {
+    const labelC = getCellValue(sheet, `C${r}`)
+    if (labelC.includes('매출금액') && labelC.includes('VAT별도')) {
+      totalAmount = getNumericValue(sheet, `G${r}`) || getNumericValue(sheet, `F${r}`)
+    }
+    if (labelC.includes('매입금액') && labelC.includes('VAT별도')) {
+      purchaseTotal = getNumericValue(sheet, `L${r}`)
+    }
+    if (labelC.includes('매입금액') && labelC.includes('VAT포함')) {
+      purchaseTotalWithVat = getNumericValue(sheet, `L${r}`)
+    }
+  }
+
+  // 기타 정보 - D열에 값이 있음 (C열은 라벨)
+  let notes = ''
+  let invoiceEmail = ''
+  let paymentDate = ''
+  let deliveryAddress = ''
+  let receiverInfo = ''
+  let deliveryDateStr = ''
+
+  // 기타 정보 동적으로 찾기
+  for (let r = row; r < 50; r++) {
+    const labelC = getCellValue(sheet, `C${r}`)
+    const valueD = getCellValue(sheet, `D${r}`)
+
+    if (labelC.includes('기타')) {
+      notes = valueD.replace(/^예시_/, '')
+    }
+    if (labelC.includes('계산서') && labelC.includes('메일')) {
+      invoiceEmail = valueD.replace(/^\[.*\]$/, '')
+    }
+    if (labelC.includes('결제일')) {
+      paymentDate = valueD.replace(/^\[.*\].*$/, '')
+    }
+    if (labelC.includes('배송주소')) {
+      deliveryAddress = valueD.replace(/^\[.*\].*$/, '')
+    }
+    if (labelC.includes('받으실분') || labelC.includes('연락처')) {
+      receiverInfo = valueD
+    }
+    if (labelC.includes('배송일')) {
+      deliveryDateStr = valueD
+    }
+  }
 
   return {
     approvalCode: approvalCode || undefined,
@@ -562,17 +762,59 @@ function parseSalesOrder(sheet: ExcelJS.Worksheet): ParsedDocument {
   }
 }
 
+// ==================== MA 견적서 양식 감지 ====================
+type MAQuoteFormat = 'V1' | 'V2'
+
+function detectMAQuoteFormat(sheet: ExcelJS.Worksheet): MAQuoteFormat {
+  const sheetName = sheet.name.toLowerCase()
+
+  // SM_MA 시트명이면 V2 양식
+  if (sheetName.includes('sm_ma') || sheetName === 'sm_ma') {
+    return 'V2'
+  }
+
+  // B5에 "발신"이 있으면 V2 (V1은 B5가 "참조")
+  const b5Value = getCellValue(sheet, 'A5')
+  if (b5Value.includes('발신')) {
+    return 'V2'
+  }
+
+  // J열에 데이터가 있고 "계약기간 총계"가 J열에 있으면 V2
+  const j17Value = getCellValue(sheet, 'J17')
+  if (j17Value.includes('계약기간') || j17Value.includes('총계')) {
+    return 'V2'
+  }
+
+  // 기본값은 V1
+  return 'V1'
+}
+
 // ==================== MA 견적서 파싱 ====================
 function parseMAQuote(sheet: ExcelJS.Worksheet): ParsedDocument {
+  const format = detectMAQuoteFormat(sheet)
+
+  if (format === 'V2') {
+    return parseMAQuoteV2(sheet)
+  }
+  return parseMAQuoteV1(sheet)
+}
+
+// V1 양식: ERP 예시용 (시트명: 견적서, 열 A~I)
+function parseMAQuoteV1(sheet: ExcelJS.Worksheet): ParsedDocument {
   // 수신/참조/발신 정보
-  const clientCompany = getCellValue(sheet, 'B4').replace(/^\[.*\]$/, '')
+  let clientCompany = getCellValue(sheet, 'B4').replace(/^\[.*\]$/, '').replace(/\s*귀중$/, '')
   const clientContact = getCellValue(sheet, 'B5').replace(/^\[.*\]$/, '')
-  const senderInfo = getCellValue(sheet, 'B6') // 발신자 정보
   const approvalManager = getCellValue(sheet, 'C6') // 담당자명
   const quoteDate = getDateValue(sheet, 'I6')
 
-  // 고객명
-  const customerName = getCellValue(sheet, 'D16').replace(/^\[.*\]$/, '')
+  // 고객명 (D16에서 가져오기)
+  const customerName = getCellValue(sheet, 'D16').replace(/^\[.*\]$/, '').replace(/^\[매출처.*\]$/, '')
+  if (!clientCompany || clientCompany.includes('[')) {
+    clientCompany = customerName
+  }
+
+  // 기계설치주소
+  const installAddress = getCellValue(sheet, 'E17') || getCellValue(sheet, 'D17')
 
   // MA 품목 파싱 (R18이 헤더, R19부터 데이터)
   const maItems: ParsedMAItem[] = []
@@ -599,11 +841,15 @@ function parseMAQuote(sheet: ExcelJS.Worksheet): ParsedDocument {
       break
     }
 
-    if (productName || serialNumber || totalPrice > 0) {
+    // 예시 데이터 필터링
+    const isExample = productName.includes('ex)') || productName.includes('제품명') ||
+                      modelType.includes('모델타입') || model.includes('모델명')
+
+    if ((productName || serialNumber || totalPrice > 0) && !isExample) {
       maItems.push({
-        productName: productName?.replace(/^ex\)/, '') || undefined,
-        modelType: modelType?.replace(/^모델타입.*$/, '') || undefined,
-        model: model?.replace(/^모델명.*$/, '') || undefined,
+        productName: productName?.replace(/^ex\)/, '').trim() || undefined,
+        modelType: modelType?.replace(/^모델타입.*$/, '').trim() || undefined,
+        model: model?.replace(/^모델명.*$/, '').trim() || undefined,
         serialNumber: serialNumber || undefined,
         serviceLevel: serviceLevel || undefined,
         period: period || undefined,
@@ -616,26 +862,183 @@ function parseMAQuote(sheet: ExcelJS.Worksheet): ParsedDocument {
     row++
   }
 
-  // 합계 금액
-  const monthlyAmount = getNumericValue(sheet, 'I21')
-  const totalAmount = getNumericValue(sheet, 'I22')
+  // 합계 금액 (동적으로 찾기)
+  let monthlyAmount = 0
+  let totalAmount = 0
+  for (let r = 20; r < 30; r++) {
+    const label = getCellValue(sheet, `A${r}`)
+    if (label.includes('월간') && label.includes('금액')) {
+      monthlyAmount = getNumericValue(sheet, `I${r}`)
+    }
+    if (label.includes('합계') && !label.includes('월간')) {
+      totalAmount = getNumericValue(sheet, `I${r}`)
+      break
+    }
+  }
 
-  // 조건들
-  const serviceTerms = getCellValue(sheet, 'A25') // 24 * 7 * 365 * 4
-  const validUntil = getCellValue(sheet, 'C29') // 15일
-  const paymentTerms = getCellValue(sheet, 'A31')
-  const specialTerms = getCellValue(sheet, 'A33')
+  // 조건들 (동적으로 찾기)
+  let serviceTerms = ''
+  let validUntil = ''
+  let paymentTerms = ''
+  let specialTerms = ''
+
+  for (let r = 23; r < 40; r++) {
+    const cellA = getCellValue(sheet, `A${r}`)
+    const cellC = getCellValue(sheet, `C${r}`)
+
+    if (cellA.includes('서비스기간')) {
+      serviceTerms = getCellValue(sheet, `A${r + 1}`)?.trim() || ''
+    }
+    if (cellA.includes('견적 유효기간')) {
+      validUntil = cellC || cellA.replace(/.*:/, '').trim()
+    }
+    if (cellA.includes('지급조건')) {
+      paymentTerms = cellA
+    }
+    if (cellA.includes('특약사항')) {
+      specialTerms = cellA
+    }
+  }
 
   return {
-    clientCompany: clientCompany || customerName || undefined,
+    clientCompany: clientCompany || undefined,
     clientContact: clientContact || undefined,
     approvalManager: approvalManager || undefined,
     quoteDate,
+    deliveryAddress: installAddress || undefined,
     maItems,
-    totalAmount,
+    totalAmount: totalAmount || monthlyAmount * 12,
     serviceTerms: serviceTerms || undefined,
     validUntil: validUntil || undefined,
     paymentTerms: paymentTerms || undefined,
+    specialTerms: specialTerms || undefined,
+    items: [], // MA는 maItems 사용
+  }
+}
+
+// V2 양식: SM_MA (시트명: SM_MA, 열 A~J, 행이 1씩 위로)
+function parseMAQuoteV2(sheet: ExcelJS.Worksheet): ParsedDocument {
+  // 수신 정보 (B4: "주니파이커넥트 귀중")
+  let clientCompany = getCellValue(sheet, 'B4').replace(/\s*귀중$/, '').trim()
+
+  // 발신 정보 (B5: "㈜서버메이트 김대훈 _ 070-8892-1455")
+  const senderInfo = getCellValue(sheet, 'B5')
+  let approvalManager = ''
+  if (senderInfo.includes('_')) {
+    const parts = senderInfo.split('_')
+    const companyAndName = parts[0].trim()
+    // "㈜서버메이트 김대훈" -> "김대훈"
+    const nameParts = companyAndName.split(/\s+/)
+    approvalManager = nameParts[nameParts.length - 1] || ''
+  }
+
+  // 견적일 (J5)
+  const quoteDate = getDateValue(sheet, 'J5')
+
+  // 고객명 (C15)
+  const customerName = getCellValue(sheet, 'C15').trim()
+  if (!clientCompany || clientCompany.includes('[')) {
+    clientCompany = customerName
+  }
+
+  // 기계설치주소 (C16)
+  const installAddress = getCellValue(sheet, 'C16').trim()
+
+  // MA 품목 파싱 (R17이 헤더, R18부터 데이터)
+  // 열 구조: A=모델, B=M/T, C=S/N, D=P/N, E=SPEC, F=수량, G=시작일, H=종료일, I=월제안가, J=총계
+  const maItems: ParsedMAItem[] = []
+  let row = 18
+
+  while (row < 50) {
+    const productName = getCellValue(sheet, `A${row}`)  // 모델 (제품명)
+    const modelType = getCellValue(sheet, `B${row}`)    // M/T
+    const serialNumber = getCellValue(sheet, `C${row}`) // S/N
+    const partNumber = getCellValue(sheet, `D${row}`)   // P/N
+    const serviceLevel = getCellValue(sheet, `E${row}`) // 기기명 & 상세SPEC
+    const quantity = getNumericValue(sheet, `F${row}`)  // 수량
+    const startDate = getDateValue(sheet, `G${row}`)
+    const endDate = getDateValue(sheet, `H${row}`)
+    const monthlyPrice = getNumericValue(sheet, `I${row}`) // 월제안가
+    const totalPrice = getNumericValue(sheet, `J${row}`)   // 계약기간 총계
+
+    // 합계 행 확인
+    if (productName.includes('합계') || productName.includes('유지정비료')) {
+      break
+    }
+
+    // 빈 행 확인
+    if (!productName && !modelType && !serialNumber && totalPrice === 0) {
+      break
+    }
+
+    if (productName || serialNumber || totalPrice > 0) {
+      maItems.push({
+        productName: productName || undefined,
+        modelType: modelType || undefined,
+        model: partNumber || undefined, // P/N을 model로
+        serialNumber: serialNumber || undefined,
+        serviceLevel: serviceLevel || undefined,
+        period: quantity > 0 ? `${quantity}년` : undefined,
+        startDate,
+        endDate,
+        totalPrice: totalPrice || (monthlyPrice * 12) || undefined,
+      })
+    }
+
+    row++
+  }
+
+  // 합계 금액 (동적으로 찾기)
+  let monthlyAmount = 0
+  let totalAmount = 0
+  let totalWithVat = 0
+
+  for (let r = row; r < row + 10; r++) {
+    const label = getCellValue(sheet, `A${r}`)
+    if (label.includes('월간') && label.includes('합계')) {
+      monthlyAmount = getNumericValue(sheet, `J${r}`)
+    }
+    if (label.includes('VAT별도') && label.includes('합계') && !label.includes('월간')) {
+      totalAmount = getNumericValue(sheet, `J${r}`)
+    }
+    if (label.includes('VAT포함') && label.includes('합계')) {
+      totalWithVat = getNumericValue(sheet, `J${r}`)
+    }
+  }
+
+  // 조건들 (동적으로 찾기)
+  let serviceTerms = ''
+  let validUntil = ''
+  let specialTerms = ''
+
+  for (let r = 20; r < 35; r++) {
+    const cellA = getCellValue(sheet, `A${r}`)
+
+    if (cellA.includes('서비스기간')) {
+      serviceTerms = getCellValue(sheet, `A${r + 1}`)?.trim() || ''
+    }
+    if (cellA.includes('견적 유효기간')) {
+      // "* 견적 유효기간 : 15일" 형태
+      const match = cellA.match(/유효기간\s*[:\s]\s*(.+)/)
+      validUntil = match ? match[1].trim() : ''
+    }
+    if (cellA.includes('특약사항')) {
+      // "* 특약사항 : 정기점검 제외, ..." 형태
+      const match = cellA.match(/특약사항\s*[:\s]\s*(.+)/)
+      specialTerms = match ? match[1].trim() : cellA
+    }
+  }
+
+  return {
+    clientCompany: clientCompany || undefined,
+    approvalManager: approvalManager || undefined,
+    quoteDate,
+    deliveryAddress: installAddress || undefined,
+    maItems,
+    totalAmount: totalAmount || monthlyAmount * 12,
+    totalWithVat: totalWithVat || undefined,
+    serviceTerms: serviceTerms || undefined,
+    validUntil: validUntil || undefined,
     specialTerms: specialTerms || undefined,
     items: [], // MA는 maItems 사용
   }
@@ -648,65 +1051,63 @@ function parseMAApproval(sheet: ExcelJS.Worksheet): ParsedDocument {
   const approvalManager = getCellValue(sheet, 'E7')
 
   // 품목 정보 (R11이 헤더, R12부터 데이터)
-  const items: ParsedItem[] = []
-  const purchaseItems: ParsedPurchaseItem[] = []
+  // 엑셀 구조: D=SM코드, E=벤더코드, F=고객사, G=매출처, H=매출가, I=수량, J=청구구분(매출)
+  //           K=계약시작, L=계약종료, M=매입처, N=매입가, O=청구구분(매입)
+  const maApprovalItems: ParsedMAApprovalItem[] = []
   let row = 12
 
   while (row < 30) {
     const smCode = getCellValue(sheet, `D${row}`)
     const vendorCode = getCellValue(sheet, `E${row}`)
-    const customerName = getCellValue(sheet, `F${row}`)
-    const clientCompany = getCellValue(sheet, `G${row}`)
+    const clientCompany = getCellValue(sheet, `F${row}`)
+    const salesCompany = getCellValue(sheet, `G${row}`)
     const salesPrice = getNumericValue(sheet, `H${row}`)
     const quantity = getNumericValue(sheet, `I${row}`)
-    const billingType = getCellValue(sheet, `J${row}`) // 일시불/월간
+    const salesBillingType = getCellValue(sheet, `J${row}`) // 일시불/월간
     const startDate = getDateValue(sheet, `K${row}`)
     const endDate = getDateValue(sheet, `L${row}`)
     const purchaseCompany = getCellValue(sheet, `M${row}`)
     const purchasePrice = getNumericValue(sheet, `N${row}`)
     const purchaseBillingType = getCellValue(sheet, `O${row}`)
-    const gpAmount = getNumericValue(sheet, `R${row}`)
-    const gpRate = getNumericValue(sheet, `S${row}`)
 
     // 빈 행 확인
-    if (!customerName && !clientCompany && salesPrice === 0) {
+    if (!clientCompany && !salesCompany && salesPrice === 0 && purchasePrice === 0) {
       break
     }
 
-    if (customerName || salesPrice > 0) {
-      items.push({
-        partNumber: smCode || undefined,
-        description: customerName?.replace(/^\[.*\]$/, '') || undefined,
+    // 데이터가 있는 행만 추가
+    if (clientCompany || salesCompany || salesPrice > 0 || purchasePrice > 0) {
+      maApprovalItems.push({
+        smCode: smCode?.replace(/^\[.*\]$/, '') || undefined,
+        vendorCode: vendorCode?.replace(/^\[.*\]$/, '') || undefined,
+        clientCompany: clientCompany?.replace(/^\[.*\]$/, '') || undefined,
+        salesCompany: salesCompany?.replace(/^\[.*\]$/, '') || undefined,
+        salesPrice: salesPrice || undefined,
         quantity: quantity || 1,
-        unitPrice: salesPrice || undefined,
-        totalPrice: salesPrice || undefined,
+        salesBillingType: salesBillingType?.replace(/^\[.*\]$/, '') || undefined,
+        startDate,
+        endDate,
+        purchaseCompany: purchaseCompany?.replace(/^\[.*\]$/, '') || undefined,
+        purchasePrice: purchasePrice || undefined,
+        purchaseBillingType: purchaseBillingType?.replace(/^\[.*\]$/, '') || undefined,
       })
-
-      if (purchaseCompany || purchasePrice > 0) {
-        purchaseItems.push({
-          partNumber: vendorCode || undefined,
-          description: customerName || undefined,
-          quantity: quantity || 1,
-          unitPrice: purchasePrice || undefined,
-          totalPrice: purchasePrice || undefined,
-          vendorCompany: purchaseCompany?.replace(/^\[.*\]$/, '') || undefined,
-        })
-      }
     }
 
     row++
   }
 
-  // 상세내용 시트가 있으면 추가 파싱
-  // (시트 이름이 "상세내용_예시"인 경우)
+  // 합계 계산
+  const totalAmount = maApprovalItems.reduce((sum, item) => sum + ((item.salesPrice || 0) * (item.quantity || 1)), 0)
+  const purchaseTotal = maApprovalItems.reduce((sum, item) => sum + ((item.purchasePrice || 0) * (item.quantity || 1)), 0)
 
   return {
     approvalDate,
     approvalManager: approvalManager || undefined,
-    items,
-    purchaseItems,
-    totalAmount: items.reduce((sum, item) => sum + (item.totalPrice || 0), 0),
-    purchaseTotal: purchaseItems.reduce((sum, item) => sum + (item.totalPrice || 0), 0),
+    maApprovalItems,
+    items: [], // 하위 호환성
+    purchaseItems: [], // 하위 호환성
+    totalAmount,
+    purchaseTotal,
   }
 }
 

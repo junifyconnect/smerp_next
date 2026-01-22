@@ -3,10 +3,13 @@ import { parseExcel } from '@/lib/excel/parser'
 import { NextRequest, NextResponse } from 'next/server'
 
 // POST /api/ma-quotes/upload - 엑셀 업로드
+// mode=parse: 파싱 결과만 반환 (폼에서 확인 후 저장)
+// mode=create 또는 없음: 바로 저장
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File | null
+    const mode = formData.get('mode') as string | null
 
     if (!file) {
       return NextResponse.json(
@@ -19,6 +22,12 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer())
     const parsed = await parseExcel(buffer, 'MA_QUOTE')
 
+    // 파싱 모드: 결과만 반환
+    if (mode === 'parse') {
+      return NextResponse.json({ parsed }, { status: 200 })
+    }
+
+    // 생성 모드: DB에 저장
     // TODO: 실제 인증된 사용자 ID 사용
     const createdById = 'dummy-user-id'
 

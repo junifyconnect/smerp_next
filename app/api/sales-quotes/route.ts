@@ -1,6 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 
+// 품목 타입
+interface ItemInput {
+  partNumber?: string
+  description?: string
+  quantity?: number
+  srpPrice?: number
+  unitPrice?: number
+  sortOrder?: number
+}
+
+// 제품 그룹 타입
+interface ProductInput {
+  name: string
+  quantity?: number
+  srpPrice?: number
+  unitPrice?: number
+  isConsolidated?: boolean
+  consolidatedPrice?: number // 레거시 호환
+  items?: ItemInput[]
+  sortOrder?: number
+}
+
 // GET /api/sales-quotes - 목록 조회
 export async function GET(request: NextRequest) {
   try {
@@ -35,7 +57,7 @@ export async function GET(request: NextRequest) {
         include: {
           createdBy: { select: { id: true, name: true } },
           deal: { select: { id: true, name: true, status: true } },
-          _count: { select: { items: true } },
+          _count: { select: { items: true, products: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
@@ -72,24 +94,27 @@ export async function POST(request: NextRequest) {
       clientPhone,
       clientFax,
       clientMobile,
-      clientCP, // 클라이언트에서 보내는 필드명
+      clientCP,
       clientEmail,
       quoteDate,
       validUntil,
       deliveryDate,
       paymentTerms,
       notes,
-      items = [],
-      // 통합 견적
+      // 새 구조: 제품 그룹 + 독립 품목
+      products = [] as ProductInput[],
+      standaloneItems = [] as ItemInput[],
+      // 레거시 호환: 기존 flat items 구조
+      items = [] as ItemInput[],
       isConsolidated = false,
       consolidatedName,
       consolidatedPrice,
     } = body
 
-    // Deal 자동 생성 - 견적서 생성 시 자동으로 Deal 생성
-    // 식별: 프로젝트명 > 첫 품목 description > 고객사명 > 날짜
-    const firstItemDesc = items[0]?.description
-    const dealName = projectName || firstItemDesc || clientCompany || `견적서 ${new Date().toLocaleDateString('ko-KR')}`
+    // Deal 자동 생성
+    const firstProductName = products[0]?.name
+    const firstItemDesc = items[0]?.description || standaloneItems[0]?.description
+    const dealName = projectName || firstProductName || firstItemDesc || clientCompany || `견적서 ${new Date().toLocaleDateString('ko-KR')}`
     const deal = await prisma.deal.create({
       data: {
         name: dealName,
@@ -97,66 +122,196 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // 금액 계산
+    // 새 구조 사용 여부 판단 (products가 있으면 새 구조)
+    const useNewStructure = products.length > 0 || standaloneItems.length > 0
+
     let totalAmount = 0
-    const itemsWithTotal = items.map((item: { quantity?: number; unitPrice?: number; partNumber?: string; description?: string; srpPrice?: number; sortOrder?: number }, index: number) => {
-      const qty = item.quantity || 1
-      const price = item.unitPrice || 0
-      const itemTotal = qty * price
-      totalAmount += itemTotal
-      return {
-        ...item,
-        sortOrder: item.sortOrder ?? index,
-        quantity: qty,
-        unitPrice: price,
-        totalPrice: itemTotal,
-      }
-    })
 
-    // 통합 견적인 경우 통합 금액 사용
-    if (isConsolidated && consolidatedPrice) {
-      totalAmount = consolidatedPrice
-    }
+    if (useNewStructure) {
+      // 새 구조: 제품별 금액 계산
+      const productsData = products.map((product: ProductInput, pIdx: number) => {
+        const qty = product.quantity || 1
+        const unitPrice = product.unitPrice || product.consolidatedPrice || 0
+        const productTotal = qty * unitPrice
 
-    const vatAmount = Math.round(totalAmount * 0.1)
-    const totalWithVat = totalAmount + vatAmount
+        totalAmount += productTotal
 
-    const quote = await prisma.salesQuote.create({
-      data: {
-        deal: { connect: { id: deal.id } },
-        projectName,
-        managerName,
-        clientCompany,
-        clientContact,
-        clientPhone,
-        clientFax,
-        clientMobile: clientMobile || clientCP, // 둘 중 하나 사용
-        clientEmail,
-        quoteDate: quoteDate ? new Date(quoteDate) : null,
-        validUntil,
-        // 납기일: "별도협의" 문자열이면 null 저장 (또는 별도 필드로 관리)
-        deliveryDate: deliveryDate && deliveryDate !== '별도협의' ? new Date(deliveryDate) : null,
-        paymentTerms,
-        notes,
-        totalAmount,
-        vatAmount,
-        totalWithVat,
-        // 통합 견적
-        isConsolidated,
-        consolidatedName: isConsolidated ? consolidatedName : null,
-        consolidatedPrice: isConsolidated ? consolidatedPrice : null,
-        items: {
-          create: itemsWithTotal,
+        // 참고용 상세 품목
+        const productItems = (product.items || []).map((item: ItemInput, iIdx: number) => {
+          return {
+            sortOrder: item.sortOrder ?? iIdx,
+            partNumber: item.partNumber,
+            description: item.description,
+            quantity: item.quantity || 1,
+            srpPrice: item.srpPrice,
+            unitPrice: item.unitPrice || 0,
+            totalPrice: (item.quantity || 1) * (item.unitPrice || 0),
+          }
+        })
+
+        return {
+          sortOrder: product.sortOrder ?? pIdx,
+          name: product.name,
+          quantity: qty,
+          srpPrice: product.srpPrice,
+          unitPrice: unitPrice,
+          totalPrice: productTotal,
+          isConsolidated: true,
+          consolidatedPrice: productTotal, // 레거시 호환
+          items: productItems,
+        }
+      })
+
+      // 독립 품목 금액 계산
+      const standaloneItemsData = standaloneItems.map((item: ItemInput, idx: number) => {
+        const qty = item.quantity || 1
+        const price = item.unitPrice || 0
+        const itemTotal = qty * price
+        totalAmount += itemTotal
+        return {
+          sortOrder: item.sortOrder ?? (idx + 1000), // 독립 품목은 뒤에 정렬
+          partNumber: item.partNumber,
+          description: item.description,
+          quantity: qty,
+          srpPrice: item.srpPrice,
+          unitPrice: price,
+          totalPrice: itemTotal,
+        }
+      })
+
+      const vatAmount = Math.round(totalAmount * 0.1)
+      const totalWithVat = totalAmount + vatAmount
+
+      // 1. 견적서 기본 정보 생성
+      const quote = await prisma.salesQuote.create({
+        data: {
+          deal: { connect: { id: deal.id } },
+          projectName,
+          managerName,
+          clientCompany,
+          clientContact,
+          clientPhone,
+          clientFax,
+          clientMobile: clientMobile || clientCP,
+          clientEmail,
+          quoteDate: quoteDate ? new Date(quoteDate) : null,
+          validUntil,
+          deliveryDate: deliveryDate && deliveryDate !== '별도협의' ? new Date(deliveryDate) : null,
+          paymentTerms,
+          notes,
+          totalAmount,
+          vatAmount,
+          totalWithVat,
+          // 독립 품목 생성
+          items: {
+            create: standaloneItemsData,
+          },
         },
-      },
-      include: {
-        items: true,
-        deal: { select: { id: true, name: true } },
-        createdBy: { select: { id: true, name: true } },
-      },
-    })
+      })
 
-    return NextResponse.json(quote, { status: 201 })
+      // 2. 제품 및 제품 소속 품목 생성
+      for (const p of productsData) {
+        const createdProduct = await prisma.salesQuoteProduct.create({
+          data: {
+            quoteId: quote.id,
+            sortOrder: p.sortOrder,
+            name: p.name,
+            quantity: p.quantity,
+            srpPrice: p.srpPrice,
+            unitPrice: p.unitPrice,
+            totalPrice: p.totalPrice,
+            isConsolidated: p.isConsolidated,
+            consolidatedPrice: p.consolidatedPrice,
+          },
+        })
+
+        // 제품 소속 품목 생성
+        if (p.items && p.items.length > 0) {
+          await prisma.salesQuoteItem.createMany({
+            data: p.items.map(item => ({
+              quoteId: quote.id,
+              productId: createdProduct.id,
+              ...item,
+            })),
+          })
+        }
+      }
+
+      // 3. 최종 결과 조회
+      const result = await prisma.salesQuote.findUnique({
+        where: { id: quote.id },
+        include: {
+          products: {
+            include: { items: { orderBy: { sortOrder: 'asc' } } },
+            orderBy: { sortOrder: 'asc' },
+          },
+          items: { where: { productId: null }, orderBy: { sortOrder: 'asc' } },
+          deal: { select: { id: true, name: true } },
+          createdBy: { select: { id: true, name: true } },
+        },
+      })
+
+      return NextResponse.json(result, { status: 201 })
+    } else {
+      // 레거시 구조: 기존 flat items
+      const itemsWithTotal = items.map((item: ItemInput, index: number) => {
+        const qty = item.quantity || 1
+        const price = item.unitPrice || 0
+        const itemTotal = qty * price
+        totalAmount += itemTotal
+        return {
+          sortOrder: item.sortOrder ?? index,
+          partNumber: item.partNumber,
+          description: item.description,
+          quantity: qty,
+          srpPrice: item.srpPrice,
+          unitPrice: price,
+          totalPrice: itemTotal,
+        }
+      })
+
+      if (isConsolidated && consolidatedPrice) {
+        totalAmount = consolidatedPrice
+      }
+
+      const vatAmount = Math.round(totalAmount * 0.1)
+      const totalWithVat = totalAmount + vatAmount
+
+      const quote = await prisma.salesQuote.create({
+        data: {
+          deal: { connect: { id: deal.id } },
+          projectName,
+          managerName,
+          clientCompany,
+          clientContact,
+          clientPhone,
+          clientFax,
+          clientMobile: clientMobile || clientCP,
+          clientEmail,
+          quoteDate: quoteDate ? new Date(quoteDate) : null,
+          validUntil,
+          deliveryDate: deliveryDate && deliveryDate !== '별도협의' ? new Date(deliveryDate) : null,
+          paymentTerms,
+          notes,
+          totalAmount,
+          vatAmount,
+          totalWithVat,
+          isConsolidated,
+          consolidatedName: isConsolidated ? consolidatedName : null,
+          consolidatedPrice: isConsolidated ? consolidatedPrice : null,
+          items: {
+            create: itemsWithTotal,
+          },
+        },
+        include: {
+          items: { orderBy: { sortOrder: 'asc' } },
+          deal: { select: { id: true, name: true } },
+          createdBy: { select: { id: true, name: true } },
+        },
+      })
+
+      return NextResponse.json(quote, { status: 201 })
+    }
   } catch (error) {
     console.error('견적서 생성 오류:', error)
     return NextResponse.json(

@@ -207,6 +207,26 @@ model CustomerContact {
   @@map("customer_contacts")
 }
 
+// ==================== 매입처 (Vendor) ====================
+
+model Vendor {
+  id          String   @id @default(uuid())
+  name        String   @unique // 매입처명
+  contactName String?  @map("contact_name") // 담당자명
+  phone       String?  // 전화
+  email       String?  // 이메일
+  notes       String?  @db.Text // 비고
+  usageCount  Int      @default(0) @map("usage_count") // 사용 횟수 (정렬용)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([name])
+  @@index([usageCount(sort: Desc)])
+  @@index([isActive])
+  @@map("vendors")
+}
+
 // ==================== 영업 견적서 (SalesQuote) ====================
 
 enum QuoteStatus {
@@ -263,6 +283,7 @@ model SalesQuote {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // 관계
+  products       SalesQuoteProduct[] // 제품 그룹들
   items          SalesQuoteItem[]
   files          SalesQuoteFile[]
   salesApprovals SalesApproval[]   // 이 견적서를 기반으로 생성된 품의서들
@@ -276,9 +297,32 @@ model SalesQuote {
   @@map("sales_quotes")
 }
 
-model SalesQuoteItem {
+// 제품 그룹 (통합 견적)
+model SalesQuoteProduct {
   id      String @id @default(uuid())
   quoteId String @map("quote_id")
+
+  sortOrder         Int      @default(0) @map("sort_order")
+  name              String                                    // 제품명 (예: "R660XS 서버 시스템")
+  quantity          Int      @default(1)                      // 수량
+  srpPrice          Decimal? @map("srp_price") @db.Decimal(15, 2)    // SRP
+  unitPrice         Decimal? @map("unit_price") @db.Decimal(15, 2)   // 단가
+  totalPrice        Decimal? @map("total_price") @db.Decimal(15, 2)  // 합계
+  isConsolidated    Boolean  @default(true) @map("is_consolidated")  // 제품은 기본 통합
+  consolidatedPrice Decimal? @map("consolidated_price") @db.Decimal(15, 2) // 레거시 호환
+
+  quote     SalesQuote       @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  items     SalesQuoteItem[] // 참고용 상세 내역
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  @@index([quoteId])
+  @@map("sales_quote_products")
+}
+
+model SalesQuoteItem {
+  id        String  @id @default(uuid())
+  quoteId   String  @map("quote_id")
+  productId String? @map("product_id") // null이면 독립 품목
 
   sortOrder   Int      @default(0) @map("sort_order")
   partNumber  String?  @map("part_number") // P/N
@@ -288,10 +332,12 @@ model SalesQuoteItem {
   unitPrice   Decimal? @map("unit_price") @db.Decimal(15, 2)  // 단가
   totalPrice  Decimal? @map("total_price") @db.Decimal(15, 2) // 합계
 
-  quote     SalesQuote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
-  createdAt DateTime   @default(now()) @map("created_at")
+  quote     SalesQuote         @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  product   SalesQuoteProduct? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  createdAt DateTime           @default(now()) @map("created_at")
 
   @@index([quoteId])
+  @@index([productId])
   @@map("sales_quote_items")
 }
 
@@ -690,7 +736,7 @@ model MAApproval {
 
   // 관계
   items         MAApprovalItem[]
-  purchaseItems MAApprovalPurchaseItem[]
+  purchaseItems MAApprovalPurchaseItem[] // deprecated: 기존 데이터 호환용
 
   @@index([status])
   @@index([createdById])
@@ -705,13 +751,16 @@ model MAApprovalItem {
   sortOrder    Int      @default(0) @map("sort_order")
   smCode       String?  @map("sm_code")
   vendorCode   String?  @map("vendor_code")
-  customerName String?  @map("customer_name")
-  clientCompany String? @map("client_company")
+  clientCompany String? @map("client_company")    // 고객사
+  salesCompany  String? @map("sales_company")     // 매출처
   salesPrice   Decimal? @map("sales_price") @db.Decimal(15, 2)
   quantity     Int      @default(1)
-  billingType  String?  @map("billing_type") // 일시불/월간
+  salesBillingType String? @map("sales_billing_type") // 청구구분(매출)
   startDate    DateTime? @map("start_date") @db.Date
   endDate      DateTime? @map("end_date") @db.Date
+  purchaseCompany  String?  @map("purchase_company")   // 매입처
+  purchasePrice    Decimal? @map("purchase_price") @db.Decimal(15, 2)
+  purchaseBillingType String? @map("purchase_billing_type") // 청구구분(매입)
 
   approval  MAApproval @relation(fields: [approvalId], references: [id], onDelete: Cascade)
   createdAt DateTime   @default(now()) @map("created_at")

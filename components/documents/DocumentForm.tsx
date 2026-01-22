@@ -3,7 +3,7 @@
 import { UilEdit, UilFileAlt, UilPlus, UilSearch, UilTrashAlt } from '@iconscout/react-unicons'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { CustomerSelectModal } from './CustomerSelectModal'
 import { DocumentFormTemplate } from './DocumentFormTemplate'
 
@@ -15,6 +15,17 @@ interface DocumentItem {
   srpPrice?: number
   unitPrice?: number
   totalPrice?: number
+}
+
+// 제품 그룹 (품목들을 묶어서 통합 견적)
+interface ProductGroup {
+  id: string
+  name: string
+  quantity: number
+  srpPrice?: number
+  unitPrice?: number
+  totalPrice?: number
+  items: DocumentItem[] // 참고용 상세 내역
 }
 
 interface DocumentFormProps {
@@ -38,6 +49,10 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(!!documentId)
   const [mode, setMode] = useState<'web' | 'template'>('web')
+
+  // 엑셀 업로드 관련
+  const excelInputRef = useRef<HTMLInputElement>(null)
+  const [parsingExcel, setParsingExcel] = useState(false)
 
   // 거래처 선택 모달 상태
   const [showCustomerModal, setShowCustomerModal] = useState(false)
@@ -81,17 +96,30 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
       setFormData(prev => ({ ...prev, managerName: session.user.name || '' }))
     }
   }, [session, documentId, formData.managerName])
+
+  // 제품 그룹 목록 (기본값: 빈 제품 1개)
+  const [products, setProducts] = useState<ProductGroup[]>([
+    { id: `product-init-${Date.now()}`, name: '', quantity: 1, srpPrice: 0, unitPrice: 0, items: [] },
+  ])
+
+  // 독립 품목 (제품에 소속되지 않는 품목) - 기본값 없음
+  const [standaloneItems, setStandaloneItems] = useState<DocumentItem[]>([])
+
+  // 레거시: 기존 flat items (하위 호환용)
   const [items, setItems] = useState<DocumentItem[]>([
     { partNumber: '', description: '', quantity: 1, srpPrice: 0, unitPrice: 0, totalPrice: 0 },
   ])
 
-  // 통합 견적 상태
+  // 통합 견적 상태 (레거시 - 전체 통합용)
   const [isConsolidated, setIsConsolidated] = useState(false)
-  const [consolidatedName, setConsolidatedName] = useState('') // 통합 품명
-  const [consolidatedPrice, setConsolidatedPrice] = useState<number | ''>(0) // 통합 금액
+  const [consolidatedName, setConsolidatedName] = useState('')
+  const [consolidatedPrice, setConsolidatedPrice] = useState<number | ''>(0)
 
   // 납기일 별도 협의 상태
   const [isDeliveryTBD, setIsDeliveryTBD] = useState(false)
+
+  // 항상 새 구조 사용 (제품 + 품목)
+  const useNewStructure = true
 
   // 수정 모드일 때 기존 데이터 로드
   const fetchDocument = useCallback(async () => {
@@ -128,8 +156,43 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
           notes: data.notes || '',
         })
 
-        // 품목 설정
+        // 새 구조: 제품 그룹 로드
+        if (data.products && data.products.length > 0) {
+          setProducts(data.products.map((product: any) => ({
+            id: product.id,
+            name: product.name || '',
+            quantity: product.quantity || 1,
+            srpPrice: product.srpPrice || 0,
+            unitPrice: product.unitPrice || product.consolidatedPrice || 0, // consolidatedPrice fallback
+            totalPrice: product.totalPrice || product.consolidatedPrice || 0,
+            items: (product.items || []).map((item: any) => ({
+              id: item.id,
+              partNumber: item.partNumber || '',
+              description: item.description || '',
+              quantity: item.quantity || 1,
+              srpPrice: item.srpPrice || 0,
+              unitPrice: item.unitPrice || 0,
+              totalPrice: item.totalPrice || 0,
+            })),
+          })))
+        }
+
+        // 독립 품목 설정 (items 중 productId가 null인 것들)
         if (data.items && data.items.length > 0) {
+          const standalone = data.items.filter((item: any) => !item.productId)
+          if (standalone.length > 0) {
+            setStandaloneItems(standalone.map((item: any) => ({
+              id: item.id,
+              partNumber: item.partNumber || '',
+              description: item.description || '',
+              quantity: item.quantity || 1,
+              srpPrice: item.srpPrice || 0,
+              unitPrice: item.unitPrice || 0,
+              totalPrice: item.totalPrice || 0,
+            })))
+          }
+
+          // 레거시: 모든 items (하위 호환용)
           setItems(data.items.map((item: any) => ({
             id: item.id,
             partNumber: item.partNumber || '',
@@ -141,7 +204,7 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
           })))
         }
 
-        // 통합 견적 설정
+        // 통합 견적 설정 (레거시)
         if (data.isConsolidated) {
           setIsConsolidated(true)
           setConsolidatedName(data.consolidatedName || '')
@@ -236,6 +299,19 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
     }
   }
 
+  // 숫자 포맷팅 (천 단위 쉼표)
+  const formatNumber = (value: number | string): string => {
+    const num = typeof value === 'string' ? parseFloat(value.replace(/,/g, '')) : value
+    if (isNaN(num) || num === 0) return ''
+    return num.toLocaleString()
+  }
+
+  // 숫자 파싱 (쉼표 제거)
+  const parseNumber = (value: string): number => {
+    const num = parseInt(value.replace(/,/g, ''), 10)
+    return isNaN(num) ? 0 : num
+  }
+
   // 날짜 포맷팅 함수 (20260107 -> 2026.01.07)
   const formatDate = (value: string): string => {
     // 숫자만 추출 (최대 8자리)
@@ -313,13 +389,249 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
     setItems(items.filter((_, i) => i !== index))
   }
 
+  // 제품 추가
+  const addProduct = () => {
+    const newProduct: ProductGroup = {
+      id: `temp-${Date.now()}`,
+      name: '',
+      quantity: 1,
+      srpPrice: 0,
+      unitPrice: 0,
+      totalPrice: 0,
+      items: [], // 참고용 상세 내역 (선택)
+    }
+    setProducts([...products, newProduct])
+  }
+
+  // 제품 삭제
+  const removeProduct = (productIndex: number) => {
+    setProducts(products.filter((_, i) => i !== productIndex))
+  }
+
+  // 제품 필드 변경
+  const handleProductChange = (productIndex: number, field: keyof ProductGroup, value: string | number) => {
+    setProducts(prev => {
+      const newProducts = [...prev]
+      newProducts[productIndex] = { ...newProducts[productIndex], [field]: value }
+
+      // 금액 자동 계산
+      if (field === 'quantity' || field === 'unitPrice') {
+        const quantity = field === 'quantity' ? Number(value) : newProducts[productIndex].quantity
+        const unitPrice = field === 'unitPrice' ? Number(value) : newProducts[productIndex].unitPrice || 0
+        newProducts[productIndex].totalPrice = quantity * unitPrice
+      }
+
+      return newProducts
+    })
+  }
+
+  // 제품 내 품목 변경
+  const handleProductItemChange = (productIndex: number, itemIndex: number, field: keyof DocumentItem, value: string | number) => {
+    setProducts(prev => {
+      const newProducts = [...prev]
+      const newItems = [...newProducts[productIndex].items]
+      newItems[itemIndex] = { ...newItems[itemIndex], [field]: value }
+
+      // 금액 자동 계산
+      if (field === 'quantity' || field === 'unitPrice') {
+        const quantity = field === 'quantity' ? Number(value) : newItems[itemIndex].quantity
+        const unitPrice = field === 'unitPrice' ? Number(value) : newItems[itemIndex].unitPrice || 0
+        newItems[itemIndex].totalPrice = quantity * unitPrice
+      }
+
+      newProducts[productIndex] = { ...newProducts[productIndex], items: newItems }
+      return newProducts
+    })
+  }
+
+  // 제품 내 품목 추가
+  const addProductItem = (productIndex: number) => {
+    setProducts(prev => {
+      const newProducts = [...prev]
+      newProducts[productIndex] = {
+        ...newProducts[productIndex],
+        items: [...newProducts[productIndex].items, { partNumber: '', description: '', quantity: 1, srpPrice: 0, unitPrice: 0, totalPrice: 0 }],
+      }
+      return newProducts
+    })
+  }
+
+  // 제품 내 품목 삭제
+  const removeProductItem = (productIndex: number, itemIndex: number) => {
+    setProducts(prev => {
+      const newProducts = [...prev]
+      if (newProducts[productIndex].items.length > 1) {
+        newProducts[productIndex] = {
+          ...newProducts[productIndex],
+          items: newProducts[productIndex].items.filter((_, i) => i !== itemIndex),
+        }
+      }
+      return newProducts
+    })
+  }
+
+  // 독립 품목 변경
+  const handleStandaloneItemChange = (index: number, field: keyof DocumentItem, value: string | number) => {
+    setStandaloneItems(prev => {
+      const newItems = [...prev]
+      newItems[index] = { ...newItems[index], [field]: value }
+
+      if (field === 'quantity' || field === 'unitPrice') {
+        const quantity = field === 'quantity' ? Number(value) : newItems[index].quantity
+        const unitPrice = field === 'unitPrice' ? Number(value) : newItems[index].unitPrice || 0
+        newItems[index].totalPrice = quantity * unitPrice
+      }
+
+      return newItems
+    })
+  }
+
+  // 독립 품목 추가
+  const addStandaloneItem = () => {
+    setStandaloneItems([...standaloneItems, { partNumber: '', description: '', quantity: 1, srpPrice: 0, unitPrice: 0, totalPrice: 0 }])
+  }
+
+  // 독립 품목 삭제 (항상 삭제 가능)
+  const removeStandaloneItem = (index: number) => {
+    setStandaloneItems(standaloneItems.filter((_, i) => i !== index))
+  }
+
   const calculateTotal = () => {
-    // 통합 견적일 경우 통합 금액 사용
-    const total = isConsolidated
-      ? (typeof consolidatedPrice === 'number' ? consolidatedPrice : 0)
-      : items.reduce((sum, item) => sum + (item.totalPrice || 0), 0)
-    const vat = Math.round(total * 0.1)
-    return { total, vat, totalWithVat: total + vat }
+    if (useNewStructure) {
+      // 새 구조: 제품별 합계 + 독립 품목 합계
+      let total = 0
+
+      // 제품별 합계 (제품의 totalPrice 사용)
+      for (const product of products) {
+        total += product.totalPrice || 0
+      }
+
+      // 독립 품목 합계
+      total += standaloneItems.reduce((sum, item) => sum + (item.totalPrice || 0), 0)
+
+      const vat = Math.round(total * 0.1)
+      return { total, vat, totalWithVat: total + vat }
+    } else {
+      // 레거시: 통합 견적일 경우 통합 금액 사용
+      const total = isConsolidated
+        ? (typeof consolidatedPrice === 'number' ? consolidatedPrice : 0)
+        : items.reduce((sum, item) => sum + (item.totalPrice || 0), 0)
+      const vat = Math.round(total * 0.1)
+      return { total, vat, totalWithVat: total + vat }
+    }
+  }
+
+  // 엑셀 파일 파싱 핸들러
+  const handleExcelParse = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setParsingExcel(true)
+    try {
+      const formDataToSend = new FormData()
+      formDataToSend.append('file', file)
+
+      const res = await fetch('/api/sales-quotes/parse', {
+        method: 'POST',
+        body: formDataToSend,
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || '파싱에 실패했습니다')
+      }
+
+      const parsed = await res.json()
+
+      // 파싱된 데이터로 폼 채우기
+      setFormData(prev => ({
+        ...prev,
+        projectName: parsed.projectName || prev.projectName,
+        managerName: parsed.managerName || prev.managerName,
+        clientCompany: parsed.clientCompany || prev.clientCompany,
+        clientContact: parsed.clientContact || prev.clientContact,
+        clientPhone: parsed.clientPhone || prev.clientPhone,
+        clientFax: parsed.clientFax || prev.clientFax,
+        clientCP: parsed.clientMobile || prev.clientCP,
+        clientEmail: parsed.clientEmail || prev.clientEmail,
+        paymentTerms: parsed.paymentTerms || prev.paymentTerms,
+        notes: parsed.notes || prev.notes,
+      }))
+
+      // 날짜 설정
+      if (parsed.quoteDate) {
+        handleInputChange('quoteDate', new Date(parsed.quoteDate).toISOString().split('T')[0])
+      }
+      if (parsed.validUntil) {
+        handleInputChange('validUntil', parsed.validUntil)
+      }
+      if (parsed.deliveryDate) {
+        handleInputChange('deliveryDate', new Date(parsed.deliveryDate).toISOString().split('T')[0])
+        setIsDeliveryTBD(false)
+      }
+
+      // 제품 그룹 처리 (새 구조)
+      if (parsed.products && parsed.products.length > 0) {
+        // 파싱된 products 데이터 사용
+        const newProducts: ProductGroup[] = parsed.products.map((product: {
+          name: string
+          quantity: number
+          srpPrice?: number
+          unitPrice?: number
+          totalPrice?: number
+          items: DocumentItem[]
+        }, idx: number) => ({
+          id: `product-${Date.now()}-${idx}`,
+          name: product.name || '제품',
+          quantity: product.quantity || 1,
+          srpPrice: product.srpPrice || 0,
+          unitPrice: product.unitPrice || 0,
+          totalPrice: product.totalPrice || 0,
+          items: product.items?.map((item: DocumentItem) => ({
+            partNumber: item.partNumber || '',
+            description: item.description || '',
+            quantity: item.quantity || 1,
+            srpPrice: item.srpPrice || 0,
+            unitPrice: item.unitPrice || 0,
+            totalPrice: item.totalPrice || 0,
+          })) || [],
+        }))
+
+        setProducts(newProducts)
+        setStandaloneItems([])
+      } else if (parsed.items && parsed.items.length > 0) {
+        // 레거시 형식: items를 제품으로 변환
+        const productName = parsed.items[0]?.description || parsed.projectName || '제품'
+        const productTotal = parsed.totalAmount || 0
+
+        const newProduct: ProductGroup = {
+          id: `product-${Date.now()}`,
+          name: productName,
+          quantity: 1,
+          srpPrice: 0,
+          unitPrice: productTotal,
+          totalPrice: productTotal,
+          items: parsed.items.map((item: DocumentItem) => ({
+            partNumber: item.partNumber || '',
+            description: item.description || '',
+            quantity: item.quantity || 1,
+            srpPrice: item.srpPrice || 0,
+            unitPrice: item.unitPrice || 0,
+            totalPrice: item.totalPrice || 0,
+          })),
+        }
+
+        setProducts([newProduct])
+        setStandaloneItems([])
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '엑셀 파싱에 실패했습니다')
+    } finally {
+      setParsingExcel(false)
+      if (excelInputRef.current) {
+        excelInputRef.current.value = ''
+      }
+    }
   }
 
   // 거래처 자동 저장 (견적서 저장 시 호출)
@@ -396,27 +708,61 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
       const method = documentId ? 'PATCH' : 'POST'
       const url = documentId ? `${apiPath}/${documentId}` : apiPath
 
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          // 납기일: 별도 협의 체크 시 문자열로 전송
-          deliveryDate: isDeliveryTBD ? '별도협의' : formData.deliveryDate,
-          // 통합 견적 정보
-          isConsolidated,
-          consolidatedName: isConsolidated ? consolidatedName : undefined,
-          consolidatedPrice: isConsolidated ? (typeof consolidatedPrice === 'number' ? consolidatedPrice : 0) : undefined,
-          // 품목 (통합 견적일 때도 참고용으로 저장)
-          items: items.map((item) => ({
-            id: item.id,
+      // 요청 바디 구성
+      const requestBody: Record<string, unknown> = {
+        ...formData,
+        deliveryDate: isDeliveryTBD ? '별도협의' : formData.deliveryDate,
+      }
+
+      if (useNewStructure) {
+        // 새 구조: 제품 그룹 + 독립 품목
+        requestBody.products = products.map((product, pIdx) => ({
+          name: product.name,
+          quantity: product.quantity,
+          srpPrice: product.srpPrice || undefined,
+          unitPrice: product.unitPrice || undefined,
+          isConsolidated: true, // 제품은 항상 통합 견적
+          consolidatedPrice: product.totalPrice || 0,
+          sortOrder: pIdx,
+          items: product.items.map((item, iIdx) => ({
             partNumber: item.partNumber || undefined,
             description: item.description || undefined,
             quantity: item.quantity,
             srpPrice: item.srpPrice || undefined,
             unitPrice: item.unitPrice || undefined,
+            sortOrder: iIdx,
           })),
-        }),
+        }))
+        // 빈 독립 품목 필터링 (partNumber와 description이 모두 비어있으면 제외)
+        requestBody.standaloneItems = standaloneItems
+          .filter(item => item.partNumber?.trim() || item.description?.trim())
+          .map((item, idx) => ({
+            partNumber: item.partNumber || undefined,
+            description: item.description || undefined,
+            quantity: item.quantity,
+            srpPrice: item.srpPrice || undefined,
+            unitPrice: item.unitPrice || undefined,
+            sortOrder: idx,
+          }))
+      } else {
+        // 레거시: 기존 flat items 구조
+        requestBody.isConsolidated = isConsolidated
+        requestBody.consolidatedName = isConsolidated ? consolidatedName : undefined
+        requestBody.consolidatedPrice = isConsolidated ? (typeof consolidatedPrice === 'number' ? consolidatedPrice : 0) : undefined
+        requestBody.items = items.map((item) => ({
+          id: item.id,
+          partNumber: item.partNumber || undefined,
+          description: item.description || undefined,
+          quantity: item.quantity,
+          srpPrice: item.srpPrice || undefined,
+          unitPrice: item.unitPrice || undefined,
+        }))
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
       })
 
       if (!response.ok) {
@@ -444,42 +790,67 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
   const totals = calculateTotal()
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
-        <div className="flex items-center gap-3">
-          {/* 모드 토글 */}
-          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg p-1">
-            <button
-              type="button"
-              onClick={() => setMode('web')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all ${mode === 'web'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-600 hover:bg-gray-100'
-                }`}
-            >
-              <UilEdit size={18} />
-              웹 모드
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('template')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all ${mode === 'template'
-                ? 'bg-green-600 text-white'
-                : 'text-gray-600 hover:bg-gray-100'
-                }`}
-            >
-              <UilFileAlt size={18} />
-              양식 모드
-            </button>
-          </div>
+    <div className="space-y-3">
+      {/* 헤더 */}
+      <div className="flex items-center gap-4">
+        <button
+          type="button"
+          onClick={() => router.push(basePath)}
+          className="p-2 hover:bg-gray-100 rounded-lg"
+        >
+          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+        {/* 모드 토글 */}
+        <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-0.5 ml-auto">
           <button
-            onClick={() => router.push(basePath)}
-            className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-200 font-medium"
+            type="button"
+            onClick={() => setMode('web')}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded text-sm transition-all ${mode === 'web'
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-600 hover:bg-gray-100'
+            }`}
           >
-            취소
+            <UilEdit size={16} />
+            웹
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('template')}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded text-sm transition-all ${mode === 'template'
+              ? 'bg-green-600 text-white'
+              : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <UilFileAlt size={16} />
+            양식
           </button>
         </div>
+        {/* 엑셀 업로드 버튼 (신규 작성 시에만) */}
+        {!documentId && docType === 'SALES_QUOTE' && (
+          <>
+            <input
+              ref={excelInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleExcelParse}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => excelInputRef.current?.click()}
+              disabled={parsingExcel}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              {parsingExcel ? '파싱 중...' : '엑셀 불러오기'}
+            </button>
+          </>
+        )}
       </div>
 
       {mode === 'template' ? (
@@ -494,11 +865,11 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
             onRemoveItem={removeItem}
           />
           {/* 양식 모드 저장 버튼 */}
-          <div className="flex justify-end gap-4 mt-6">
+          <div className="flex justify-end gap-3 mt-6">
             <button
               type="button"
               onClick={() => router.push(basePath)}
-              className="px-8 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-200 font-medium"
+              className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
             >
               취소
             </button>
@@ -506,420 +877,424 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
               type="button"
               onClick={handleSubmit}
               disabled={loading}
-              className="px-8 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
-              {loading ? '저장 중...' : '저장하기'}
+              {loading ? '저장 중...' : '저장'}
             </button>
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* 고객 정보 */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">고객 정보</h2>
-            {docType === 'SALES_APPROVAL' ? (
-              // Sales 품의서: 매출처/담당/연락처 한 줄 입력
-              <div className="space-y-4 max-w-3xl">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    매출처 / 담당 / 연락처
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.salesContactLine}
-                    onChange={(e) => handleInputChange('salesContactLine', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                    placeholder="예: 서버메이트 / 김대훈 팀장 / 010-1234-5678"
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">End User</label>
-                    <input
-                      type="text"
-                      value={formData.projectName}
-                      onChange={(e) => handleInputChange('projectName', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                      placeholder="End User 정보를 입력하세요"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">MT&S/N</label>
-                    <input
-                      type="text"
-                      value={formData.clientCompany}
-                      onChange={(e) => handleInputChange('clientCompany', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                      placeholder="모델타입 / 시리얼넘버 등"
-                    />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              // 기본 견적서용 고객 정보
-              <div className="space-y-4 max-w-3xl">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">회사</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={formData.clientCompany}
-                        onChange={(e) => handleInputChange('clientCompany', e.target.value)}
-                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                        placeholder="고객사명"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowCustomerModal(true)}
-                        className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                        title="거래처 검색"
-                      >
-                        <UilSearch size={18} />
+        <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && e.target instanceof HTMLInputElement) e.preventDefault() }} className="space-y-3">
+          {/* 기본 정보 (컴팩트 테이블 스타일) */}
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden inline-block">
+            <table className="text-sm">
+              <tbody className="divide-y divide-gray-100">
+                {/* 1행: 회사, 참조, 전화 */}
+                <tr>
+                  <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">회사</td>
+                  <td className="px-1.5 py-1 border-r border-gray-100">
+                    <div className="flex gap-1">
+                      <input type="text" value={formData.clientCompany} onChange={(e) => handleInputChange('clientCompany', e.target.value)} className="w-36 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="고객사명" />
+                      <button type="button" onClick={() => setShowCustomerModal(true)} className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700" title="거래처 검색">
+                        <UilSearch size={14} />
                       </button>
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">참조</label>
+                  </td>
+                  <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">참조</td>
+                  <td className="px-1.5 py-1 border-r border-gray-100">
+                    <input type="text" value={formData.clientContact} onChange={(e) => handleInputChange('clientContact', e.target.value)} className="w-28 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="담당자명" />
+                  </td>
+                  <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">전화</td>
+                  <td className="px-1.5 py-1">
+                    <input type="tel" value={formData.clientPhone} onChange={(e) => handleInputChange('clientPhone', e.target.value)} className="w-32 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="02-1234-5678" />
+                  </td>
+                </tr>
+                {/* 2행: Fax, CP, E-mail */}
+                <tr className="bg-gray-50/30">
+                  <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">Fax</td>
+                  <td className="px-1.5 py-1 border-r border-gray-100">
+                    <input type="tel" value={formData.clientFax} onChange={(e) => handleInputChange('clientFax', e.target.value)} className="w-36 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="02-1234-5679" />
+                  </td>
+                  <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">C P</td>
+                  <td className="px-1.5 py-1 border-r border-gray-100">
+                    <input type="tel" value={formData.clientCP} onChange={(e) => handleInputChange('clientCP', e.target.value)} className="w-28 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="010-1234-5678" />
+                  </td>
+                  <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">E-mail</td>
+                  <td className="px-1.5 py-1">
+                    <input type="email" value={formData.clientEmail} onChange={(e) => handleInputChange('clientEmail', e.target.value)} className="w-48 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="contact@company.com" />
+                  </td>
+                </tr>
+                {/* 3행: 견적일, 납기일, 유효기간 */}
+                <tr>
+                  <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">견적일</td>
+                  <td className="px-1.5 py-1 border-r border-gray-100">
                     <input
                       type="text"
-                      value={formData.clientContact}
-                      onChange={(e) => handleInputChange('clientContact', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                      placeholder="담당자명"
+                      value={formData.quoteDate}
+                      onChange={(e) => handleInputChange('quoteDate', e.target.value)}
+                      onKeyDown={(e) => {
+                        if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                          e.preventDefault()
+                        }
+                      }}
+                      maxLength={10}
+                      className="w-28 px-2 py-1 border border-gray-300 rounded text-xs"
+                      placeholder="2026.01.07"
                     />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">전화</label>
-                    <input
-                      type="tel"
-                      value={formData.clientPhone}
-                      onChange={(e) => handleInputChange('clientPhone', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                      placeholder="02-1234-5678"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Fax</label>
-                    <input
-                      type="tel"
-                      value={formData.clientFax}
-                      onChange={(e) => handleInputChange('clientFax', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                      placeholder="02-1234-5679"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">C P</label>
-                    <input
-                      type="tel"
-                      value={formData.clientCP}
-                      onChange={(e) => handleInputChange('clientCP', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                      placeholder="010-1234-5678"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">E-mail</label>
-                    <input
-                      type="email"
-                      value={formData.clientEmail}
-                      onChange={(e) => handleInputChange('clientEmail', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                      placeholder="contact@company.com"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 견적 정보 */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">견적 정보</h2>
-            <div className="space-y-4 max-w-3xl">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">견적일</label>
-                  <input
-                    type="text"
-                    value={formData.quoteDate}
-                    onChange={(e) => handleInputChange('quoteDate', e.target.value)}
-                    onKeyDown={(e) => {
-                      // 숫자, 백스페이스, 삭제, 탭, 화살표 키만 허용
-                      if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-                        e.preventDefault()
-                      }
-                    }}
-                    maxLength={10}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                    placeholder="20260107"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">납기일</label>
-                  <div className="space-y-2">
-                    <input
-                      type="text"
-                      value={isDeliveryTBD ? '별도협의' : formData.deliveryDate}
-                      onChange={(e) => handleInputChange('deliveryDate', e.target.value)}
-                      disabled={isDeliveryTBD}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base disabled:bg-gray-100 disabled:text-gray-500"
-                      placeholder="2026.01.16"
-                    />
-                    <label className="flex items-center gap-2 cursor-pointer">
+                  </td>
+                  <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">납기일</td>
+                  <td className="px-1.5 py-1 border-r border-gray-100">
+                    <div className="flex items-center gap-2">
                       <input
-                        type="checkbox"
-                        checked={isDeliveryTBD}
-                        onChange={(e) => {
-                          setIsDeliveryTBD(e.target.checked)
-                          if (e.target.checked) {
-                            handleInputChange('deliveryDate', '')
-                          }
-                        }}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                        type="text"
+                        value={isDeliveryTBD ? '별도협의' : formData.deliveryDate}
+                        onChange={(e) => handleInputChange('deliveryDate', e.target.value)}
+                        disabled={isDeliveryTBD}
+                        className="w-24 px-2 py-1 border border-gray-300 rounded text-xs disabled:bg-gray-100 disabled:text-gray-500"
+                        placeholder="2026.01.16"
                       />
-                      <span className="text-sm text-gray-600">별도 협의</span>
-                    </label>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">유효기간</label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-600 whitespace-nowrap">견적일로부터</span>
-                    <input
-                      type="number"
-                      value={formData.validUntil}
-                      onChange={(e) => handleInputChange('validUntil', e.target.value)}
-                      min="1"
-                      className="w-20 px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base text-center"
-                      placeholder="15"
-                    />
-                    <span className="text-gray-600 whitespace-nowrap">일 이내</span>
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">결제조건</label>
-                  <input
-                    type="text"
-                    value={formData.paymentTerms}
-                    onChange={(e) => handleInputChange('paymentTerms', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                    placeholder="결제조건 입력"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">견적담당</label>
-                  <input
-                    type="text"
-                    value={formData.managerName}
-                    onChange={(e) => handleInputChange('managerName', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                    placeholder="담당자명"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">프로젝트명</label>
-                  <input
-                    type="text"
-                    value={formData.projectName}
-                    onChange={(e) => handleInputChange('projectName', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                    placeholder="프로젝트명"
-                  />
-                </div>
-              </div>
-              {formData.managerPhone && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">담당자 연락처</label>
-                  <input
-                    type="tel"
-                    value={formData.managerPhone}
-                    onChange={(e) => handleInputChange('managerPhone', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                    placeholder="070-8892-1455"
-                  />
-                </div>
-              )}
-            </div>
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={isDeliveryTBD}
+                          onChange={(e) => {
+                            setIsDeliveryTBD(e.target.checked)
+                            if (e.target.checked) {
+                              handleInputChange('deliveryDate', '')
+                            }
+                          }}
+                          className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                        />
+                        <span className="text-xs text-gray-500">별도협의</span>
+                      </label>
+                    </div>
+                  </td>
+                  <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">유효기간</td>
+                  <td className="px-1.5 py-1">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-gray-500">견적일로부터</span>
+                      <input type="number" value={formData.validUntil} onChange={(e) => handleInputChange('validUntil', e.target.value)} min="1" className="w-12 px-2 py-1 border border-gray-300 rounded text-xs text-center" placeholder="15" />
+                      <span className="text-xs text-gray-500">일</span>
+                    </div>
+                  </td>
+                </tr>
+                {/* 4행: 결제조건, 견적담당, 프로젝트명 */}
+                <tr className="bg-gray-50/30">
+                  <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">결제조건</td>
+                  <td className="px-1.5 py-1 border-r border-gray-100">
+                    <input type="text" value={formData.paymentTerms} onChange={(e) => handleInputChange('paymentTerms', e.target.value)} className="w-44 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="결제조건" />
+                  </td>
+                  <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">견적담당</td>
+                  <td className="px-1.5 py-1 border-r border-gray-100">
+                    <input type="text" value={formData.managerName} onChange={(e) => handleInputChange('managerName', e.target.value)} className="w-32 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="담당자명" />
+                  </td>
+                  <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap">프로젝트</td>
+                  <td className="px-1.5 py-1">
+                    <input type="text" value={formData.projectName} onChange={(e) => handleInputChange('projectName', e.target.value)} className="w-48 px-2 py-1 border border-gray-300 rounded text-xs" placeholder="프로젝트명" />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
-          {/* 품목 목록 */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
+          {/* 품목 */}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <h2 className="text-xl font-bold text-gray-900">품목 목록</h2>
-                {/* 견적 유형 선택 */}
-                <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-                  <button
-                    type="button"
-                    onClick={() => setIsConsolidated(false)}
-                    className={`px-3 py-1.5 text-sm rounded-md transition-all ${!isConsolidated
-                      ? 'bg-white text-blue-700 shadow-sm font-medium'
-                      : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                  >
-                    개별 품목
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsConsolidated(true)
-                      // 통합 시 기존 품목 합계를 기본값으로
-                      const total = items.reduce((sum, item) => sum + (item.totalPrice || 0), 0)
-                      setConsolidatedPrice(total)
-                      // 통합 품명 기본값 설정
-                      if (!consolidatedName && items[0]?.description) {
-                        setConsolidatedName(items[0].description + (items.length > 1 ? ' 외' : ''))
-                      }
-                    }}
-                    className={`px-3 py-1.5 text-sm rounded-md transition-all ${isConsolidated
-                      ? 'bg-white text-emerald-700 shadow-sm font-medium'
-                      : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                  >
-                    통합 견적
-                  </button>
-                </div>
+                <h3 className="text-sm font-semibold text-gray-900">품목</h3>
               </div>
-              <button
-                type="button"
-                onClick={addItem}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <UilPlus size={20} />
-                품목 추가
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={addProduct}
+                  className="px-3 py-1.5 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700"
+                >
+                  + 제품 추가
+                </button>
+                <button
+                  type="button"
+                  onClick={addStandaloneItem}
+                  className="px-3 py-1.5 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-900"
+                >
+                  + 품목 추가
+                </button>
+              </div>
             </div>
 
-            {/* 통합 견적 설정 */}
-            {isConsolidated && (
-              <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-emerald-700 font-medium">통합 견적</span>
-                  <span className="text-xs text-emerald-600">여러 품목을 하나의 대표 품명과 금액으로 표시합니다</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">대표 품명 *</label>
-                    <input
-                      type="text"
-                      value={consolidatedName}
-                      onChange={(e) => setConsolidatedName(e.target.value)}
-                      className="w-full px-3 py-2 border border-emerald-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
-                      placeholder="예: IBM DS8000 HDD 외"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">통합 금액 (VAT별도) *</label>
-                    <input
-                      type="number"
-                      value={consolidatedPrice || ''}
-                      onChange={(e) => setConsolidatedPrice(parseInt(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border border-emerald-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm text-right"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
+            {/* 통합 테이블: 제품 + 품목 */}
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+              <table className="w-full text-sm">
+                {/* 단일 헤더 */}
+                <thead className="bg-gray-100 border-b">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-bold text-gray-700" style={{ width: '120px', minWidth: '120px' }}>P/N</th>
-                    <th className="px-4 py-3 text-left text-sm font-bold text-gray-700" style={{ width: '200px', minWidth: '150px' }}>Description</th>
-                    <th className="px-4 py-3 text-right text-sm font-bold text-gray-700" style={{ width: '80px', minWidth: '80px' }}>Q&apos;ty</th>
-                    <th className="px-4 py-3 text-right text-sm font-bold text-gray-700" style={{ width: '120px', minWidth: '100px' }}>SRP</th>
-                    {!isConsolidated && (
-                      <>
-                        <th className="px-4 py-3 text-right text-sm font-bold text-gray-700" style={{ width: '120px', minWidth: '100px' }}>Price</th>
-                        <th className="px-4 py-3 text-right text-sm font-bold text-gray-700" style={{ width: '140px', minWidth: '140px' }}>Sum</th>
-                      </>
-                    )}
-                    <th className="px-4 py-3 text-center text-sm font-bold text-gray-700" style={{ width: '80px', minWidth: '80px' }}>작업</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 w-28">P/N</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-600">Description</th>
+                    <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-16">Q&apos;ty</th>
+                    <th className="px-2 py-2 text-right text-xs font-medium text-gray-600 w-24">SRP</th>
+                    <th className="px-2 py-2 text-right text-xs font-medium text-gray-600 w-24">Price</th>
+                    <th className="px-2 py-2 text-right text-xs font-medium text-gray-600 w-28">Sum</th>
+                    <th className="px-2 py-2 text-center w-10"></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {items.map((item, index) => (
-                    <tr key={item.id || index}>
-                      <td className="px-4 py-3" style={{ width: '120px', minWidth: '120px' }}>
+                <tbody>
+                  {/* 제품들과 그 하위 품목들 */}
+                  {products.map((product, pIdx) => (
+                    <React.Fragment key={product.id || `product-${pIdx}`}>
+                      {/* 제품 행 (emerald 배경으로 구분) */}
+                      <tr className="bg-emerald-50 border-b border-emerald-200">
+                        <td className="px-2 py-2">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-600 text-white">
+                            제품
+                          </span>
+                        </td>
+                        <td className="px-2 py-2">
+                          <input
+                            type="text"
+                            value={product.name}
+                            onChange={(e) => handleProductChange(pIdx, 'name', e.target.value)}
+                            className="w-full px-2 py-1 border border-emerald-300 rounded text-xs bg-white font-medium"
+                            placeholder="제품명 (예: R660XS 서버 시스템)"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input
+                            type="number"
+                            value={product.quantity || ''}
+                            onChange={(e) => handleProductChange(pIdx, 'quantity', parseInt(e.target.value) || 0)}
+                            onFocus={(e) => e.target.select()}
+                            className="w-full px-2 py-1 border border-gray-200 rounded text-xs text-right"
+                            placeholder="0"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input
+                            type="text"
+                            value={formatNumber(product.srpPrice || 0)}
+                            onChange={(e) => handleProductChange(pIdx, 'srpPrice', parseNumber(e.target.value))}
+                            onFocus={(e) => {
+                              e.target.value = product.srpPrice?.toString() || ''
+                              e.target.select()
+                            }}
+                            onBlur={(e) => {
+                              e.target.value = formatNumber(product.srpPrice || 0)
+                            }}
+                            className="w-full px-2 py-1 border border-gray-200 rounded text-xs text-right"
+                            placeholder="0"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input
+                            type="text"
+                            value={formatNumber(product.unitPrice || 0)}
+                            onChange={(e) => handleProductChange(pIdx, 'unitPrice', parseNumber(e.target.value))}
+                            onFocus={(e) => {
+                              e.target.value = product.unitPrice?.toString() || ''
+                              e.target.select()
+                            }}
+                            onBlur={(e) => {
+                              e.target.value = formatNumber(product.unitPrice || 0)
+                            }}
+                            className="w-full px-2 py-1 border border-emerald-300 rounded text-xs text-right bg-emerald-100 font-medium"
+                            placeholder="0"
+                          />
+                        </td>
+                        <td className="px-2 py-2 text-right font-bold text-emerald-700 text-xs">
+                          {(product.totalPrice || 0).toLocaleString()}
+                        </td>
+                        <td className="px-2 py-2 text-center">
+                          <button
+                            type="button"
+                            onClick={() => removeProduct(pIdx)}
+                            className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
+                            title="제품 삭제"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </td>
+                      </tr>
+
+                      {/* 제품 소속 품목들 (들여쓰기로 구분) */}
+                      {product.items.map((item, iIdx) => (
+                        <tr key={item.id || `product-${pIdx}-item-${iIdx}`} className="bg-emerald-50/30 hover:bg-emerald-50/50 border-b border-gray-100">
+                          <td className="pl-6 pr-2 py-1.5">
+                            <input
+                              type="text"
+                              value={item.partNumber || ''}
+                              onChange={(e) => handleProductItemChange(pIdx, iIdx, 'partNumber', e.target.value)}
+                              className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
+                              placeholder="P/N"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <textarea
+                              value={item.description || ''}
+                              onChange={(e) => {
+                                handleProductItemChange(pIdx, iIdx, 'description', e.target.value)
+                                e.target.style.height = 'auto'
+                                e.target.style.height = e.target.scrollHeight + 'px'
+                              }}
+                              rows={1}
+                              className="w-full px-2 py-1 border border-gray-200 rounded text-xs resize-none overflow-hidden"
+                              style={{ minHeight: '26px' }}
+                              placeholder="품목명"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <input
+                              type="number"
+                              value={item.quantity || ''}
+                              onChange={(e) => handleProductItemChange(pIdx, iIdx, 'quantity', parseInt(e.target.value) || 0)}
+                              onFocus={(e) => e.target.select()}
+                              className="w-full px-2 py-1 border border-gray-200 rounded text-xs text-right"
+                              placeholder="0"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <input
+                              type="text"
+                              value={formatNumber(item.srpPrice || 0)}
+                              onChange={(e) => handleProductItemChange(pIdx, iIdx, 'srpPrice', parseNumber(e.target.value))}
+                              onFocus={(e) => {
+                                e.target.value = item.srpPrice?.toString() || ''
+                                e.target.select()
+                              }}
+                              onBlur={(e) => {
+                                e.target.value = formatNumber(item.srpPrice || 0)
+                              }}
+                              className="w-full px-2 py-1 border border-gray-200 rounded text-xs text-right"
+                              placeholder="0"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <input
+                              type="text"
+                              value={formatNumber(item.unitPrice || 0)}
+                              onChange={(e) => handleProductItemChange(pIdx, iIdx, 'unitPrice', parseNumber(e.target.value))}
+                              onFocus={(e) => {
+                                e.target.value = item.unitPrice?.toString() || ''
+                                e.target.select()
+                              }}
+                              onBlur={(e) => {
+                                e.target.value = formatNumber(item.unitPrice || 0)
+                              }}
+                              className="w-full px-2 py-1 border border-gray-200 rounded text-xs text-right"
+                              placeholder="0"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5 text-right text-gray-500 text-xs">
+                            {(item.totalPrice || 0).toLocaleString()}
+                          </td>
+                          <td className="px-2 py-1.5 text-center">
+                            <button
+                              type="button"
+                              onClick={() => removeProductItem(pIdx, iIdx)}
+                              className="p-0.5 text-gray-400 hover:text-red-500 rounded"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+
+                      {/* 상세 품목 추가 버튼 행 */}
+                      <tr className="bg-emerald-50/20 border-b-2 border-emerald-200">
+                        <td colSpan={7} className="pl-6 py-1">
+                          <button
+                            type="button"
+                            onClick={() => addProductItem(pIdx)}
+                            className="text-xs text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 px-2 py-0.5 rounded"
+                          >
+                            + 상세 품목 추가
+                          </button>
+                        </td>
+                      </tr>
+                    </React.Fragment>
+                  ))}
+
+                  {/* 독립 품목들 (제품에 소속되지 않은 품목) */}
+                  {standaloneItems.map((item, index) => (
+                    <tr key={item.id || `standalone-${index}`} className="hover:bg-gray-50 border-b border-gray-100">
+                      <td className="px-2 py-2">
                         <input
                           type="text"
                           value={item.partNumber || ''}
-                          onChange={(e) => handleItemChange(index, 'partNumber', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                          placeholder="품번"
+                          onChange={(e) => handleStandaloneItemChange(index, 'partNumber', e.target.value)}
+                          className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
+                          placeholder="P/N"
                         />
                       </td>
-                      <td className="px-4 py-3" style={{ width: '200px', minWidth: '150px' }}>
+                      <td className="px-2 py-2">
                         <textarea
                           value={item.description || ''}
                           onChange={(e) => {
-                            handleItemChange(index, 'description', e.target.value)
-                            // 자동 높이 조절
-                            e.target.style.height = 'auto'
-                            e.target.style.height = e.target.scrollHeight + 'px'
-                          }}
-                          onFocus={(e) => {
-                            // 포커스 시 높이 조절
+                            handleStandaloneItemChange(index, 'description', e.target.value)
                             e.target.style.height = 'auto'
                             e.target.style.height = e.target.scrollHeight + 'px'
                           }}
                           rows={1}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm resize-none overflow-hidden"
+                          className="w-full px-2 py-1 border border-gray-200 rounded text-xs resize-none overflow-hidden"
+                          style={{ minHeight: '28px' }}
                           placeholder="품목명"
-                          style={{ minHeight: '38px' }}
                         />
                       </td>
-                      <td className="px-4 py-3" style={{ width: '80px', minWidth: '80px' }}>
+                      <td className="px-2 py-2">
                         <input
                           type="number"
-                          value={item.quantity}
-                          onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 0)}
-                          min="1"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-right"
-                        />
-                      </td>
-                      <td className="px-4 py-3" style={{ width: '120px', minWidth: '100px' }}>
-                        <input
-                          type="number"
-                          value={item.srpPrice || ''}
-                          onChange={(e) => handleItemChange(index, 'srpPrice', parseInt(e.target.value) || 0)}
-                          min="0"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-right"
+                          value={item.quantity || ''}
+                          onChange={(e) => handleStandaloneItemChange(index, 'quantity', parseInt(e.target.value) || 0)}
+                          onFocus={(e) => e.target.select()}
+                          className="w-full px-2 py-1 border border-gray-200 rounded text-xs text-right"
                           placeholder="0"
                         />
                       </td>
-                      {!isConsolidated && (
-                        <>
-                          <td className="px-4 py-3" style={{ width: '120px', minWidth: '100px' }}>
-                            <input
-                              type="number"
-                              value={item.unitPrice || ''}
-                              onChange={(e) => handleItemChange(index, 'unitPrice', parseInt(e.target.value) || 0)}
-                              min="0"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-right"
-                              placeholder="0"
-                            />
-                          </td>
-                          <td className="px-4 py-3 text-right font-semibold text-gray-900" style={{ width: '140px', minWidth: '140px' }}>
-                            {(item.totalPrice || 0).toLocaleString()}원
-                          </td>
-                        </>
-                      )}
-                      <td className="px-4 py-3 text-center" style={{ width: '80px', minWidth: '80px' }}>
+                      <td className="px-2 py-2">
+                        <input
+                          type="text"
+                          value={formatNumber(item.srpPrice || 0)}
+                          onChange={(e) => handleStandaloneItemChange(index, 'srpPrice', parseNumber(e.target.value))}
+                          onFocus={(e) => {
+                            e.target.value = item.srpPrice?.toString() || ''
+                            e.target.select()
+                          }}
+                          onBlur={(e) => {
+                            e.target.value = formatNumber(item.srpPrice || 0)
+                          }}
+                          className="w-full px-2 py-1 border border-gray-200 rounded text-xs text-right"
+                          placeholder="0"
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="text"
+                          value={formatNumber(item.unitPrice || 0)}
+                          onChange={(e) => handleStandaloneItemChange(index, 'unitPrice', parseNumber(e.target.value))}
+                          onFocus={(e) => {
+                            e.target.value = item.unitPrice?.toString() || ''
+                            e.target.select()
+                          }}
+                          onBlur={(e) => {
+                            e.target.value = formatNumber(item.unitPrice || 0)
+                          }}
+                          className="w-full px-2 py-1 border border-gray-200 rounded text-xs text-right"
+                          placeholder="0"
+                        />
+                      </td>
+                      <td className="px-2 py-2 text-right font-medium text-gray-700 text-xs">
+                        {(item.totalPrice || 0).toLocaleString()}
+                      </td>
+                      <td className="px-2 py-2 text-center">
                         <button
                           type="button"
-                          onClick={() => removeItem(index)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          onClick={() => removeStandaloneItem(index)}
+                          className="p-0.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
                         >
-                          <UilTrashAlt size={18} />
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
                         </button>
                       </td>
                     </tr>
@@ -928,50 +1303,52 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
               </table>
             </div>
 
-            {/* 금액 요약 - 품목 목록 박스 내부 하단 */}
-            <div className="mt-6 pt-6 border-t-2 border-gray-200">
-              <div className="flex justify-end">
-                <dl className="w-96 space-y-3">
-                  <div className="flex justify-between items-center py-2 px-4 rounded-lg">
-                    <dt className="text-base font-medium text-gray-700">제안금액(VAT별도)</dt>
-                    <dd className="text-base font-bold text-gray-900">{totals.total.toLocaleString()}원</dd>
-                  </div>
-                  <div className="flex justify-between items-center py-3 px-5 rounded-lg">
-                    <dt className="text-lg font-bold text-gray-900">제안금액(VAT포함)</dt>
-                    <dd className="text-xl font-bold text-gray-900">{totals.totalWithVat.toLocaleString()}원</dd>
-                  </div>
-                </dl>
+            {/* 합계 영역 */}
+            <div className="bg-gray-50 border-t">
+              <div className="px-4 py-3 flex justify-end items-center gap-4">
+                <span className="text-sm text-gray-500">합계 (VAT별도)</span>
+                <span className="text-xl font-bold text-blue-700">
+                  {totals.total.toLocaleString()}원
+                </span>
               </div>
             </div>
           </div>
 
-          {/* 기타사항 */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">기타사항</h2>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => handleInputChange('notes', e.target.value)}
-              rows={4}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base max-w-3xl"
-              placeholder="견적서의 상세 내역 or 견적서 추가 내용"
-            />
+          {/* 기타 정보 */}
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden inline-block">
+            <table className="text-sm">
+              <tbody className="divide-y divide-gray-100">
+                <tr>
+                  <td className="px-2 py-1.5 text-xs font-medium text-gray-600 border-r border-gray-200 bg-gray-50 whitespace-nowrap align-top">기타</td>
+                  <td className="px-1.5 py-1">
+                    <textarea
+                      value={formData.notes}
+                      onChange={(e) => handleInputChange('notes', e.target.value)}
+                      rows={4}
+                      className="w-[600px] min-h-[80px] px-2 py-1 border border-gray-300 rounded text-xs"
+                      placeholder="견적서의 상세 내역 or 견적서 추가 내용"
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
           {/* 제출 버튼 */}
-          <div className="flex justify-end gap-4">
+          <div className="flex justify-end gap-3">
             <button
               type="button"
               onClick={() => router.push(basePath)}
-              className="px-8 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-200 font-medium"
+              className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
             >
               취소
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-8 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
-              {loading ? '저장 중...' : '저장하기'}
+              {loading ? '저장 중...' : '저장'}
             </button>
           </div>
         </form>

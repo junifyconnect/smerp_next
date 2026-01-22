@@ -54,7 +54,7 @@ const permissionMatrix: Record<DocType, Record<Permission, string[]>> = {
 }
 
 /**
- * SUPER_ADMIN 또는 ADMIN Role 체크
+ * SUPER_ADMIN 또는 ADMIN Role 체크ㅁㄴㅇㅁㄴㅇ
  */
 export function isSuperRole(user: SessionUser | null): boolean {
   if (!user) return false

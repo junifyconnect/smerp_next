@@ -1,0 +1,2744 @@
+{
+  "fileName": "4. MA견적서-견적요청회사(유지보수 제품명)_(견적서 날짜)_ERP 예시용 유지보수 견적서.xlsx",
+  "sheetCount": 1,
+  "sheets": [
+    {
+      "name": "견적서",
+      "rowCount": 33,
+      "columnCount": 248,
+      "mergedCells": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7"
+      ],
+      "cells": [
+        {
+          "address": "A2",
+          "value": "시스템 유지정비 서비스 견적서",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 18,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B2",
+          "value": "시스템 유지정비 서비스 견적서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C2",
+          "value": "시스템 유지정비 서비스 견적서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "D2",
+          "value": "시스템 유지정비 서비스 견적서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "E2",
+          "value": "시스템 유지정비 서비스 견적서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "F2",
+          "value": "시스템 유지정비 서비스 견적서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "G2",
+          "value": "시스템 유지정비 서비스 견적서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "H2",
+          "value": "시스템 유지정비 서비스 견적서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "I2",
+          "value": "시스템 유지정비 서비스 견적서",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "A4",
+          "value": "수신 :",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 14,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": true,
+              "left": false
+            }
+          }
+        },
+        {
+          "address": "B4",
+          "value": "[매출처 or 고객사명]",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": true,
+              "left": false
+            }
+          }
+        },
+        {
+          "address": "D4",
+          "value": "귀중",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": true,
+              "left": false
+            }
+          }
+        },
+        {
+          "address": "A5",
+          "value": "참조 :",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 14,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": true,
+              "left": false
+            }
+          }
+        },
+        {
+          "address": "B5",
+          "value": "[해당 담당자]",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": true,
+              "left": false
+            }
+          }
+        },
+        {
+          "address": "A6",
+          "value": "발신 : ",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 14,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            }
+          }
+        },
+        {
+          "address": "B6",
+          "value": "㈜서버메이트 ",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            }
+          }
+        },
+        {
+          "address": "C6",
+          "value": "김대훈",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            }
+          }
+        },
+        {
+          "address": "D6",
+          "value": "070-8892-1455",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "E6",
+          "value": "070-8892-1455",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "I6",
+          "value": "2025-12-02",
+          "type": "date",
+          "style": {
+            "font": {
+              "size": 12,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "right"
+            }
+          }
+        },
+        {
+          "address": "A8",
+          "value": "   서울시 금천구 가산디지털1로 131 BYC하이시티 B동 1201호 <Tel :070-8892-1451~7  Fax:070-8892-1459>",
+          "type": "richText",
+          "style": {
+            "font": {
+              "size": 10,
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B8",
+          "value": "   서울시 금천구 가산디지털1로 131 BYC하이시티 B동 1201호 <Tel :070-8892-1451~7  Fax:070-8892-1459>",
+          "type": "richText",
+          "style": {
+            "font": {
+              "size": 10,
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left"
+            }
+          }
+        },
+        {
+          "address": "C8",
+          "value": "   서울시 금천구 가산디지털1로 131 BYC하이시티 B동 1201호 <Tel :070-8892-1451~7  Fax:070-8892-1459>",
+          "type": "richText",
+          "style": {
+            "font": {
+              "size": 10,
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left"
+            }
+          }
+        },
+        {
+          "address": "D8",
+          "value": "   서울시 금천구 가산디지털1로 131 BYC하이시티 B동 1201호 <Tel :070-8892-1451~7  Fax:070-8892-1459>",
+          "type": "richText",
+          "style": {
+            "font": {
+              "size": 10,
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left"
+            }
+          }
+        },
+        {
+          "address": "E8",
+          "value": "   서울시 금천구 가산디지털1로 131 BYC하이시티 B동 1201호 <Tel :070-8892-1451~7  Fax:070-8892-1459>",
+          "type": "richText",
+          "style": {
+            "font": {
+              "size": 10,
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left"
+            }
+          }
+        },
+        {
+          "address": "F8",
+          "value": "   서울시 금천구 가산디지털1로 131 BYC하이시티 B동 1201호 <Tel :070-8892-1451~7  Fax:070-8892-1459>",
+          "type": "richText",
+          "style": {
+            "font": {
+              "size": 10,
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left"
+            }
+          }
+        },
+        {
+          "address": "G8",
+          "value": "   서울시 금천구 가산디지털1로 131 BYC하이시티 B동 1201호 <Tel :070-8892-1451~7  Fax:070-8892-1459>",
+          "type": "richText",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            }
+          }
+        },
+        {
+          "address": "H8",
+          "value": "   서울시 금천구 가산디지털1로 131 BYC하이시티 B동 1201호 <Tel :070-8892-1451~7  Fax:070-8892-1459>",
+          "type": "richText",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            }
+          }
+        },
+        {
+          "address": "I8",
+          "value": "   서울시 금천구 가산디지털1로 131 BYC하이시티 B동 1201호 <Tel :070-8892-1451~7  Fax:070-8892-1459>",
+          "type": "richText",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            }
+          }
+        },
+        {
+          "address": "A10",
+          "value": "1. 귀사의 일익 번창하심을 기원합니다.",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            }
+          }
+        },
+        {
+          "address": "A12",
+          "value": "2. 귀사에서 사용중인 기기중 무상정비기간이 이미 만료되었거나 만료될 예정인 기기들의 목록과",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            }
+          }
+        },
+        {
+          "address": "A13",
+          "value": "  서비스 비용에 대하여  다음과 같이 알려드립니다. 업무에 참조하여 주십시오.",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "left"
+            }
+          }
+        },
+        {
+          "address": "A14",
+          "value": "- 아    래 -",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "centerContinuous",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "I15",
+          "value": "단위:원, VAT별도",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "right"
+            }
+          }
+        },
+        {
+          "address": "A16",
+          "value": "고객명 ",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B16",
+          "value": "고객명 ",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C16",
+          "value": "고객명 ",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "D16",
+          "value": "[매출처 or 고객사명]",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "E16",
+          "value": "[매출처 or 고객사명]",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "F16",
+          "value": "[매출처 or 고객사명]",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "G16",
+          "value": "[매출처 or 고객사명]",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "H16",
+          "value": "[매출처 or 고객사명]",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "I16",
+          "value": "[매출처 or 고객사명]",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "A17",
+          "value": "기계설치주소",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "centerContinuous",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "E17",
+          "value": null,
+          "type": "empty",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "F17",
+          "value": null,
+          "type": "empty",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "G17",
+          "value": null,
+          "type": "empty",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "H17",
+          "value": null,
+          "type": "empty",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "I17",
+          "value": null,
+          "type": "empty",
+          "style": {
+            "font": {
+              "size": 11,
+              "name": "돋움"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "A18",
+          "value": "기기명",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B18",
+          "value": "M/T",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C18",
+          "value": "Model",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "D18",
+          "value": "S/N",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "E18",
+          "value": "기기명 & 상세SPEC",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "F18",
+          "value": "기간",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "G18",
+          "value": "서비스개시일",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "H18",
+          "value": "서비스종료일",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "I18",
+          "value": "계약기간 총계",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "A19",
+          "value": "제품명\nex)SR250",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "B19",
+          "value": "모델타입 유형명\nex)7Y51",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 8,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C19",
+          "value": "모델명\nex)CTO1WW",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D19",
+          "value": "J123Q4Q5",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "E19",
+          "value": "Essential - Post Wty 24x7 4Hr Response",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "F19",
+          "value": "1년",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "G19",
+          "value": "2025-12-23",
+          "type": "date",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 10,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "H19",
+          "value": "2026-12-22",
+          "type": "date",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 10,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "I19",
+          "value": 480000,
+          "type": "number",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 10,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "right",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "A20",
+          "value": "SR250V2",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "B20",
+          "value": "7D7Q",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "C20",
+          "value": "CTO1WW",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "D20",
+          "value": "J678E9R0",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "E20",
+          "value": "Essential - Post Wty 24x7 4Hr Response",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "left",
+              "vertical": "middle",
+              "wrapText": true
+            }
+          }
+        },
+        {
+          "address": "F20",
+          "value": "1년",
+          "type": "string",
+          "style": {
+            "font": {
+              "size": 10,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "G20",
+          "value": "2026-01-01",
+          "type": "date",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 10,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "H20",
+          "value": "2026-12-31",
+          "type": "date",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 10,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "I20",
+          "value": 680000,
+          "type": "number",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 10,
+              "name": "맑은 고딕"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "right",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "A21",
+          "value": "계약기간 유지정비료 월간 금액(VAT별도)",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B21",
+          "value": "계약기간 유지정비료 월간 금액(VAT별도)",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C21",
+          "value": "계약기간 유지정비료 월간 금액(VAT별도)",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "D21",
+          "value": "계약기간 유지정비료 월간 금액(VAT별도)",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "E21",
+          "value": "계약기간 유지정비료 월간 금액(VAT별도)",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "F21",
+          "value": "계약기간 유지정비료 월간 금액(VAT별도)",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "G21",
+          "value": "계약기간 유지정비료 월간 금액(VAT별도)",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "H21",
+          "value": "계약기간 유지정비료 월간 금액(VAT별도)",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "I21",
+          "value": 96666.66666666667,
+          "type": "formula",
+          "formula": "SUM(I19:I20)/12",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "right",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "J21",
+          "value": "<-",
+          "type": "string"
+        },
+        {
+          "address": "K21",
+          "value": "월간 금액/ 일시불 금액이 있으며, 일시불일 경우 해당 칸 없이 견적서 작성",
+          "type": "string"
+        },
+        {
+          "address": "A22",
+          "value": "계약기간 유지정비료 합계 (VAT별도)",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "B22",
+          "value": "계약기간 유지정비료 합계 (VAT별도)",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "C22",
+          "value": "계약기간 유지정비료 합계 (VAT별도)",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "D22",
+          "value": "계약기간 유지정비료 합계 (VAT별도)",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "E22",
+          "value": "계약기간 유지정비료 합계 (VAT별도)",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "F22",
+          "value": "계약기간 유지정비료 합계 (VAT별도)",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "G22",
+          "value": "계약기간 유지정비료 합계 (VAT별도)",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "H22",
+          "value": "계약기간 유지정비료 합계 (VAT별도)",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": false,
+              "bottom": true,
+              "left": false
+            },
+            "alignment": {
+              "horizontal": "center",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "I22",
+          "value": 1160000,
+          "type": "formula",
+          "formula": "I21*12",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 11,
+              "name": "굴림"
+            },
+            "border": {
+              "top": true,
+              "right": true,
+              "bottom": true,
+              "left": true
+            },
+            "alignment": {
+              "horizontal": "right",
+              "vertical": "middle"
+            }
+          }
+        },
+        {
+          "address": "A24",
+          "value": "* 서비스기간",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            }
+          }
+        },
+        {
+          "address": "A25",
+          "value": "   24 * 7 * 365 * 4",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            }
+          }
+        },
+        {
+          "address": "A27",
+          "value": "* 유지정비계약은 1년단위로 계약 및 연장이 가능합니다.",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            }
+          }
+        },
+        {
+          "address": "A29",
+          "value": "* 견적 유효기간 : ",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            }
+          }
+        },
+        {
+          "address": "C29",
+          "value": "15일",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "굴림"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            }
+          }
+        },
+        {
+          "address": "A31",
+          "value": "* 지급조건 : 서비스대금은 전체 계약금액에 대하여 계약시점 초일에 청구되며 60일 이내 현금지급 조건 입니다.",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            }
+          }
+        },
+        {
+          "address": "A33",
+          "value": "* 특약사항 : 정기점검 없음, 장애시 부품 포함 엔지니어 긴급 지원",
+          "type": "string",
+          "style": {
+            "font": {
+              "bold": true,
+              "size": 12,
+              "color": "FFFF0000",
+              "name": "돋움"
+            },
+            "border": {
+              "top": false,
+              "right": false,
+              "bottom": false,
+              "left": false
+            }
+          }
+        }
+      ],
+      "preview": [
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "시스템 유지정비 서비스 견적서",
+          "시스템 유지정비 서비스 견적서",
+          "시스템 유지정비 서비스 견적서",
+          "시스템 유지정비 서비스 견적서",
+          "시스템 유지정비 서비스 견적서",
+          "시스템 유지정비 서비스 견적서",
+          "시스템 유지정비 서비스 견적서",
+          "시스템 유지정비 서비스 견적서",
+          "시스템 유지정비 서비스 견적서",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "수신 :",
+          "[매출처 or 고객사명]",
+          null,
+          "귀중",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "참조 :",
+          "[해당 담당자]",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "발신 : ",
+          "㈜서버메이트 ",
+          "김대훈",
+          "070-8892-1455",
+          "070-8892-1455",
+          null,
+          null,
+          null,
+          "2025-12-02",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "   서울시 금천구 가산디지털1로 131 BYC하이시티 B동 1201호 <Tel :070-8892-1451~7  Fax:070-8892-1459>",
+          "   서울시 금천구 가산디지털1로 131 BYC하이시티 B동 1201호 <Tel :070-8892-1451~7  Fax:070-8892-1459>",
+          "   서울시 금천구 가산디지털1로 131 BYC하이시티 B동 1201호 <Tel :070-8892-1451~7  Fax:070-8892-1459>",
+          "   서울시 금천구 가산디지털1로 131 BYC하이시티 B동 1201호 <Tel :070-8892-1451~7  Fax:070-8892-1459>",
+          "   서울시 금천구 가산디지털1로 131 BYC하이시티 B동 1201호 <Tel :070-8892-1451~7  Fax:070-8892-1459>",
+          "   서울시 금천구 가산디지털1로 131 BYC하이시티 B동 1201호 <Tel :070-8892-1451~7  Fax:070-8892-1459>",
+          "   서울시 금천구 가산디지털1로 131 BYC하이시티 B동 1201호 <Tel :070-8892-1451~7  Fax:070-8892-1459>",
+          "   서울시 금천구 가산디지털1로 131 BYC하이시티 B동 1201호 <Tel :070-8892-1451~7  Fax:070-8892-1459>",
+          "   서울시 금천구 가산디지털1로 131 BYC하이시티 B동 1201호 <Tel :070-8892-1451~7  Fax:070-8892-1459>",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "1. 귀사의 일익 번창하심을 기원합니다.",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "2. 귀사에서 사용중인 기기중 무상정비기간이 이미 만료되었거나 만료될 예정인 기기들의 목록과",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "  서비스 비용에 대하여  다음과 같이 알려드립니다. 업무에 참조하여 주십시오.",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "- 아    래 -",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          "단위:원, VAT별도",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "고객명 ",
+          "고객명 ",
+          "고객명 ",
+          "[매출처 or 고객사명]",
+          "[매출처 or 고객사명]",
+          "[매출처 or 고객사명]",
+          "[매출처 or 고객사명]",
+          "[매출처 or 고객사명]",
+          "[매출처 or 고객사명]",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "기계설치주소",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "기기명",
+          "M/T",
+          "Model",
+          "S/N",
+          "기기명 & 상세SPEC",
+          "기간",
+          "서비스개시일",
+          "서비스종료일",
+          "계약기간 총계",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "제품명\nex)SR250",
+          "모델타입 유형명\nex)7Y51",
+          "모델명\nex)CTO1WW",
+          "J123Q4Q5",
+          "Essential - Post Wty 24x7 4Hr Response",
+          "1년",
+          "2025-12-23",
+          "2026-12-22",
+          480000,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "SR250V2",
+          "7D7Q",
+          "CTO1WW",
+          "J678E9R0",
+          "Essential - Post Wty 24x7 4Hr Response",
+          "1년",
+          "2026-01-01",
+          "2026-12-31",
+          680000,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "계약기간 유지정비료 월간 금액(VAT별도)",
+          "계약기간 유지정비료 월간 금액(VAT별도)",
+          "계약기간 유지정비료 월간 금액(VAT별도)",
+          "계약기간 유지정비료 월간 금액(VAT별도)",
+          "계약기간 유지정비료 월간 금액(VAT별도)",
+          "계약기간 유지정비료 월간 금액(VAT별도)",
+          "계약기간 유지정비료 월간 금액(VAT별도)",
+          "계약기간 유지정비료 월간 금액(VAT별도)",
+          96666.66666666667,
+          "<-",
+          "월간 금액/ 일시불 금액이 있으며, 일시불일 경우 해당 칸 없이 견적서 작성",
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "계약기간 유지정비료 합계 (VAT별도)",
+          "계약기간 유지정비료 합계 (VAT별도)",
+          "계약기간 유지정비료 합계 (VAT별도)",
+          "계약기간 유지정비료 합계 (VAT별도)",
+          "계약기간 유지정비료 합계 (VAT별도)",
+          "계약기간 유지정비료 합계 (VAT별도)",
+          "계약기간 유지정비료 합계 (VAT별도)",
+          "계약기간 유지정비료 합계 (VAT별도)",
+          1160000,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "* 서비스기간",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "   24 * 7 * 365 * 4",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "* 유지정비계약은 1년단위로 계약 및 연장이 가능합니다.",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "* 견적 유효기간 : ",
+          null,
+          "15일",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "* 지급조건 : 서비스대금은 전체 계약금액에 대하여 계약시점 초일에 청구되며 60일 이내 현금지급 조건 입니다.",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "* 특약사항 : 정기점검 없음, 장애시 부품 포함 엔지니어 긴급 지원",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      ],
+      "previewHeaders": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M",
+        "N",
+        "O"
+      ],
+      "columnWidths": {
+        "A": 8.33203125,
+        "B": 11.08203125,
+        "C": 10.33203125,
+        "D": 10.6640625,
+        "E": 31.6640625,
+        "F": 8,
+        "G": 12.4140625,
+        "H": 12.4140625,
+        "I": 13,
+        "J": 8.6640625,
+        "K": 13.33203125,
+        "L": 12.6640625
+      },
+      "rowHeights": {
+        "2": 25.5,
+        "3": 48.75,
+        "4": 30,
+        "5": 22.5,
+        "6": 43.5,
+        "7": 10.5,
+        "8": 17.25,
+        "9": 17.25,
+        "12": 16.5,
+        "13": 15.75,
+        "14": 21,
+        "15": 30.75,
+        "16": 18.75,
+        "17": 18.75,
+        "18": 18.75,
+        "19": 33,
+        "20": 33,
+        "21": 30,
+        "22": 30,
+        "23": 18.75,
+        "24": 15,
+        "25": 15,
+        "26": 15,
+        "27": 15,
+        "28": 15,
+        "29": 17,
+        "30": 16,
+        "31": 15,
+        "33": 15
+      }
+    }
+  ],
+  "analyzedAt": "2026-01-21T04:15:01.785Z"
+}
