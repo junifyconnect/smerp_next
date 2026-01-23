@@ -46,6 +46,7 @@ export async function PATCH(
 
     const {
       invoiceDate,
+      invoiceNumber,
       invoiceStatus,
       remarks,
     } = body
@@ -68,6 +69,7 @@ export async function PATCH(
         ...(invoiceDate !== undefined && {
           invoiceDate: invoiceDate ? new Date(invoiceDate) : null,
         }),
+        ...(invoiceNumber !== undefined && { invoiceNumber }),
         ...(invoiceStatus !== undefined && { invoiceStatus }),
         ...(remarks !== undefined && { remarks }),
       },

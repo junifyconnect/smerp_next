@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { parseExcel } from '@/lib/excel/parser'
+import { parseWithDefaultTemplate } from '@/lib/excel/dynamic-parser'
+import { prisma } from '@/lib/db/prisma'
 
 // POST /api/sales-quotes/parse - 엑셀 파싱만 (저장 없음)
 export async function POST(request: NextRequest) {
@@ -16,7 +18,17 @@ export async function POST(request: NextRequest) {
 
     // 엑셀 파일 파싱
     const buffer = Buffer.from(await file.arrayBuffer())
-    const parsed = await parseExcel(buffer, 'SALES_QUOTE')
+
+    // 1. 먼저 동적 템플릿 파서 시도
+    let parsed = await parseWithDefaultTemplate(buffer, 'SALES_QUOTE', prisma)
+
+    // 2. 템플릿이 없으면 기본 파서 사용
+    if (!parsed) {
+      console.log('템플릿이 없어 기본 파서 사용 (SALES_QUOTE)')
+      parsed = await parseExcel(buffer, 'SALES_QUOTE')
+    } else {
+      console.log('동적 템플릿 파서 사용 (SALES_QUOTE)')
+    }
 
     // 금액 계산
     let totalAmount = 0

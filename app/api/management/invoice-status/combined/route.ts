@@ -100,6 +100,7 @@ export async function GET(request: NextRequest) {
       salesUnitPrice: number | null
       salesTotalPrice: number | null
       salesBatchTotal: number | null // 건별합계 (첫 행에만)
+      salesInvoiceNumber: string | null // 실제 세금계산서 번호
       salesInvoiceDate: string | null
       salesInvoiceStatus: string | null
       salesRemarks: string | null
@@ -115,6 +116,7 @@ export async function GET(request: NextRequest) {
       purchaseUnitPrice: number | null
       purchaseTotalPrice: number | null
       purchaseBatchTotal: number | null // 건별합계 (첫 행에만)
+      purchaseInvoiceNumber: string | null // 실제 세금계산서 번호
       purchaseInvoiceDate: string | null
       purchaseInvoiceStatus: string | null
       purchaseRemarks: string | null
@@ -153,6 +155,7 @@ export async function GET(request: NextRequest) {
           salesUnitPrice: salesItem ? Number(salesItem.unitPrice) : null,
           salesTotalPrice: salesItem ? Number(salesItem.totalPrice) : null,
           salesBatchTotal: i === 0 && group.salesItems.length > 0 ? salesBatchTotal : null,
+          salesInvoiceNumber: salesItem?.invoiceNumber || null,
           salesInvoiceDate: salesItem?.invoiceDate?.toISOString() || null,
           salesInvoiceStatus: salesItem?.invoiceStatus || null,
           salesRemarks: salesItem?.remarks || null,
@@ -168,6 +171,7 @@ export async function GET(request: NextRequest) {
           purchaseUnitPrice: purchaseItem ? Number(purchaseItem.unitPrice) : null,
           purchaseTotalPrice: purchaseItem ? Number(purchaseItem.totalPrice) : null,
           purchaseBatchTotal: i === 0 && group.purchaseItems.length > 0 ? purchaseBatchTotal : null,
+          purchaseInvoiceNumber: purchaseItem?.invoiceNumber || null,
           purchaseInvoiceDate: purchaseItem?.invoiceDate?.toISOString() || null,
           purchaseInvoiceStatus: purchaseItem?.invoiceStatus || null,
           purchaseRemarks: purchaseItem?.remarks || null,

@@ -1,5 +1,6 @@
 import prisma from '@/lib/db'
 import { parseExcel } from '@/lib/excel/parser'
+import { parseWithDefaultTemplate } from '@/lib/excel/dynamic-parser'
 import { NextRequest, NextResponse } from 'next/server'
 
 // POST /api/ma-quotes/upload - 엑셀 업로드
@@ -20,7 +21,17 @@ export async function POST(request: NextRequest) {
 
     // 엑셀 파일 파싱
     const buffer = Buffer.from(await file.arrayBuffer())
-    const parsed = await parseExcel(buffer, 'MA_QUOTE')
+
+    // 1. 먼저 동적 템플릿 파서 시도
+    let parsed = await parseWithDefaultTemplate(buffer, 'MA_QUOTE', prisma)
+
+    // 2. 템플릿이 없으면 기본 파서 사용
+    if (!parsed) {
+      console.log('템플릿이 없어 기본 파서 사용 (MA_QUOTE)')
+      parsed = await parseExcel(buffer, 'MA_QUOTE')
+    } else {
+      console.log('동적 템플릿 파서 사용 (MA_QUOTE)')
+    }
 
     // 파싱 모드: 결과만 반환
     if (mode === 'parse') {

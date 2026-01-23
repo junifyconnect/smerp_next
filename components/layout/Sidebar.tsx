@@ -19,6 +19,7 @@ import {
   UilReceipt,
   UilBookOpen,
   UilBuilding,
+  UilFileEditAlt,
 } from '@iconscout/react-unicons'
 
 const navigation = [
@@ -58,6 +59,7 @@ const navigation = [
       { name: '직원 관리', href: '/admin/users', icon: UilUsersAlt },
       { name: '휴가 관리', href: '/admin/leaves', icon: UilPlane },
       { name: '엑셀 일괄 업로드', href: '/admin/import', icon: UilUpload },
+      { name: '엑셀 양식 관리', href: '/admin/excel-templates', icon: UilFileEditAlt },
       { name: 'API 테스트', href: '/admin/api-test', icon: UilBracketsCurly },
       { name: '시스템 가이드', href: '/admin/guide', icon: UilBookOpen },
     ],

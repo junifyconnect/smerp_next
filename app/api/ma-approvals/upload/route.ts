@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { parseExcel, ParsedMAApprovalItem } from '@/lib/excel/parser'
+import { parseWithDefaultTemplate } from '@/lib/excel/dynamic-parser'
 
 // POST /api/ma-approvals/upload - 엑셀 업로드
 export async function POST(request: NextRequest) {
@@ -17,7 +18,17 @@ export async function POST(request: NextRequest) {
 
     // 엑셀 파일 파싱
     const buffer = Buffer.from(await file.arrayBuffer())
-    const parsed = await parseExcel(buffer, 'MA_APPROVAL')
+
+    // 1. 먼저 동적 템플릿 파서 시도
+    let parsed = await parseWithDefaultTemplate(buffer, 'MA_APPROVAL', prisma)
+
+    // 2. 템플릿이 없으면 기본 파서 사용
+    if (!parsed) {
+      console.log('템플릿이 없어 기본 파서 사용 (MA_APPROVAL)')
+      parsed = await parseExcel(buffer, 'MA_APPROVAL')
+    } else {
+      console.log('동적 템플릿 파서 사용 (MA_APPROVAL)')
+    }
 
     // TODO: 실제 인증된 사용자 ID 사용
     const createdById = 'dummy-user-id'

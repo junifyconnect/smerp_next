@@ -895,6 +895,7 @@ model SalesInvoiceStatus {
 
   // 계산서 발행
   invoiceDate   DateTime? @map("invoice_date") @db.Date
+  invoiceNumber String?   @map("invoice_number") // 실제 세금계산서 번호 (같은 번호 = 같은 계산서)
   invoiceStatus String?   @map("invoice_status") // 발행완료, 미발행, 반품
 
   // 결제 정보
@@ -916,6 +917,7 @@ model SalesInvoiceStatus {
   @@index([clientCompany])
   @@index([yearMonth])
   @@index([invoiceDate])
+  @@index([invoiceNumber])
   @@index([paymentStatus])
   @@map("sales_invoice_status")
 }
@@ -943,6 +945,7 @@ model PurchaseInvoiceStatus {
 
   // 계산서 발행
   invoiceDate   DateTime? @map("invoice_date") @db.Date
+  invoiceNumber String?   @map("invoice_number") // 실제 세금계산서 번호 (같은 번호 = 같은 계산서)
   invoiceStatus String?   @map("invoice_status") // 발행완료, 미발행, 반품
 
   // 결제 정보
@@ -964,6 +967,7 @@ model PurchaseInvoiceStatus {
   @@index([vendorCompany])
   @@index([yearMonth])
   @@index([invoiceDate])
+  @@index([invoiceNumber])
   @@index([paymentStatus])
   @@map("purchase_invoice_status")
 }
@@ -1259,4 +1263,58 @@ model LeaveRequest {
   @@index([status])
   @@index([leaveType])
   @@map("leave_requests")
+}
+
+// ==================== 엑셀 양식 관리 ====================
+
+model ExcelTemplate {
+  id   String @id @default(uuid())
+  name String // 양식명 (예: "Sales 품의서 v1")
+
+  // 문서 타입
+  docType String @map("doc_type") // SALES_QUOTE, SALES_APPROVAL, SALES_ORDER, MA_QUOTE, MA_APPROVAL
+
+  // 샘플 파일 정보
+  sampleFileName String? @map("sample_file_name")
+  sampleFilePath String? @map("sample_file_path")
+
+  // 필드 매핑 (JSON)
+  // { "approvalCode": "D9", "approvalDate": "D10", "clientCompany": "D13", ... }
+  fieldMappings Json @default("{}") @map("field_mappings")
+
+  // 품목 테이블 설정
+  itemTableHeaderRow Int @default(16) @map("item_table_header_row") // 헤더 행
+  itemTableStartRow  Int @default(17) @map("item_table_start_row")  // 데이터 시작 행
+  itemTableEndRow    Int? @map("item_table_end_row")                 // 데이터 종료 행 (null이면 빈 행까지)
+
+  // 품목 열 매핑 (JSON)
+  // { "partNumber": "C", "description": "D", "quantity": "E", "unitPrice": "F", "totalPrice": "G" }
+  salesColumnMappings Json @default("{}") @map("sales_column_mappings")
+
+  // 매입 열 매핑 (JSON) - 품의서용
+  // { "purchaseDate": "H", "vendorCompany": "I", "purchaseQty": "J", "purchaseUnitPrice": "K", "purchaseTotalPrice": "L" }
+  purchaseColumnMappings Json @default("{}") @map("purchase_column_mappings")
+
+  // 메인/하위 품목 구분 설정
+  mainItemDetection String? @map("main_item_detection") @db.Text // 메인 품목 감지 방법 (예: "unitPrice > 0")
+  subItemDetection  String? @map("sub_item_detection") @db.Text  // 하위 품목 감지 방법
+
+  // 합계 행 설정
+  totalRowDetection String? @map("total_row_detection") @db.Text // 합계 행 감지 (예: "A열에 '합계' 포함")
+
+  // 분석된 원본 JSON (디버깅/미리보기용)
+  analyzedData Json? @map("analyzed_data")
+
+  // 상태
+  isActive  Boolean  @default(true) @map("is_active")
+  isDefault Boolean  @default(false) @map("is_default") // 해당 docType의 기본 양식
+
+  // 메타
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([docType, isDefault], map: "unique_default_per_doctype")
+  @@index([docType])
+  @@index([isActive])
+  @@map("excel_templates")
 }

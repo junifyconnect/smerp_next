@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { parseExcel } from '@/lib/excel/parser'
+import { parseWithDefaultTemplate } from '@/lib/excel/dynamic-parser'
 
 // 유효한 Date인지 확인
 function isValidDate(date: Date | undefined | null): date is Date {
@@ -22,7 +23,17 @@ export async function POST(request: NextRequest) {
 
     // 엑셀 파일 파싱
     const buffer = Buffer.from(await file.arrayBuffer())
-    const parsed = await parseExcel(buffer, 'SALES_ORDER')
+
+    // 1. 먼저 동적 템플릿 파서 시도
+    let parsed = await parseWithDefaultTemplate(buffer, 'SALES_ORDER', prisma)
+
+    // 2. 템플릿이 없으면 기본 파서 사용
+    if (!parsed) {
+      console.log('템플릿이 없어 기본 파서 사용 (SALES_ORDER)')
+      parsed = await parseExcel(buffer, 'SALES_ORDER')
+    } else {
+      console.log('동적 템플릿 파서 사용 (SALES_ORDER)')
+    }
 
     // 발주번호 생성
     const year = new Date().getFullYear()
