@@ -459,11 +459,13 @@ model SalesApprovalItem {
   id         String @id @default(uuid())
   approvalId String @map("approval_id")
 
-  sortOrder   Int      @default(0) @map("sort_order")
-  productName String   @map("product_name") // 메인 제품명 (예: [제품명])
-  quantity    Int      @default(1)
-  unitPrice   Decimal? @map("unit_price") @db.Decimal(15, 2)
-  totalPrice  Decimal? @map("total_price") @db.Decimal(15, 2)
+  sortOrder      Int      @default(0) @map("sort_order")
+  partNumber     String?  @map("part_number") // P/N (개별일 때)
+  productName    String   @map("product_name") // 품목명/통합명
+  quantity       Int      @default(1)
+  unitPrice      Decimal? @map("unit_price") @db.Decimal(15, 2)
+  totalPrice     Decimal? @map("total_price") @db.Decimal(15, 2)
+  isConsolidated Boolean  @default(false) @map("is_consolidated") // 통합 여부
 
   approval SalesApproval            @relation(fields: [approvalId], references: [id], onDelete: Cascade)
   details  SalesApprovalItemDetail[]
@@ -495,13 +497,15 @@ model SalesApprovalPurchaseItem {
   id         String @id @default(uuid())
   approvalId String @map("approval_id")
 
-  sortOrder     Int       @default(0) @map("sort_order")
-  productName   String    @map("product_name") // 메인 제품명 (예: [제품명])
-  quantity      Int       @default(1)
-  unitPrice     Decimal?  @map("unit_price") @db.Decimal(15, 2)
-  totalPrice    Decimal?  @map("total_price") @db.Decimal(15, 2)
-  purchaseDate  DateTime? @map("purchase_date") @db.Date
-  vendorCompany String?   @map("vendor_company")
+  sortOrder      Int       @default(0) @map("sort_order")
+  partNumber     String?   @map("part_number") // P/N (개별일 때)
+  productName    String    @map("product_name") // 품목명/통합명
+  quantity       Int       @default(1)
+  unitPrice      Decimal?  @map("unit_price") @db.Decimal(15, 2)
+  totalPrice     Decimal?  @map("total_price") @db.Decimal(15, 2)
+  purchaseDate   DateTime? @map("purchase_date") @db.Date
+  vendorCompany  String?   @map("vendor_company")
+  isConsolidated Boolean   @default(false) @map("is_consolidated") // 통합 여부
 
   approval SalesApproval                    @relation(fields: [approvalId], references: [id], onDelete: Cascade)
   details  SalesApprovalPurchaseItemDetail[]
@@ -894,31 +898,24 @@ model SalesInvoiceStatus {
   batchTotal    Decimal? @map("batch_total") @db.Decimal(15, 2) // 건별합계
 
   // 계산서 발행
-  invoiceDate   DateTime? @map("invoice_date") @db.Date
-  invoiceNumber String?   @map("invoice_number") // 실제 세금계산서 번호 (같은 번호 = 같은 계산서)
-  invoiceStatus String?   @map("invoice_status") // 발행완료, 미발행, 반품
-
-  // 결제 정보
-  paidAmount    Decimal   @default(0) @map("paid_amount") @db.Decimal(15, 2) // 결제된 금액
-  remainAmount  Decimal?  @map("remain_amount") @db.Decimal(15, 2) // 잔액 (totalPrice - paidAmount)
-  paymentStatus PaymentStatus @default(PENDING) @map("payment_status")
+  invoiceDate    DateTime? @map("invoice_date") @db.Date
+  invoiceGroupId String?   @map("invoice_group_id") // 계산서 그룹 ID (INV-YYMMDD-NNN, 같은 ID = 같은 계산서)
 
   // 기타
-  remarks   String? @db.Text // 기타사항 (담당자, 매입처 등)
-  yearMonth String? @map("year_month") // 25.12 형식 (시트 구분용)
+  remarks   String? @db.Text
+  yearMonth String? @map("year_month") // 25.12 형식
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  // 결제 내역 관계
+  // 관계
   paymentHistories SalesPaymentHistory[]
 
   @@index([approvalCode])
   @@index([clientCompany])
   @@index([yearMonth])
   @@index([invoiceDate])
-  @@index([invoiceNumber])
-  @@index([paymentStatus])
+  @@index([invoiceGroupId])
   @@map("sales_invoice_status")
 }
 
@@ -944,31 +941,24 @@ model PurchaseInvoiceStatus {
   batchTotal    Decimal? @map("batch_total") @db.Decimal(15, 2) // 건별합계
 
   // 계산서 발행
-  invoiceDate   DateTime? @map("invoice_date") @db.Date
-  invoiceNumber String?   @map("invoice_number") // 실제 세금계산서 번호 (같은 번호 = 같은 계산서)
-  invoiceStatus String?   @map("invoice_status") // 발행완료, 미발행, 반품
-
-  // 결제 정보
-  paidAmount    Decimal   @default(0) @map("paid_amount") @db.Decimal(15, 2) // 결제된 금액
-  remainAmount  Decimal?  @map("remain_amount") @db.Decimal(15, 2) // 잔액 (totalPrice - paidAmount)
-  paymentStatus PaymentStatus @default(PENDING) @map("payment_status")
+  invoiceDate    DateTime? @map("invoice_date") @db.Date
+  invoiceGroupId String?   @map("invoice_group_id") // 계산서 그룹 ID (INV-YYMMDD-NNN, 같은 ID = 같은 계산서)
 
   // 기타
-  remarks   String? @db.Text // 기타사항 (담당자, 매출처 등)
-  yearMonth String? @map("year_month") // 25.12 형식 (시트 구분용)
+  remarks   String? @db.Text
+  yearMonth String? @map("year_month") // 25.12 형식
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  // 결제 내역 관계
+  // 관계
   paymentHistories PurchasePaymentHistory[]
 
   @@index([approvalCode])
   @@index([vendorCompany])
   @@index([yearMonth])
   @@index([invoiceDate])
-  @@index([invoiceNumber])
-  @@index([paymentStatus])
+  @@index([invoiceGroupId])
   @@map("purchase_invoice_status")
 }
 

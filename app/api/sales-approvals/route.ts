@@ -293,6 +293,7 @@ export async function POST(request: NextRequest) {
       if (!isConsolidatedSales) {
         totalAmount += itemTotal
       }
+      const details = item.details || []
       return {
         productName: isConsolidatedSales && index === 0 && consolidatedSalesName
           ? consolidatedSalesName
@@ -301,8 +302,12 @@ export async function POST(request: NextRequest) {
         quantity: qty,
         unitPrice: isConsolidatedSales && index === 0 ? consolidatedSalesPrice : price,
         totalPrice: isConsolidatedSales && index === 0 ? consolidatedSalesPrice : itemTotal,
+        // 통합 여부: 통합 매출이고 첫 번째 아이템이거나, 디테일이 여러 개인 경우
+        isConsolidated: (isConsolidatedSales && index === 0) || details.length > 1,
+        // P/N: 개별인 경우 디테일에서 가져옴
+        partNumber: !isConsolidatedSales && details.length === 1 ? details[0]?.partNumber : null,
         details: {
-          create: (item.details || []).map((detail, detailIndex) => ({
+          create: details.map((detail, detailIndex) => ({
             partNumber: detail.partNumber,
             description: detail.description,
             quantity: detail.quantity,
@@ -374,6 +379,9 @@ export async function POST(request: NextRequest) {
       const price = item.unitPrice || 0
       const itemTotal = qty * price
       purchaseTotal += itemTotal
+      const details = item.details || []
+      // 디테일이 없거나 productName에 '일괄'이 포함되어 있으면 통합으로 간주
+      const isConsolidated = details.length === 0 || (item.productName || '').includes('일괄')
       return {
         productName: item.productName || '제품',
         sortOrder: item.sortOrder ?? index,
@@ -382,8 +390,12 @@ export async function POST(request: NextRequest) {
         totalPrice: itemTotal,
         purchaseDate: item.purchaseDate ? new Date(item.purchaseDate) : null,
         vendorCompany: item.vendorCompany,
+        // 통합 여부
+        isConsolidated,
+        // P/N: 개별인 경우 디테일에서 가져옴
+        partNumber: !isConsolidated && details.length === 1 ? details[0]?.partNumber : null,
         details: {
-          create: (item.details || []).map((detail, detailIndex) => ({
+          create: details.map((detail, detailIndex) => ({
             partNumber: detail.partNumber,
             description: detail.description,
             quantity: detail.quantity,

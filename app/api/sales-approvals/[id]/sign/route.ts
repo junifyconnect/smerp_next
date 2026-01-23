@@ -162,40 +162,78 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       // 매출 품목별로 SalesInvoiceStatus 생성
       for (const item of updated.items) {
-        await prisma.salesInvoiceStatus.create({
-          data: {
-            salesApprovalId: updated.id,
-            approvalCode: updated.approvalCode,
-            itemName: item.productName || '제품',
-            partNumber: item.details[0]?.partNumber || null,
-            clientCompany: updated.clientCompany || '미지정',
-            quantity: item.quantity,
-            unitPrice: item.unitPrice ?? 0,
-            totalPrice: item.totalPrice ?? 0,
-            remainAmount: item.totalPrice ?? 0,
-            yearMonth,
-            remarks: updated.managerName ? `담당: ${updated.managerName}` : null,
-          },
-        })
+        if (item.isConsolidated) {
+          // 통합: productName을 itemName으로 사용 (예: "영상편집용 조립PC")
+          await prisma.salesInvoiceStatus.create({
+            data: {
+              salesApprovalId: updated.id,
+              approvalCode: updated.approvalCode,
+              itemName: item.productName || '제품',
+              partNumber: null, // 통합은 P/N 없음
+              clientCompany: updated.clientCompany || '미지정',
+              quantity: item.quantity,
+              unitPrice: item.unitPrice ?? 0,
+              totalPrice: item.totalPrice ?? 0,
+              yearMonth,
+              remarks: updated.managerName ? `담당: ${updated.managerName}` : null,
+            },
+          })
+        } else {
+          // 개별: detail의 description을 itemName으로 사용
+          const detail = item.details[0]
+          await prisma.salesInvoiceStatus.create({
+            data: {
+              salesApprovalId: updated.id,
+              approvalCode: updated.approvalCode,
+              itemName: detail?.description || item.productName || '제품',
+              partNumber: detail?.partNumber || item.partNumber || null,
+              clientCompany: updated.clientCompany || '미지정',
+              quantity: item.quantity,
+              unitPrice: item.unitPrice ?? 0,
+              totalPrice: item.totalPrice ?? 0,
+              yearMonth,
+              remarks: updated.managerName ? `담당: ${updated.managerName}` : null,
+            },
+          })
+        }
       }
 
       // 매입 품목별로 PurchaseInvoiceStatus 생성
       for (const item of updated.purchaseItems) {
-        await prisma.purchaseInvoiceStatus.create({
-          data: {
-            salesApprovalId: updated.id,
-            approvalCode: updated.approvalCode,
-            itemName: item.productName || '제품',
-            partNumber: item.details[0]?.partNumber || null,
-            vendorCompany: item.vendorCompany || '미지정',
-            quantity: item.quantity,
-            unitPrice: item.unitPrice ?? 0,
-            totalPrice: item.totalPrice ?? 0,
-            remainAmount: item.totalPrice ?? 0,
-            yearMonth,
-            remarks: updated.managerName ? `담당: ${updated.managerName}` : null,
-          },
-        })
+        if (item.isConsolidated) {
+          // 통합: productName을 itemName으로 사용
+          await prisma.purchaseInvoiceStatus.create({
+            data: {
+              salesApprovalId: updated.id,
+              approvalCode: updated.approvalCode,
+              itemName: item.productName || '제품',
+              partNumber: null, // 통합은 P/N 없음
+              vendorCompany: item.vendorCompany || '미지정',
+              quantity: item.quantity,
+              unitPrice: item.unitPrice ?? 0,
+              totalPrice: item.totalPrice ?? 0,
+              yearMonth,
+              remarks: updated.managerName ? `담당: ${updated.managerName}` : null,
+            },
+          })
+        } else {
+          // 개별: detail의 description을 itemName으로 사용
+          const detail = item.details[0]
+          await prisma.purchaseInvoiceStatus.create({
+            data: {
+              salesApprovalId: updated.id,
+              approvalCode: updated.approvalCode,
+              itemName: detail?.description || item.productName || '제품',
+              partNumber: detail?.partNumber || item.partNumber || null,
+              vendorCompany: item.vendorCompany || '미지정',
+              quantity: item.quantity,
+              unitPrice: item.unitPrice ?? 0,
+              totalPrice: item.totalPrice ?? 0,
+              yearMonth,
+              remarks: updated.managerName ? `담당: ${updated.managerName}` : null,
+            },
+          })
+        }
       }
 
       return NextResponse.json(updated)

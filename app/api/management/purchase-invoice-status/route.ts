@@ -11,8 +11,7 @@ export async function GET(request: NextRequest) {
     // 필터 파라미터
     const yearMonth = searchParams.get('yearMonth') // 25.12 형식
     const vendorCompany = searchParams.get('vendorCompany')
-    const invoiceStatus = searchParams.get('invoiceStatus')
-    const paymentStatus = searchParams.get('paymentStatus')
+    const invoiceIssued = searchParams.get('invoiceIssued') // 'true' | 'false'
     const search = searchParams.get('search')
 
     const where: Record<string, unknown> = {}
@@ -25,12 +24,11 @@ export async function GET(request: NextRequest) {
       where.vendorCompany = { contains: vendorCompany, mode: 'insensitive' }
     }
 
-    if (invoiceStatus) {
-      where.invoiceStatus = invoiceStatus
-    }
-
-    if (paymentStatus) {
-      where.paymentStatus = paymentStatus
+    // 계산서 발행 여부 필터
+    if (invoiceIssued === 'true') {
+      where.invoiceDate = { not: null }
+    } else if (invoiceIssued === 'false') {
+      where.invoiceDate = null
     }
 
     if (search) {
@@ -59,7 +57,6 @@ export async function GET(request: NextRequest) {
         where,
         _sum: {
           totalPrice: true,
-          paidAmount: true,
           batchTotal: true,
         },
         _count: true,
@@ -74,7 +71,6 @@ export async function GET(request: NextRequest) {
       totalPages: Math.ceil(total / limit),
       summary: {
         totalPrice: aggregations._sum.totalPrice || 0,
-        paidAmount: aggregations._sum.paidAmount || 0,
         batchTotal: aggregations._sum.batchTotal || 0,
         count: aggregations._count,
       },
@@ -104,7 +100,7 @@ export async function POST(request: NextRequest) {
       totalPrice,
       batchTotal,
       invoiceDate,
-      invoiceStatus,
+      invoiceGroupId,
       remarks,
       yearMonth,
     } = body
@@ -131,10 +127,9 @@ export async function POST(request: NextRequest) {
         quantity,
         unitPrice: unitPrice || calcTotalPrice,
         totalPrice: calcTotalPrice,
-        remainAmount: calcTotalPrice,
         batchTotal,
         invoiceDate: invoiceDate ? new Date(invoiceDate) : null,
-        invoiceStatus,
+        invoiceGroupId,
         remarks,
         yearMonth,
       },

@@ -19,6 +19,9 @@ interface ApiItem {
   quantity?: number
   unitPrice?: number | string
   vendorCompany?: string
+  isConsolidated?: boolean
+  partNumber?: string | null
+  sortOrder?: number
   details?: ApiItemDetail[]
 }
 
@@ -110,11 +113,14 @@ export default function EditSalesApprovalPage() {
           notes: data.notes || '',
         })
 
-        // 통합 매출 체크: items가 1개이고 details가 있으면 통합 모드
+        // 통합 매출 체크: isConsolidated 필드 또는 items가 1개이고 details가 있으면 통합 모드
         const salesItems = data.items || []
         const purchaseItems = data.purchaseItems || []
 
-        if (salesItems.length === 1 && salesItems[0].details && salesItems[0].details.length > 0) {
+        // 첫 번째 아이템의 isConsolidated 필드 확인 (새 구조)
+        const isSalesConsolidated = salesItems.length === 1 && (salesItems[0].isConsolidated || (salesItems[0].details && salesItems[0].details.length > 0))
+
+        if (isSalesConsolidated) {
           // 통합 매출 모드
           setIsConsolidatedSales(true)
           setConsolidatedSalesName(salesItems[0].productName || '')
@@ -134,8 +140,9 @@ export default function EditSalesApprovalPage() {
             }
           })
 
-          // 통합 매입 체크
-          if (purchaseItems.length === 1 && purchaseItems[0].details && purchaseItems[0].details.length > 0) {
+          // 통합 매입 체크: isConsolidated 필드 확인 (새 구조)
+          const isPurchaseConsolidated = purchaseItems.length === 1 && (purchaseItems[0].isConsolidated || (purchaseItems[0].details && purchaseItems[0].details.length > 0))
+          if (isPurchaseConsolidated) {
             setIsConsolidatedPurchase(true)
             setConsolidatedPurchaseName(purchaseItems[0].productName || '')
             setConsolidatedPurchaseQty(purchaseItems[0].quantity || 1)
@@ -263,6 +270,8 @@ export default function EditSalesApprovalPage() {
           productName: consolidatedSalesName || '통합견적',
           quantity: consolidatedSalesQty || 1,
           unitPrice: consolidatedSalesPrice,
+          isConsolidated: true,
+          partNumber: null,
           details: items.map((item, idx) => ({
             partNumber: item.partNumber,
             description: item.description,
@@ -271,12 +280,14 @@ export default function EditSalesApprovalPage() {
           })),
         }]
       } else {
-        // 개별 매출
+        // 개별 매출: 각 품목마다 개별 아이템
         salesItemsPayload = items.filter(item => item.description || item.salesUnitPrice > 0).map((item, idx) => ({
-          productName: item.partNumber || item.description || '품목',
+          productName: item.description || item.partNumber || '품목',
           quantity: item.quantity,
           unitPrice: item.salesUnitPrice,
           sortOrder: idx,
+          isConsolidated: false,
+          partNumber: item.partNumber || null,
           details: [{
             partNumber: item.partNumber,
             description: item.description,
@@ -293,6 +304,8 @@ export default function EditSalesApprovalPage() {
           quantity: consolidatedPurchaseQty || 1,
           unitPrice: consolidatedPurchaseAmount,
           vendorCompany: consolidatedPurchaseVendor,
+          isConsolidated: true,
+          partNumber: null,
           details: items.map((item, idx) => ({
             partNumber: item.partNumber,
             description: item.description,
@@ -301,13 +314,15 @@ export default function EditSalesApprovalPage() {
           })),
         }]
       } else {
-        // 개별 매입
+        // 개별 매입: 각 품목마다 개별 아이템
         purchaseItemsPayload = items.filter(item => item.description || item.purchaseUnitPrice > 0).map((item, idx) => ({
-          productName: item.partNumber || item.description || '품목',
+          productName: item.description || item.partNumber || '품목',
           quantity: item.quantity,
           unitPrice: item.purchaseUnitPrice,
           vendorCompany: item.vendorCompany,
           sortOrder: idx,
+          isConsolidated: false,
+          partNumber: item.partNumber || null,
           details: [{
             partNumber: item.partNumber,
             description: item.description,
