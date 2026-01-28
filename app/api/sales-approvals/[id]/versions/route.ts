@@ -5,7 +5,7 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
-// GET /api/sales-approvals/[id]/versions - 같은 Deal의 모든 버전 조회
+// GET /api/sales-approvals/[id]/versions - 같은 품의코드의 모든 버전 조회
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params
@@ -13,7 +13,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // 현재 품의서 조회
     const currentApproval = await prisma.salesApproval.findUnique({
       where: { id },
-      select: { dealId: true },
+      select: {
+        approvalCode: true,
+        originalId: true,
+        version: true,
+      },
     })
 
     if (!currentApproval) {
@@ -23,13 +27,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    if (!currentApproval.dealId) {
-      return NextResponse.json({ versions: [], currentId: id })
-    }
+    // 같은 품의코드의 모든 버전 조회
+    // originalId가 있으면 그걸로, 없으면 현재 id로 (자기가 첫 버전)
+    const rootId = currentApproval.originalId || id
 
-    // 같은 Deal의 모든 품의서 조회 (생성일 역순)
     const versions = await prisma.salesApproval.findMany({
-      where: { dealId: currentApproval.dealId },
+      where: {
+        OR: [
+          { id: rootId },                    // 첫 버전
+          { originalId: rootId },            // 그 이후 버전들
+        ],
+      },
       select: {
         id: true,
         approvalNumber: true,
@@ -39,30 +47,26 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         totalWithVat: true,
         createdAt: true,
         clientCompany: true,
+        version: true,
+        isLatest: true,
         items: {
           take: 1,
           select: { productName: true },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { version: 'desc' }, // 최신 버전 먼저
     })
 
-    // 버전 번호 계산 (생성 순서)
-    const sortedByCreation = [...versions].sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    )
-
-    const versionsWithNumber = versions.map((v) => ({
+    const versionsWithMeta = versions.map((v) => ({
       ...v,
-      version: sortedByCreation.findIndex((s) => s.id === v.id) + 1,
-      displayName: v.approvalCode || v.approvalNumber || v.clientCompany || v.items[0]?.productName || v.id.slice(0, 8),
+      displayName: `${v.approvalCode || v.approvalNumber} (v${v.version})`,
       isCurrent: v.id === id,
     }))
 
     return NextResponse.json({
-      versions: versionsWithNumber,
+      versions: versionsWithMeta,
       currentId: id,
-      dealId: currentApproval.dealId,
+      approvalCode: currentApproval.approvalCode,
       totalVersions: versions.length,
     })
   } catch (error) {

@@ -192,13 +192,10 @@ export default function SalesQuotesPage() {
 
       {/* 목록 */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
+        <div className="px-4 py-3 border-b bg-gray-50">
           <span className="text-sm text-gray-600">
             총 <span className="font-semibold text-gray-900">{total}</span>건
           </span>
-          <button onClick={fetchQuotes} className="text-sm text-blue-600 hover:text-blue-700">
-            새로고침
-          </button>
         </div>
 
         {loading ? (
@@ -221,45 +218,42 @@ export default function SalesQuotesPage() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">견적서</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">고객사</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">상태</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">금액</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">견적일</th>
-                  <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">액션</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">견적서</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">고객사</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">상태</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">금액</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">견적일</th>
+                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-600">액션</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-100">
                 {quotes.map((quote) => (
                   <tr key={quote.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       <Link
                         href={`/sales/quotes/${quote.id}`}
-                        className="font-medium text-blue-600 hover:text-blue-700"
+                        className="text-sm font-medium text-blue-600 hover:text-blue-700"
                       >
                         {getQuoteDisplayName(quote)}
                       </Link>
-                      {quote.deal && (
-                        <p className="text-xs text-gray-400 mt-0.5">Deal: {quote.deal.name}</p>
-                      )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
+                    <td className="px-4 py-2 text-sm text-gray-600">
                       {quote.clientCompany || '-'}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${statusLabels[quote.status]?.color || 'bg-gray-100'}`}>
                         {statusLabels[quote.status]?.label || quote.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-right font-medium">
+                    <td className="px-4 py-2 text-sm text-right font-medium">
                       {quote.totalWithVat?.toLocaleString() || 0}원
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
+                    <td className="px-4 py-2 text-sm text-gray-600">
                       {quote.quoteDate
                         ? new Date(quote.quoteDate).toLocaleDateString('ko-KR')
                         : new Date(quote.createdAt).toLocaleDateString('ko-KR')}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => handleDownloadExcel(quote)}

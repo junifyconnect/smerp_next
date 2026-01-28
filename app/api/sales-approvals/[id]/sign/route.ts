@@ -74,10 +74,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // 역할별 서명 처리
     if (role === 'SALES_MANAGER') {
-      // 영업담당자 서명 - DRAFT 상태에서만 가능
-      if (approval.status !== 'DRAFT') {
+      // 영업담당자 서명 - DRAFT 또는 PENDING 상태에서 가능 (기안 + 서명 통합)
+      if (approval.status !== 'DRAFT' && approval.status !== 'PENDING') {
         return NextResponse.json(
-          { error: '작성 중인 품의서만 서명할 수 있습니다' },
+          { error: '작성중이거나 기안된 품의서만 서명할 수 있습니다' },
           { status: 400 }
         )
       }
@@ -134,109 +134,112 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         )
       }
 
-      const updated = await prisma.salesApproval.update({
+      // 품의서 정보 조회 (clientCompany 확인용)
+      const fullApproval = await prisma.salesApproval.findUnique({
         where: { id },
-        data: {
-          ceoId: userId,
-          ceoSignedAt: now,
-          status: 'APPROVED',
-          approvalDate: now,
-        },
-        include: {
-          salesManager: { select: { id: true, name: true, signatureUrl: true } },
-          teamLeader: { select: { id: true, name: true, signatureUrl: true } },
-          ceo: { select: { id: true, name: true, signatureUrl: true } },
-          items: {
-            include: { details: true },
-            orderBy: { sortOrder: 'asc' },
-          },
-          purchaseItems: {
-            include: { details: true },
-            orderBy: { sortOrder: 'asc' },
-          },
+        select: {
+          id: true,
+          clientCompany: true,
         },
       })
 
-      // 품의서 승인 시 계산서 발행현황 자동 생성
-      const yearMonth = `${String(now.getFullYear()).slice(-2)}.${String(now.getMonth() + 1).padStart(2, '0')}`
+      // 아이템 조회 (단순 복사 방식: approvalId = 현재 품의서 ID)
+      const [salesItems, purchaseItems] = await Promise.all([
+        prisma.salesApprovalItem.findMany({
+          where: { approvalId: id },
+        }),
+        prisma.salesApprovalPurchaseItem.findMany({
+          where: { approvalId: id },
+        }),
+      ])
 
-      // 매출 품목별로 SalesInvoiceStatus 생성
-      for (const item of updated.items) {
-        if (item.isConsolidated) {
-          // 통합: productName을 itemName으로 사용 (예: "영상편집용 조립PC")
-          await prisma.salesInvoiceStatus.create({
-            data: {
-              salesApprovalId: updated.id,
-              approvalCode: updated.approvalCode,
-              itemName: item.productName || '제품',
-              partNumber: null, // 통합은 P/N 없음
-              clientCompany: updated.clientCompany || '미지정',
-              quantity: item.quantity,
-              unitPrice: item.unitPrice ?? 0,
-              totalPrice: item.totalPrice ?? 0,
-              yearMonth,
-              remarks: updated.managerName ? `담당: ${updated.managerName}` : null,
-            },
+      // 트랜잭션으로 승인 + InvoiceRecord 생성
+      const updated = await prisma.$transaction(async (tx) => {
+        // 1. 품의서 승인
+        const result = await tx.salesApproval.update({
+          where: { id },
+          data: {
+            ceoId: userId,
+            ceoSignedAt: now,
+            status: 'APPROVED',
+            approvalDate: now,
+          },
+          include: {
+            salesManager: { select: { id: true, name: true, signatureUrl: true } },
+            teamLeader: { select: { id: true, name: true, signatureUrl: true } },
+            ceo: { select: { id: true, name: true, signatureUrl: true } },
+          },
+        })
+
+        // 2. 매출 계산서 발행 기록 생성 (기존 기록이 없는 경우만)
+        for (const item of salesItems) {
+          const existing = await tx.invoiceRecord.findFirst({
+            where: { itemId: item.id, invoiceType: 'SALES' },
           })
-        } else {
-          // 개별: detail의 description을 itemName으로 사용
-          const detail = item.details[0]
-          await prisma.salesInvoiceStatus.create({
-            data: {
-              salesApprovalId: updated.id,
-              approvalCode: updated.approvalCode,
-              itemName: detail?.description || item.productName || '제품',
-              partNumber: detail?.partNumber || item.partNumber || null,
-              clientCompany: updated.clientCompany || '미지정',
-              quantity: item.quantity,
-              unitPrice: item.unitPrice ?? 0,
-              totalPrice: item.totalPrice ?? 0,
-              yearMonth,
-              remarks: updated.managerName ? `담당: ${updated.managerName}` : null,
-            },
-          })
+          if (!existing) {
+            await tx.invoiceRecord.create({
+              data: {
+                approvalId: id,
+                itemId: item.id,
+                invoiceType: 'SALES',
+                productName: item.productName,
+                partNumber: item.partNumber,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice || 0,
+                totalPrice: item.totalPrice || 0,
+                clientCompany: fullApproval?.clientCompany,
+                status: 'PENDING',
+              },
+            })
+          }
         }
-      }
 
-      // 매입 품목별로 PurchaseInvoiceStatus 생성
-      for (const item of updated.purchaseItems) {
-        if (item.isConsolidated) {
-          // 통합: productName을 itemName으로 사용
-          await prisma.purchaseInvoiceStatus.create({
-            data: {
-              salesApprovalId: updated.id,
-              approvalCode: updated.approvalCode,
-              itemName: item.productName || '제품',
-              partNumber: null, // 통합은 P/N 없음
-              vendorCompany: item.vendorCompany || '미지정',
-              quantity: item.quantity,
-              unitPrice: item.unitPrice ?? 0,
-              totalPrice: item.totalPrice ?? 0,
-              yearMonth,
-              remarks: updated.managerName ? `담당: ${updated.managerName}` : null,
-            },
+        // 3. 매입 계산서 발행 기록 생성 (기존 기록이 없는 경우만)
+        for (const item of purchaseItems) {
+          const existing = await tx.invoiceRecord.findFirst({
+            where: { itemId: item.id, invoiceType: 'PURCHASE' },
           })
-        } else {
-          // 개별: detail의 description을 itemName으로 사용
-          const detail = item.details[0]
-          await prisma.purchaseInvoiceStatus.create({
-            data: {
-              salesApprovalId: updated.id,
-              approvalCode: updated.approvalCode,
-              itemName: detail?.description || item.productName || '제품',
-              partNumber: detail?.partNumber || item.partNumber || null,
-              vendorCompany: item.vendorCompany || '미지정',
-              quantity: item.quantity,
-              unitPrice: item.unitPrice ?? 0,
-              totalPrice: item.totalPrice ?? 0,
-              yearMonth,
-              remarks: updated.managerName ? `담당: ${updated.managerName}` : null,
-            },
-          })
+          if (!existing) {
+            await tx.invoiceRecord.create({
+              data: {
+                approvalId: id,
+                itemId: item.id,
+                invoiceType: 'PURCHASE',
+                productName: item.productName,
+                partNumber: item.partNumber,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice || 0,
+                totalPrice: item.totalPrice || 0,
+                vendorCompany: item.vendorCompany,
+                clientCompany: fullApproval?.clientCompany,
+                status: 'PENDING',
+              },
+            })
+          }
         }
-      }
 
-      return NextResponse.json(updated)
+        return result
+      })
+
+      // 아이템 정보 추가 조회 (단순 복사 방식)
+      const [items, pItems] = await Promise.all([
+        prisma.salesApprovalItem.findMany({
+          where: { approvalId: id },
+          include: { details: true },
+          orderBy: { sortOrder: 'asc' },
+        }),
+        prisma.salesApprovalPurchaseItem.findMany({
+          where: { approvalId: id },
+          include: { details: true },
+          orderBy: { sortOrder: 'asc' },
+        }),
+      ])
+
+      return NextResponse.json({
+        ...updated,
+        items,
+        purchaseItems: pItems,
+      })
     }
 
     return NextResponse.json(

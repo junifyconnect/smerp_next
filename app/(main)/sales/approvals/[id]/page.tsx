@@ -57,6 +57,7 @@ interface ApprovalVersion {
   totalWithVat?: number | string
   createdAt: string
   isCurrent: boolean
+  isLatest?: boolean
 }
 
 interface SalesApproval {
@@ -66,6 +67,10 @@ interface SalesApproval {
   approvalCode?: string
   approvalDate?: string
   managerName?: string
+  // 버전 관리
+  version?: number
+  isLatest?: boolean
+  originalId?: string
   clientCompany?: string
   clientContact?: string
   clientPhone?: string
@@ -124,7 +129,6 @@ export default function SalesApprovalDetailPage() {
   const [files, setFiles] = useState<ApprovalFile[]>([])
   const [versions, setVersions] = useState<ApprovalVersion[]>([])
   const [uploadingFile, setUploadingFile] = useState(false)
-  const [creatingRevision, setCreatingRevision] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 현재 로그인된 사용자가 작성자인지 확인
@@ -191,8 +195,13 @@ export default function SalesApprovalDetailPage() {
 
     // 영업담당 서명은 작성자만 가능
     if (role === 'SALES_MANAGER' && !isCreator) {
-      alert('본인이 작성한 품의서만 서명할 수 있습니다')
+      alert('본인이 작성한 품의서만 기안할 수 있습니다')
       return
+    }
+
+    // DRAFT 상태에서 영업담당 기안 시 확인
+    if (role === 'SALES_MANAGER' && approval?.status === 'DRAFT') {
+      if (!confirm('품의서를 기안하시겠습니까?\n(기안 후 팀장 결재 대기 상태가 됩니다)')) return
     }
 
     setUpdatingStatus(true)
@@ -262,25 +271,12 @@ export default function SalesApprovalDetailPage() {
   }
 
   // 새 버전 생성
-  const handleCreateRevision = async () => {
+  const handleCreateRevision = () => {
     if (!approval) return
-    if (!confirm('현재 품의서를 기반으로 새 버전을 생성하시겠습니까?\n(서명 정보는 초기화됩니다)')) return
+    if (!confirm('현재 품의서를 기반으로 새 버전을 생성하시겠습니까?\n(서명 정보는 초기화되며, 저장 시 새 버전이 생성됩니다)')) return
 
-    setCreatingRevision(true)
-    try {
-      const res = await fetch(`/api/sales-approvals/${id}/revise`, { method: 'POST' })
-      if (res.ok) {
-        const newApproval = await res.json()
-        router.push(`/sales/approvals/${newApproval.id}`)
-      } else {
-        const data = await res.json()
-        alert(data.error || '새 버전 생성 실패')
-      }
-    } catch {
-      alert('새 버전 생성에 실패했습니다')
-    } finally {
-      setCreatingRevision(false)
-    }
+    // 수정 페이지로 이동 (revise 모드)
+    router.push(`/sales/approvals/${id}/edit?revise=true`)
   }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -394,6 +390,16 @@ export default function SalesApprovalDetailPage() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-gray-900">{getDisplayName()}</h1>
+              {approval.version && approval.version > 1 && (
+                <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                  v{approval.version}
+                </span>
+              )}
+              {!approval.isLatest && (
+                <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
+                  이전 버전
+                </span>
+              )}
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusLabels[approval.status]?.color || 'bg-gray-100'}`}>
                 {statusLabels[approval.status]?.label || approval.status}
               </span>
@@ -413,7 +419,7 @@ export default function SalesApprovalDetailPage() {
             </svg>
             엑셀
           </a>
-          {approval.status === 'DRAFT' && (
+          {approval.status === 'DRAFT' && isCreator && (
             <Link
               href={`/sales/approvals/${id}/edit`}
               className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2"
@@ -424,27 +430,28 @@ export default function SalesApprovalDetailPage() {
               수정
             </Link>
           )}
-          {approval.status !== 'DRAFT' && (
+          {approval.status !== 'DRAFT' && approval.isLatest !== false && (
             <button
               onClick={handleCreateRevision}
-              disabled={creatingRevision}
-              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
               </svg>
-              {creatingRevision ? '생성 중...' : '새 버전'}
+              새 버전
             </button>
           )}
-          <button
-            onClick={handleDelete}
-            className="px-4 py-2 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            삭제
-          </button>
+          {approval.isLatest !== false && (
+            <button
+              onClick={handleDelete}
+              className="px-4 py-2 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              삭제
+            </button>
+          )}
         </div>
       </div>
 
@@ -531,7 +538,7 @@ export default function SalesApprovalDetailPage() {
                 {/* 영업담당 */}
                 <td className={`px-3 py-2 text-center border-r border-gray-200 min-w-[80px] ${
                   approval.salesManager ? 'bg-emerald-50' :
-                  approval.status === 'DRAFT' ? 'bg-blue-50' : ''
+                  (approval.status === 'DRAFT' || approval.status === 'PENDING') ? 'bg-blue-50' : ''
                 }`}>
                   {approval.salesManager ? (
                     <div>
@@ -543,13 +550,13 @@ export default function SalesApprovalDetailPage() {
                   ) : (
                     <p className="text-gray-400">-</p>
                   )}
-                  {approval.status === 'DRAFT' && (
+                  {(approval.status === 'DRAFT' || approval.status === 'PENDING') && isCreator && !approval.salesManager && (
                     <button
                       onClick={() => handleSign('SALES_MANAGER')}
                       disabled={updatingStatus}
                       className="mt-1 px-2 py-1 bg-blue-600 text-white text-[10px] rounded hover:bg-blue-700 disabled:opacity-50"
                     >
-                      {updatingStatus ? '...' : '서명'}
+                      {updatingStatus ? '...' : '기안'}
                     </button>
                   )}
                 </td>
@@ -1017,9 +1024,14 @@ export default function SalesApprovalDetailPage() {
                   }`}>
                     {statusLabels[version.status]?.label || version.status}
                   </span>
+                  {version.isLatest && (
+                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
+                      최신
+                    </span>
+                  )}
                   {version.isCurrent && (
                     <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
-                      현재
+                      현재 보는 중
                     </span>
                   )}
                 </div>

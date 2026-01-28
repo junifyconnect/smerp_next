@@ -1,26 +1,52 @@
 import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/db"
+import { auth } from "@/lib/auth"
 
 // 발주서 목록 조회
 export async function GET(request: NextRequest) {
   try {
+    const session = await auth()
+    const currentUserId = session?.user?.id
+
     const searchParams = request.nextUrl.searchParams
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "20")
     const status = searchParams.get("status")
     const search = searchParams.get("search")
+    const includeAllVersions = searchParams.get("allVersions") === "true"
 
     const where: Record<string, unknown> = {}
 
-    if (status) {
+    // 기본적으로 최신 버전만 조회
+    if (!includeAllVersions) {
+      where.isLatest = { not: false }
+    }
+
+    // DRAFT는 작성자 본인만, 나머지는 모두 볼 수 있음
+    if (status === "DRAFT") {
+      where.status = "DRAFT"
+      if (currentUserId) {
+        where.createdById = currentUserId
+      }
+    } else if (status) {
       where.status = status
+    } else {
+      // 전체 조회: DRAFT가 아니거나, DRAFT면서 본인 것
+      where.OR = [
+        { status: { not: "DRAFT" } },
+        ...(currentUserId ? [{ status: "DRAFT", createdById: currentUserId }] : []),
+      ]
     }
 
     if (search) {
-      where.OR = [
-        { orderNumber: { contains: search, mode: "insensitive" } },
-        { vendorCompany: { contains: search, mode: "insensitive" } },
-        { managerName: { contains: search, mode: "insensitive" } },
+      where.AND = [
+        {
+          OR: [
+            { orderNumber: { contains: search, mode: "insensitive" } },
+            { vendorCompany: { contains: search, mode: "insensitive" } },
+            { managerName: { contains: search, mode: "insensitive" } },
+          ],
+        },
       ]
     }
 
@@ -30,6 +56,9 @@ export async function GET(request: NextRequest) {
         include: {
           items: true,
           deal: {
+            select: { id: true, name: true },
+          },
+          createdBy: {
             select: { id: true, name: true },
           },
         },
@@ -61,6 +90,9 @@ export async function GET(request: NextRequest) {
 // 발주서 생성
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth()
+    const currentUserId = session?.user?.id
+
     const body = await request.json()
     const {
       dealId,
@@ -115,7 +147,7 @@ export async function POST(request: NextRequest) {
         vatAmount,
         totalWithVat,
         notes,
-        createdById: "system", // TODO: 실제 사용자 ID로 변경
+        createdById: currentUserId || "system",
         items: {
           create: items.map((item: {
             partNumber?: string
@@ -136,6 +168,7 @@ export async function POST(request: NextRequest) {
       },
       include: {
         items: true,
+        createdBy: { select: { id: true, name: true } },
       },
     })
 

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 
 interface QuoteItem {
@@ -35,16 +36,6 @@ interface QuoteFile {
   uploadedBy?: { id: string; name: string }
 }
 
-interface QuoteVersion {
-  id: string
-  version: number
-  status: string
-  quoteDate?: string
-  totalWithVat?: number | string
-  createdAt: string
-  displayName: string
-  isCurrent: boolean
-}
 
 interface SalesQuote {
   id: string
@@ -70,6 +61,7 @@ interface SalesQuote {
   items: QuoteItem[]
   files?: QuoteFile[]
   deal?: { id: string; name: string; status: string }
+  createdById?: string
   createdBy?: { id: string; name: string }
   createdAt: string
   updatedAt?: string
@@ -94,6 +86,7 @@ export default function SalesQuoteDetailPage() {
   const router = useRouter()
   const params = useParams()
   const id = params.id as string
+  const { data: session } = useSession()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [quote, setQuote] = useState<SalesQuote | null>(null)
@@ -101,9 +94,10 @@ export default function SalesQuoteDetailPage() {
   const [downloading, setDownloading] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [files, setFiles] = useState<QuoteFile[]>([])
-  const [versions, setVersions] = useState<QuoteVersion[]>([])
   const [uploading, setUploading] = useState(false)
-  const [creatingRevision, setCreatingRevision] = useState(false)
+
+  // 현재 로그인된 사용자가 작성자인지 확인
+  const isCreator = session?.user?.id && quote?.createdById === session.user.id
 
   const fetchQuote = useCallback(async () => {
     try {
@@ -134,23 +128,10 @@ export default function SalesQuoteDetailPage() {
     }
   }, [id])
 
-  const fetchVersions = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/sales-quotes/${id}/versions`)
-      if (res.ok) {
-        const data = await res.json()
-        setVersions(data.versions || [])
-      }
-    } catch (err) {
-      console.error('버전 목록 조회 실패:', err)
-    }
-  }, [id])
-
   useEffect(() => {
     fetchQuote()
     fetchFiles()
-    fetchVersions()
-  }, [fetchQuote, fetchFiles, fetchVersions])
+  }, [fetchQuote, fetchFiles])
 
   const handleStatusChange = async (newStatus: string) => {
     if (!quote) return
@@ -210,28 +191,6 @@ export default function SalesQuoteDetailPage() {
       }
     } catch (err) {
       console.error('삭제 실패:', err)
-    }
-  }
-
-  // 새 버전 생성 (발송 후 수정)
-  const handleCreateRevision = async () => {
-    if (!quote) return
-    if (!confirm('현재 견적서를 기반으로 새 버전을 생성하시겠습니까?')) return
-
-    setCreatingRevision(true)
-    try {
-      const res = await fetch(`/api/sales-quotes/${id}/revise`, { method: 'POST' })
-      if (res.ok) {
-        const newQuote = await res.json()
-        router.push(`/sales/quotes/${newQuote.id}/edit`)
-      } else {
-        const data = await res.json()
-        alert(data.error || '새 버전 생성 실패')
-      }
-    } catch {
-      alert('새 버전 생성에 실패했습니다')
-    } finally {
-      setCreatingRevision(false)
     }
   }
 
@@ -351,30 +310,30 @@ export default function SalesQuoteDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          {quote.status === 'DRAFT' && (
-            <Link
-              href={`/sales/quotes/${id}/edit`}
-              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              수정
-            </Link>
+          {quote.status === 'DRAFT' && isCreator && (
+            <>
+              <Link
+                href={`/sales/quotes/${id}/edit`}
+                className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                수정
+              </Link>
+              <button
+                onClick={() => handleStatusChange('SENT')}
+                disabled={updatingStatus}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                {updatingStatus ? '처리중...' : '발송하기'}
+              </button>
+            </>
           )}
-          {quote.status !== 'DRAFT' && (
-            <button
-              onClick={handleCreateRevision}
-              disabled={creatingRevision}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
-              </svg>
-              {creatingRevision ? '생성 중...' : '새 버전 생성'}
-            </button>
-          )}
-          <button
+                    <button
             onClick={handleDownloadExcel}
             disabled={downloading}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
@@ -392,16 +351,6 @@ export default function SalesQuoteDetailPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
             삭제
-          </button>
-          {/* 품의서 작성 버튼 */}
-          <button
-            onClick={() => router.push(`/ma/approvals/new?quoteId=${id}`)}
-            className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            품의서 작성
           </button>
         </div>
       </div>
@@ -486,13 +435,7 @@ export default function SalesQuoteDetailPage() {
             <span className="text-xs font-medium text-gray-600">상태 변경</span>
             <div className="flex gap-2">
               {quote.status === 'DRAFT' && (
-                <button
-                  onClick={() => handleStatusChange('SENT')}
-                  disabled={updatingStatus}
-                  className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {updatingStatus ? '처리중...' : '발송'}
-                </button>
+                <span className="text-xs text-gray-500">발송 전</span>
               )}
               {quote.status === 'SENT' && (
                 <>
@@ -635,51 +578,6 @@ export default function SalesQuoteDetailPage() {
         </table>
       </div>
 
-      {/* 버전 목록 - 같은 Deal의 견적서들 */}
-      {versions.length > 1 && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b bg-gray-50">
-            <h3 className="text-sm font-semibold text-gray-900">버전 이력 ({versions.length}개)</h3>
-          </div>
-          <div className="divide-y">
-            {versions.map((v) => (
-              <div
-                key={v.id}
-                className={`px-6 py-3 flex items-center justify-between ${v.isCurrent ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
-              >
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-medium text-gray-700">v{v.version}</span>
-                  <span className="text-sm text-gray-900">{v.displayName}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusLabels[v.status]?.color || 'bg-gray-100'}`}>
-                    {statusLabels[v.status]?.label || v.status}
-                  </span>
-                  {v.isCurrent && (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">현재</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-xs text-gray-500">
-                    {new Date(v.createdAt).toLocaleDateString('ko-KR')}
-                  </span>
-                  <span className="text-sm font-medium text-gray-700">
-                    {typeof v.totalWithVat === 'number'
-                      ? v.totalWithVat.toLocaleString()
-                      : Number(v.totalWithVat || 0).toLocaleString()}원
-                  </span>
-                  {!v.isCurrent && (
-                    <Link
-                      href={`/sales/quotes/${v.id}`}
-                      className="text-sm text-blue-600 hover:text-blue-800"
-                    >
-                      보기
-                    </Link>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* 파일 관리 - 발송 후에만 표시 */}
       {quote.status !== 'DRAFT' && (

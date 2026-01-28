@@ -1,25 +1,66 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
-import { auth } from '@/lib/auth'
 
 interface RouteParams {
   params: Promise<{ id: string }>
 }
 
-// POST /api/sales-approvals/[id]/revise - 새 버전 생성 (결재 후 수정)
+interface ItemDetail {
+  partNumber?: string
+  description?: string
+  quantity?: number
+  sortOrder?: number
+}
+
+interface ItemInput {
+  sourceItemId?: string // 복사 원본 아이템 ID (수정된 아이템)
+  productName?: string
+  partNumber?: string | null
+  isConsolidated?: boolean
+  quantity?: number
+  unitPrice?: number
+  vendorCompany?: string
+  sortOrder?: number
+  details?: ItemDetail[]
+}
+
+interface ReviseBody {
+  approvalCode?: string
+  approvalDate?: string
+  managerName?: string
+  clientCompany?: string
+  clientContact?: string
+  clientPhone?: string
+  endUser?: string
+  paymentTerms?: string
+  invoiceEmail?: string
+  deliveryAddress?: string
+  deliveryDate?: string
+  receiverName?: string
+  receiverPhone?: string
+  notes?: string
+  items?: ItemInput[]
+  purchaseItems?: ItemInput[]
+}
+
+// POST /api/sales-approvals/[id]/revise - 새 버전 생성 (단순 복사 방식)
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await auth()
     const { id } = await params
 
-    // 이메일에서 사용자 ID 추출 (@ 앞부분)
-    const userEmail = session?.user?.email || ''
-    const userId = userEmail.split('@')[0] || ''
+    // body 파싱
+    let body: ReviseBody = {}
+    try {
+      body = await request.json()
+    } catch {
+      // body가 없으면 빈 객체
+    }
 
     // 원본 품의서 조회
     const originalApproval = await prisma.salesApproval.findUnique({
       where: { id },
       include: {
+        deal: true,
         items: {
           include: { details: { orderBy: { sortOrder: 'asc' } } },
           orderBy: { sortOrder: 'asc' },
@@ -28,7 +69,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           include: { details: { orderBy: { sortOrder: 'asc' } } },
           orderBy: { sortOrder: 'asc' },
         },
-        deal: true,
       },
     })
 
@@ -39,7 +79,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // DRAFT 상태가 아닌 경우에만 새 버전 생성 가능
+    // DRAFT 상태는 직접 수정
     if (originalApproval.status === 'DRAFT') {
       return NextResponse.json(
         { error: '작성중인 품의서는 직접 수정 가능합니다' },
@@ -47,15 +87,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // Deal이 없으면 에러
-    if (!originalApproval.dealId) {
+    // 최신 버전이 아니면 수정 불가
+    if (!originalApproval.isLatest) {
       return NextResponse.json(
-        { error: 'Deal이 연결되어 있지 않습니다' },
+        { error: '이전 버전은 수정할 수 없습니다. 최신 버전에서 수정해주세요.' },
         { status: 400 }
       )
     }
 
-    // 새 품의번호 생성 (시스템 내부 고유키)
+    // 새 품의번호 생성
     const year = new Date().getFullYear()
     const lastApproval = await prisma.salesApproval.findFirst({
       where: { approvalNumber: { startsWith: `SA-${year}-` } },
@@ -69,98 +109,229 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
     const newApprovalNumber = `SA-${year}-${String(sequence).padStart(4, '0')}`
 
-    // 품의코드 결정: 영업담당 서명 이후 (DRAFT가 아닌 모든 상태)에서 수정 시 새 코드 생성
-    // DRAFT 상태는 이미 위에서 차단됨 (직접 수정 가능하므로 revise 불필요)
-    // 따라서 revise가 호출되면 항상 새 코드 생성
-    let newApprovalCode = originalApproval.approvalCode
-    if (userId) {
-      const today = new Date()
-      const yy = String(today.getFullYear()).slice(-2)
-      const mm = String(today.getMonth() + 1).padStart(2, '0')
-      const dd = String(today.getDate()).padStart(2, '0')
-      const dateStr = `${yy}${mm}${dd}`
-      const initial = userId.charAt(0).toUpperCase()
+    // 버전 정보
+    const newVersion = (originalApproval.version || 1) + 1
+    const chainRootId = originalApproval.originalId || originalApproval.id
 
-      const prefix = `${initial}${dateStr}-`
-      const lastCodeApproval = await prisma.salesApproval.findFirst({
-        where: { approvalCode: { startsWith: prefix } },
-        orderBy: { approvalCode: 'desc' },
+    // body에 아이템이 있으면 사용, 없으면 원본에서 복사
+    const salesItems = body.items || originalApproval.items.map(item => ({
+      sourceItemId: item.id,
+      productName: item.productName,
+      partNumber: item.partNumber,
+      isConsolidated: item.isConsolidated,
+      quantity: item.quantity,
+      unitPrice: Number(item.unitPrice),
+      sortOrder: item.sortOrder,
+      details: item.details.map(d => ({
+        partNumber: d.partNumber,
+        description: d.description,
+        quantity: d.quantity,
+        sortOrder: d.sortOrder,
+      })),
+    }))
+
+    const purchaseItems = body.purchaseItems || originalApproval.purchaseItems.map(item => ({
+      sourceItemId: item.id,
+      productName: item.productName,
+      partNumber: item.partNumber,
+      isConsolidated: item.isConsolidated,
+      quantity: item.quantity,
+      unitPrice: Number(item.unitPrice),
+      vendorCompany: item.vendorCompany,
+      sortOrder: item.sortOrder,
+      details: item.details.map(d => ({
+        partNumber: d.partNumber,
+        description: d.description,
+        quantity: d.quantity,
+        sortOrder: d.sortOrder,
+      })),
+    }))
+
+    // 금액 계산
+    const totalAmount = salesItems.reduce((sum, item) =>
+      sum + (item.quantity || 1) * (item.unitPrice || 0), 0)
+    const vatAmount = Math.round(totalAmount * 0.1)
+    const totalWithVat = totalAmount + vatAmount
+    const purchaseTotal = purchaseItems.reduce((sum, item) =>
+      sum + (item.quantity || 1) * (item.unitPrice || 0), 0)
+    const purchaseTotalWithVat = Math.round(purchaseTotal * 1.1)
+
+    // 원본 아이템 맵 (계산서 상태 복사용)
+    const originalSalesItemMap = new Map(originalApproval.items.map(i => [i.id, i]))
+    const originalPurchaseItemMap = new Map(originalApproval.purchaseItems.map(i => [i.id, i]))
+
+    // 트랜잭션으로 처리
+    const newApproval = await prisma.$transaction(async (tx) => {
+      // 1. 기존 버전 isLatest = false
+      await tx.salesApproval.update({
+        where: { id: originalApproval.id },
+        data: { isLatest: false },
       })
 
-      let codeSequence = 1
-      if (lastCodeApproval?.approvalCode) {
-        const lastSeq = parseInt(lastCodeApproval.approvalCode.split('-')[1])
-        if (!isNaN(lastSeq)) {
-          codeSequence = lastSeq + 1
+      // 2. 새 품의서 생성
+      const approval = await tx.salesApproval.create({
+        data: {
+          deal: originalApproval.dealId ? { connect: { id: originalApproval.dealId } } : undefined,
+          approvalNumber: newApprovalNumber,
+          status: 'DRAFT',
+          approvalCode: body.approvalCode || originalApproval.approvalCode,
+          version: newVersion,
+          original: { connect: { id: chainRootId } },
+          isLatest: true,
+          approvalDate: body.approvalDate ? new Date(body.approvalDate) : new Date(),
+          managerName: body.managerName ?? originalApproval.managerName,
+          clientCompany: body.clientCompany ?? originalApproval.clientCompany,
+          clientContact: body.clientContact ?? originalApproval.clientContact,
+          clientPhone: body.clientPhone ?? originalApproval.clientPhone,
+          endUser: body.endUser ?? originalApproval.endUser,
+          totalAmount,
+          vatAmount,
+          totalWithVat,
+          purchaseTotal,
+          purchaseTotalWithVat,
+          paymentTerms: body.paymentTerms ?? originalApproval.paymentTerms,
+          deliveryAddress: body.deliveryAddress ?? originalApproval.deliveryAddress,
+          deliveryDate: body.deliveryDate ? new Date(body.deliveryDate) : (originalApproval.deliveryDate || null),
+          invoiceEmail: body.invoiceEmail ?? originalApproval.invoiceEmail,
+          receiverName: body.receiverName ?? originalApproval.receiverName,
+          receiverPhone: body.receiverPhone ?? originalApproval.receiverPhone,
+          notes: body.notes ?? originalApproval.notes,
+          createdById: originalApproval.createdById,
+        },
+      })
+
+      // 3. 매출 아이템 복사 생성 (계산서 상태 계산 포함)
+      const copiedSalesItemIds = new Set<string>()
+
+      for (let i = 0; i < salesItems.length; i++) {
+        const item = salesItems[i]
+        const originalItem = item.sourceItemId ? originalSalesItemMap.get(item.sourceItemId) : null
+
+        if (item.sourceItemId) {
+          copiedSalesItemIds.add(item.sourceItemId)
+        }
+
+        // 계산서 상태 결정
+        let invoiceStatus: 'PENDING' | 'ISSUED' | 'AMENDMENT_NEEDED' = 'PENDING'
+
+        if (originalItem) {
+          if (originalItem.salesInvoiceStatus === 'ISSUED') {
+            // 이미 발행된 경우 - 변경 여부 확인
+            const isModified =
+              (item.quantity || 1) !== originalItem.quantity ||
+              (item.unitPrice || 0) !== Number(originalItem.unitPrice)
+
+            invoiceStatus = isModified ? 'AMENDMENT_NEEDED' : 'ISSUED'
+          }
+          // PENDING이면 그대로 PENDING
+        }
+
+        await tx.salesApprovalItem.create({
+          data: {
+            approvalId: approval.id,
+            sourceItemId: item.sourceItemId || null,
+            sortOrder: item.sortOrder ?? i,
+            productName: item.productName || '품목',
+            partNumber: item.partNumber || null,
+            isConsolidated: item.isConsolidated || false,
+            quantity: item.quantity || 1,
+            unitPrice: item.unitPrice || 0,
+            totalPrice: (item.quantity || 1) * (item.unitPrice || 0),
+            salesInvoiceStatus: invoiceStatus,
+            salesInvoiceDate: invoiceStatus === 'ISSUED' ? originalItem?.salesInvoiceDate : null,
+            invoiceRemarks: originalItem?.invoiceRemarks || null,
+            details: {
+              create: (item.details || []).map((detail, detailIndex) => ({
+                sortOrder: detail.sortOrder ?? detailIndex,
+                partNumber: detail.partNumber || '',
+                description: detail.description || '',
+                quantity: detail.quantity || 1,
+              })),
+            },
+          },
+        })
+      }
+
+      // 삭제된 매출 아이템 처리 (원본에 있고 새 버전에 없는 것)
+      for (const originalItem of originalApproval.items) {
+        if (!copiedSalesItemIds.has(originalItem.id) && originalItem.salesInvoiceStatus === 'ISSUED') {
+          // 발행된 아이템이 삭제됨 → 취소 필요 표시
+          await tx.salesApprovalItem.update({
+            where: { id: originalItem.id },
+            data: { salesInvoiceStatus: 'CANCELLATION_NEEDED' },
+          })
         }
       }
-      newApprovalCode = `${prefix}${String(codeSequence).padStart(2, '0')}`
-    }
 
-    // 새 버전 품의서 생성 (원본 데이터 복사, 상태는 DRAFT, 서명 정보는 초기화)
-    const newApproval = await prisma.salesApproval.create({
-      data: {
-        deal: { connect: { id: originalApproval.dealId } },
-        approvalNumber: newApprovalNumber,
-        status: 'DRAFT',
-        approvalCode: newApprovalCode,
-        approvalDate: new Date(),
-        managerName: originalApproval.managerName,
-        clientCompany: originalApproval.clientCompany,
-        clientContact: originalApproval.clientContact,
-        clientPhone: originalApproval.clientPhone,
-        endUser: originalApproval.endUser,
-        totalAmount: originalApproval.totalAmount,
-        vatAmount: originalApproval.vatAmount,
-        totalWithVat: originalApproval.totalWithVat,
-        purchaseTotal: originalApproval.purchaseTotal,
-        purchaseTotalWithVat: originalApproval.purchaseTotalWithVat,
-        paymentTerms: originalApproval.paymentTerms,
-        deliveryAddress: originalApproval.deliveryAddress,
-        deliveryDate: originalApproval.deliveryDate,
-        invoiceEmail: originalApproval.invoiceEmail,
-        receiverName: originalApproval.receiverName,
-        receiverPhone: originalApproval.receiverPhone,
-        notes: originalApproval.notes,
-        createdById: originalApproval.createdById,
-        // 서명 정보는 초기화 (새로 결재 받아야 함)
-        items: {
-          create: originalApproval.items.map((item, index) => ({
-            sortOrder: index,
-            productName: item.productName,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            totalPrice: item.totalPrice,
+      // 4. 매입 아이템 복사 생성 (계산서 상태 계산 포함)
+      const copiedPurchaseItemIds = new Set<string>()
+
+      for (let i = 0; i < purchaseItems.length; i++) {
+        const item = purchaseItems[i]
+        const originalItem = item.sourceItemId ? originalPurchaseItemMap.get(item.sourceItemId) : null
+
+        if (item.sourceItemId) {
+          copiedPurchaseItemIds.add(item.sourceItemId)
+        }
+
+        // 계산서 상태 결정
+        let invoiceStatus: 'PENDING' | 'ISSUED' | 'AMENDMENT_NEEDED' = 'PENDING'
+
+        if (originalItem) {
+          if (originalItem.purchaseInvoiceStatus === 'ISSUED') {
+            // 이미 발행된 경우 - 변경 여부 확인
+            const isModified =
+              (item.quantity || 1) !== originalItem.quantity ||
+              (item.unitPrice || 0) !== Number(originalItem.unitPrice)
+
+            invoiceStatus = isModified ? 'AMENDMENT_NEEDED' : 'ISSUED'
+          }
+        }
+
+        await tx.salesApprovalPurchaseItem.create({
+          data: {
+            approvalId: approval.id,
+            sourceItemId: item.sourceItemId || null,
+            sortOrder: item.sortOrder ?? i,
+            productName: item.productName || '품목',
+            partNumber: item.partNumber || null,
+            isConsolidated: item.isConsolidated || false,
+            quantity: item.quantity || 1,
+            unitPrice: item.unitPrice || 0,
+            totalPrice: (item.quantity || 1) * (item.unitPrice || 0),
+            vendorCompany: item.vendorCompany || '',
+            purchaseInvoiceStatus: invoiceStatus,
+            purchaseInvoiceDate: invoiceStatus === 'ISSUED' ? originalItem?.purchaseInvoiceDate : null,
+            invoiceRemarks: originalItem?.invoiceRemarks || null,
             details: {
-              create: item.details.map((detail, detailIndex) => ({
-                sortOrder: detailIndex,
-                partNumber: detail.partNumber,
-                description: detail.description,
-                quantity: detail.quantity,
+              create: (item.details || []).map((detail, detailIndex) => ({
+                sortOrder: detail.sortOrder ?? detailIndex,
+                partNumber: detail.partNumber || '',
+                description: detail.description || '',
+                quantity: detail.quantity || 1,
               })),
             },
-          })),
-        },
-        purchaseItems: {
-          create: originalApproval.purchaseItems.map((item, index) => ({
-            sortOrder: index,
-            productName: item.productName,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            totalPrice: item.totalPrice,
-            purchaseDate: item.purchaseDate,
-            vendorCompany: item.vendorCompany,
-            details: {
-              create: item.details.map((detail, detailIndex) => ({
-                sortOrder: detailIndex,
-                partNumber: detail.partNumber,
-                description: detail.description,
-                quantity: detail.quantity,
-              })),
-            },
-          })),
-        },
-      },
+          },
+        })
+      }
+
+      // 삭제된 매입 아이템 처리 (원본에 있고 새 버전에 없는 것)
+      for (const originalItem of originalApproval.purchaseItems) {
+        if (!copiedPurchaseItemIds.has(originalItem.id) && originalItem.purchaseInvoiceStatus === 'ISSUED') {
+          // 발행된 아이템이 삭제됨 → 취소 필요 표시
+          await tx.salesApprovalPurchaseItem.update({
+            where: { id: originalItem.id },
+            data: { purchaseInvoiceStatus: 'CANCELLATION_NEEDED' },
+          })
+        }
+      }
+
+      return approval
+    })
+
+    // 결과 조회
+    const result = await prisma.salesApproval.findUnique({
+      where: { id: newApproval.id },
       include: {
         items: {
           include: { details: { orderBy: { sortOrder: 'asc' } } },
@@ -174,7 +345,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
     })
 
-    return NextResponse.json(newApproval, { status: 201 })
+    return NextResponse.json(result, { status: 201 })
   } catch (error) {
     console.error('새 버전 생성 오류:', error)
     return NextResponse.json(

@@ -10,9 +10,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params
 
+    // 품의서 조회 (아이템 포함) - 단순 복사 방식
     const approval = await prisma.salesApproval.findUnique({
       where: { id },
       include: {
+        deal: { select: { id: true, name: true, status: true } },
+        salesManager: { select: { id: true, name: true, signatureUrl: true } },
+        teamLeader: { select: { id: true, name: true, signatureUrl: true } },
+        ceo: { select: { id: true, name: true, signatureUrl: true } },
+        rejectedBy: { select: { id: true, name: true } },
         items: {
           include: { details: { orderBy: { sortOrder: 'asc' } } },
           orderBy: { sortOrder: 'asc' },
@@ -21,11 +27,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           include: { details: { orderBy: { sortOrder: 'asc' } } },
           orderBy: { sortOrder: 'asc' },
         },
-        deal: { select: { id: true, name: true, status: true } },
-        salesManager: { select: { id: true, name: true, signatureUrl: true } },
-        teamLeader: { select: { id: true, name: true, signatureUrl: true } },
-        ceo: { select: { id: true, name: true, signatureUrl: true } },
-        rejectedBy: { select: { id: true, name: true } },
       },
     })
 
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-// PATCH /api/sales-approvals/[id] - 수정
+// PATCH /api/sales-approvals/[id] - 수정 (단순 복사 방식)
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params
@@ -70,6 +71,19 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       items,
       purchaseItems,
     } = body
+
+    // 현재 품의서 존재 확인
+    const currentApproval = await prisma.salesApproval.findUnique({
+      where: { id },
+      select: { id: true },
+    })
+
+    if (!currentApproval) {
+      return NextResponse.json(
+        { error: '품의서를 찾을 수 없습니다' },
+        { status: 404 }
+      )
+    }
 
     const updateData: Record<string, unknown> = {}
 
@@ -104,9 +118,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           unitPrice: price,
           totalPrice: itemTotal,
           sortOrder: item.sortOrder ?? index,
-          // 통합 여부: 명시적으로 전달되거나 디테일이 여러 개인 경우
           isConsolidated: item.isConsolidated ?? (details.length > 1),
-          // P/N: 개별인 경우 디테일에서 가져옴
           partNumber: item.partNumber ?? (details.length === 1 ? details[0]?.partNumber : null),
           details,
         }
@@ -119,10 +131,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       updateData.vatAmount = vatAmount
       updateData.totalWithVat = totalWithVat
 
-      // 기존 아이템 삭제 (cascade로 details도 삭제됨)
-      await prisma.salesApprovalItem.deleteMany({ where: { approvalId: id } })
+      // 기존 아이템 삭제 (현재 품의서 ID 기준)
+      await prisma.salesApprovalItem.deleteMany({
+        where: { approvalId: id },
+      })
 
-      // 새 아이템 생성 (details 포함)
+      // 새 아이템 생성 (현재 품의서에 직접 연결)
       for (const item of itemsData) {
         await prisma.salesApprovalItem.create({
           data: {
@@ -156,7 +170,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         const itemTotal = qty * price
         purchaseTotal += itemTotal
         const details = item.details || []
-        // 통합 여부: 명시적으로 전달되거나 productName에 '일괄'이 포함되어 있거나 디테일이 없는 경우
         const isConsolidated = item.isConsolidated ?? (details.length === 0 || (item.productName || '').includes('일괄'))
         return {
           productName: item.productName || '제품',
@@ -167,7 +180,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           vendorCompany: item.vendorCompany,
           sortOrder: item.sortOrder ?? index,
           isConsolidated,
-          // P/N: 개별인 경우 디테일에서 가져옴
           partNumber: item.partNumber ?? (!isConsolidated && details.length === 1 ? details[0]?.partNumber : null),
           details,
         }
@@ -178,10 +190,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       updateData.purchaseTotal = purchaseTotal
       updateData.purchaseTotalWithVat = purchaseTotalWithVat
 
-      // 기존 아이템 삭제 (cascade로 details도 삭제됨)
-      await prisma.salesApprovalPurchaseItem.deleteMany({ where: { approvalId: id } })
+      // 기존 아이템 삭제 (현재 품의서 ID 기준)
+      await prisma.salesApprovalPurchaseItem.deleteMany({
+        where: { approvalId: id },
+      })
 
-      // 새 아이템 생성 (details 포함)
+      // 새 아이템 생성 (현재 품의서에 직접 연결)
       for (const item of purchaseItemsData) {
         await prisma.salesApprovalPurchaseItem.create({
           data: {
@@ -208,7 +222,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    const approval = await prisma.salesApproval.update({
+    // 품의서 업데이트 및 결과 반환
+    const updatedApproval = await prisma.salesApproval.update({
       where: { id },
       data: updateData,
       include: {
@@ -223,7 +238,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       },
     })
 
-    return NextResponse.json(approval)
+    return NextResponse.json(updatedApproval)
   } catch (error) {
     console.error('품의서 수정 오류:', error)
     return NextResponse.json(
@@ -233,14 +248,82 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-// DELETE /api/sales-approvals/[id] - 삭제
+// DELETE /api/sales-approvals/[id] - 삭제 (단순 복사 방식)
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params
 
-    await prisma.salesApproval.delete({ where: { id } })
+    // 삭제할 품의서 정보 조회
+    const approval = await prisma.salesApproval.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        version: true,
+        originalId: true,
+        isLatest: true,
+        approvalCode: true,
+      },
+    })
 
-    return NextResponse.json({ message: '삭제되었습니다' })
+    if (!approval) {
+      return NextResponse.json(
+        { error: '품의서를 찾을 수 없습니다' },
+        { status: 404 }
+      )
+    }
+
+    const chainRootId = approval.originalId || approval.id
+    const currentVersion = approval.version || 1
+
+    // 트랜잭션으로 처리
+    await prisma.$transaction(async (tx) => {
+      // 1. 이전 버전 찾기 (같은 체인에서 version - 1)
+      if (currentVersion > 1 && approval.isLatest) {
+        const previousVersion = await tx.salesApproval.findFirst({
+          where: {
+            OR: [
+              { id: chainRootId, version: currentVersion - 1 },
+              { originalId: chainRootId, version: currentVersion - 1 },
+            ],
+          },
+        })
+
+        if (previousVersion) {
+          // 이전 버전을 최신으로 변경
+          await tx.salesApproval.update({
+            where: { id: previousVersion.id },
+            data: { isLatest: true },
+          })
+        }
+      }
+
+      // 2. 현재 품의서의 아이템들 삭제 (단순 복사 방식: approvalId = 현재 품의서 ID)
+      await tx.salesApprovalItem.deleteMany({
+        where: { approvalId: id },
+      })
+
+      await tx.salesApprovalPurchaseItem.deleteMany({
+        where: { approvalId: id },
+      })
+
+      // 3. 해당 품의서의 InvoiceRecord 삭제 (PENDING 상태만)
+      // 실제 발행된 기록(ISSUED)은 유지
+      await tx.invoiceRecord.deleteMany({
+        where: {
+          approvalId: id,
+          status: 'PENDING',
+        },
+      })
+
+      // 4. 품의서 삭제
+      await tx.salesApproval.delete({ where: { id } })
+    })
+
+    const message = currentVersion > 1
+      ? `버전 ${currentVersion}이 삭제되고 이전 버전으로 복원되었습니다`
+      : '삭제되었습니다'
+
+    return NextResponse.json({ message })
   } catch (error) {
     console.error('품의서 삭제 오류:', error)
     return NextResponse.json(

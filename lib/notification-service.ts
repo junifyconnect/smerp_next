@@ -129,152 +129,21 @@ export async function sendApprovalRejectedNotification(params: ApprovalStatusPar
 /**
  * MA 만료 알림 체크 및 발송
  * - cron job에서 매일 실행
+ * TODO: MA 계약 모델 구현 후 활성화
  */
 export async function checkAndSendMAExpiringNotifications() {
-  const rules = getScheduledRules().filter(r => r.type === 'MA_EXPIRING')
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  for (const rule of rules) {
-    if (rule.condition.daysBeforeExpiry === undefined) continue
-
-    // 만료일 계산
-    const targetDate = new Date(today)
-    targetDate.setDate(targetDate.getDate() + rule.condition.daysBeforeExpiry)
-
-    // 해당 만료일에 해당하는 MA 계약 조회
-    // TODO: MA 모델 구조에 맞게 수정 필요
-    const maContracts = await prisma.mAContract.findMany({
-      where: {
-        endDate: {
-          gte: targetDate,
-          lt: new Date(targetDate.getTime() + 24 * 60 * 60 * 1000),
-        },
-        status: 'ACTIVE',
-      },
-      include: {
-        manager: true, // 담당자 정보
-      },
-    })
-
-    for (const ma of maContracts) {
-      if (!ma.managerId) continue
-
-      // 이미 같은 알림이 있는지 확인 (중복 방지)
-      const existingNotification = await prisma.notification.findFirst({
-        where: {
-          userId: ma.managerId,
-          relatedId: ma.id,
-          relatedType: 'ma',
-          type: rule.type,
-          createdAt: {
-            gte: today,
-          },
-        },
-      })
-
-      if (existingNotification) continue
-
-      const { title, message } = renderTemplate(rule.template, {
-        customerName: ma.customerName || '고객사',
-      })
-
-      const linkUrl = rule.link ? renderUrl(rule.link.urlPattern, { id: ma.id }) : undefined
-
-      await prisma.notification.create({
-        data: {
-          userId: ma.managerId,
-          type: rule.type,
-          title,
-          message,
-          linkUrl,
-          linkType: rule.link?.type,
-          relatedId: ma.id,
-          relatedType: 'ma',
-        },
-      })
-    }
-  }
+  // TODO: MA 계약 모델이 구현되면 활성화
+  console.log('MA 만료 알림 체크: 모델 구현 필요')
 }
 
 /**
  * 결제일 알림 체크 및 발송
  * - cron job에서 매일 실행
+ * TODO: 결제 관리 기능 구현 후 활성화
  */
 export async function checkAndSendPaymentDueNotifications() {
-  const rules = getScheduledRules().filter(r => r.type === 'PAYMENT_DUE')
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  for (const rule of rules) {
-    let targetDate: Date
-
-    if (rule.condition.daysBeforeDue !== undefined) {
-      // N일 전
-      targetDate = new Date(today)
-      targetDate.setDate(targetDate.getDate() + rule.condition.daysBeforeDue)
-    } else if (rule.condition.daysAfterDue !== undefined) {
-      // N일 후 (연체)
-      targetDate = new Date(today)
-      targetDate.setDate(targetDate.getDate() - rule.condition.daysAfterDue)
-    } else {
-      continue
-    }
-
-    // 해당 결제일에 해당하는 미결제 건 조회
-    // TODO: 실제 계산서/결제 모델 구조에 맞게 수정 필요
-    const invoices = await prisma.salesInvoiceStatus.findMany({
-      where: {
-        paymentDueDate: {
-          gte: targetDate,
-          lt: new Date(targetDate.getTime() + 24 * 60 * 60 * 1000),
-        },
-        isPaid: false,
-      },
-      include: {
-        manager: true,
-      },
-    })
-
-    for (const invoice of invoices) {
-      if (!invoice.managerId) continue
-
-      // 중복 방지
-      const existingNotification = await prisma.notification.findFirst({
-        where: {
-          userId: invoice.managerId,
-          relatedId: invoice.id,
-          relatedType: 'invoice',
-          type: rule.type,
-          createdAt: {
-            gte: today,
-          },
-        },
-      })
-
-      if (existingNotification) continue
-
-      const { title, message } = renderTemplate(rule.template, {
-        customerName: invoice.customerName || '고객사',
-        amount: invoice.totalAmount?.toLocaleString() || '0',
-      })
-
-      const linkUrl = rule.link ? renderUrl(rule.link.urlPattern, { id: invoice.id }) : undefined
-
-      await prisma.notification.create({
-        data: {
-          userId: invoice.managerId,
-          type: rule.type,
-          title,
-          message,
-          linkUrl,
-          linkType: rule.link?.type,
-          relatedId: invoice.id,
-          relatedType: 'invoice',
-        },
-      })
-    }
-  }
+  // TODO: 결제 관리 기능이 구현되면 활성화
+  console.log('결제일 알림 체크: 기능 구현 필요')
 }
 
 /**

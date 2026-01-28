@@ -79,31 +79,58 @@ export default function NewMAApprovalPage() {
     return { salesTotal, purchaseTotal, margin, marginRate }
   }
 
-  // 엑셀 업로드 핸들러
+  // 엑셀 업로드 핸들러 - 파싱만 하고 폼에 채움
   const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     setUploading(true)
     try {
-      const formData = new FormData()
-      formData.append('file', file)
+      const formDataObj = new FormData()
+      formDataObj.append('file', file)
 
-      const response = await fetch('/api/ma-approvals/upload', {
+      const response = await fetch('/api/ma-approvals/parse', {
         method: 'POST',
-        body: formData,
+        body: formDataObj,
       })
 
       if (response.ok) {
         const data = await response.json()
-        router.push(`/ma/approvals/${data.id}`)
+
+        // 폼 데이터 채우기
+        setFormData(prev => ({
+          ...prev,
+          approvalDate: data.approvalDate ? data.approvalDate.split('T')[0] : prev.approvalDate,
+          managerName: data.managerName || prev.managerName,
+          notes: data.notes || '',
+        }))
+
+        // 품목 데이터 채우기
+        if (data.items && data.items.length > 0) {
+          setItems(data.items.map((item: MAApprovalItem) => ({
+            smCode: item.smCode || '',
+            vendorCode: item.vendorCode || '',
+            clientCompany: item.clientCompany || '',
+            salesCompany: item.salesCompany || '',
+            salesPrice: item.salesPrice || 0,
+            quantity: item.quantity || 1,
+            salesBillingType: item.salesBillingType || '일시불',
+            startDate: item.startDate ? String(item.startDate).split('T')[0] : '',
+            endDate: item.endDate ? String(item.endDate).split('T')[0] : '',
+            purchaseCompany: item.purchaseCompany || '',
+            purchasePrice: item.purchasePrice || 0,
+            purchaseBillingType: item.purchaseBillingType || '총(월간)',
+          })))
+        }
+
+        alert('엑셀 데이터를 불러왔습니다. 확인 후 저장해주세요.')
       } else {
         const error = await response.json()
-        alert(`업로드 실패: ${error.error || '알 수 없는 오류'}`)
+        alert(`파싱 실패: ${error.error || '알 수 없는 오류'}`)
       }
     } catch (err) {
-      console.error('업로드 실패:', err)
-      alert('업로드 중 오류가 발생했습니다.')
+      console.error('파싱 실패:', err)
+      alert('파일 처리 중 오류가 발생했습니다.')
     } finally {
       setUploading(false)
       if (fileInputRef.current) {

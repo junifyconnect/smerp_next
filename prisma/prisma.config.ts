@@ -11,4 +11,7 @@ export default defineConfig({
   datasource: {
     url: process.env.DATABASE_URL || 'postgresql://jangjingang@localhost:5432/smerp',
   },
+  migrations: {
+    seed: 'npx tsx ./prisma/seed.ts',
+  },
 })

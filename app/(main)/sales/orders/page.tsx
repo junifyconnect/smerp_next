@@ -129,46 +129,46 @@ export default function SalesOrdersPage() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">발주번호</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">상태</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">매입처</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">담당자</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">공급가</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">VAT포함</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">발주일</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">품목수</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">발주번호</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">상태</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">매입처</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">담당자</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">공급가</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">VAT포함</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">발주일</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-600">품목수</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-100">
               {orders.map((order) => {
                 const statusInfo = statusLabels[order.status] || { label: order.status, color: 'bg-gray-100 text-gray-700' }
                 return (
                   <tr key={order.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       <Link
                         href={`/sales/orders/${order.id}`}
-                        className="text-blue-600 hover:underline font-medium"
+                        className="text-sm text-blue-600 hover:underline font-medium"
                       >
                         {order.orderNumber}
                       </Link>
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusInfo.color}`}>
+                    <td className="px-4 py-2">
+                      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusInfo.color}`}>
                         {statusInfo.label}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{order.vendorCompany || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{order.managerName || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-right font-medium">
+                    <td className="px-4 py-2 text-sm text-gray-900">{order.vendorCompany || '-'}</td>
+                    <td className="px-4 py-2 text-sm text-gray-600">{order.managerName || '-'}</td>
+                    <td className="px-4 py-2 text-sm text-right font-medium">
                       {Number(order.totalAmount || 0).toLocaleString()}원
                     </td>
-                    <td className="px-4 py-3 text-sm text-right text-gray-600">
+                    <td className="px-4 py-2 text-sm text-right text-gray-600">
                       {Number(order.totalWithVat || 0).toLocaleString()}원
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
+                    <td className="px-4 py-2 text-sm text-gray-600">
                       {order.orderDate ? new Date(order.orderDate).toLocaleDateString('ko-KR') : '-'}
                     </td>
-                    <td className="px-4 py-3 text-sm text-center text-gray-600">
+                    <td className="px-4 py-2 text-sm text-center text-gray-600">
                       {order.items?.length || 0}
                     </td>
                   </tr>

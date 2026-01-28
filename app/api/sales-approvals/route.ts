@@ -5,23 +5,53 @@ import { auth } from '@/lib/auth'
 // GET /api/sales-approvals - 목록 조회
 export async function GET(request: NextRequest) {
   try {
+    const session = await auth()
+    const currentUserId = session?.user?.id
+
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const status = searchParams.get('status')
     const search = searchParams.get('search')
+    const includeAllVersions = searchParams.get('allVersions') === 'true'
 
+    // DRAFT는 작성자 본인만, 나머지는 모두 볼 수 있음
+    // status 필터가 DRAFT면 본인 것만, 아니면 DRAFT 제외 + 해당 status
     const where: Record<string, unknown> = {}
 
-    if (status) {
+    // 기본적으로 최신 버전만 조회 (allVersions=true면 모든 버전)
+    // isLatest가 true이거나 null(기존 데이터)인 경우 조회, false만 제외
+    if (!includeAllVersions) {
+      where.isLatest = { not: false }
+    }
+
+    if (status === 'DRAFT') {
+      // DRAFT 조회 시 본인 것만
+      where.status = 'DRAFT'
+      if (currentUserId) {
+        where.createdById = currentUserId
+      }
+    } else if (status) {
+      // 특정 상태 조회 (DRAFT가 아닌 상태)
       where.status = status
+    } else {
+      // 전체 조회: DRAFT가 아니거나, DRAFT면서 본인 것
+      where.OR = [
+        { status: { not: 'DRAFT' } },
+        ...(currentUserId ? [{ status: 'DRAFT', createdById: currentUserId }] : []),
+      ]
     }
 
     if (search) {
-      where.OR = [
-        { approvalNumber: { contains: search, mode: 'insensitive' } },
-        { approvalCode: { contains: search, mode: 'insensitive' } },
-        { clientCompany: { contains: search, mode: 'insensitive' } },
+      // 검색어가 있으면 AND 조건으로 추가
+      where.AND = [
+        {
+          OR: [
+            { approvalNumber: { contains: search, mode: 'insensitive' } },
+            { approvalCode: { contains: search, mode: 'insensitive' } },
+            { clientCompany: { contains: search, mode: 'insensitive' } },
+          ],
+        },
       ]
     }
 
@@ -215,7 +245,7 @@ export async function POST(request: NextRequest) {
           for (const item of (product.items || [])) {
             if (item.purchaseUnitPrice > 0 || item.vendorCompany) {
               newPurchaseItems.push({
-                productName: product.name || '제품',
+                productName: item.description || item.partNumber || '품목', // 개별 품목명 사용
                 partNumber: item.partNumber,
                 description: item.description,
                 quantity: item.quantity || 1,
@@ -295,7 +325,7 @@ export async function POST(request: NextRequest) {
       }
       const details = item.details || []
       return {
-        productName: isConsolidatedSales && index === 0 && consolidatedSalesName
+                productName: isConsolidatedSales && index === 0 && consolidatedSalesName
           ? consolidatedSalesName
           : (item.productName || '제품'),
         sortOrder: item.sortOrder ?? index,
@@ -383,7 +413,7 @@ export async function POST(request: NextRequest) {
       // 디테일이 없거나 productName에 '일괄'이 포함되어 있으면 통합으로 간주
       const isConsolidated = details.length === 0 || (item.productName || '').includes('일괄')
       return {
-        productName: item.productName || '제품',
+                productName: item.productName || '제품',
         sortOrder: item.sortOrder ?? index,
         quantity: qty,
         unitPrice: price,

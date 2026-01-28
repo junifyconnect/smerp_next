@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { auth } from '@/lib/auth'
 
 // 품목 타입
 interface ItemInput {
@@ -26,17 +27,38 @@ interface ProductInput {
 // GET /api/sales-quotes - 목록 조회
 export async function GET(request: NextRequest) {
   try {
+    const session = await auth()
+    const currentUserId = session?.user?.id
+
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const status = searchParams.get('status')
     const search = searchParams.get('search')
     const dealId = searchParams.get('dealId')
+    const includeAllVersions = searchParams.get('allVersions') === 'true'
 
     const where: Record<string, unknown> = {}
 
-    if (status) {
+    // 기본적으로 최신 버전만 조회
+    if (!includeAllVersions) {
+      where.isLatest = { not: false }
+    }
+
+    // DRAFT는 작성자 본인만, 나머지는 모두 볼 수 있음
+    if (status === 'DRAFT') {
+      where.status = 'DRAFT'
+      if (currentUserId) {
+        where.createdById = currentUserId
+      }
+    } else if (status) {
       where.status = status
+    } else {
+      // 전체 조회: DRAFT가 아니거나, DRAFT면서 본인 것
+      where.OR = [
+        { status: { not: 'DRAFT' } },
+        ...(currentUserId ? [{ status: 'DRAFT', createdById: currentUserId }] : []),
+      ]
     }
 
     if (dealId) {
@@ -44,10 +66,15 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      where.OR = [
-        { productName: { contains: search, mode: 'insensitive' } },
-        { projectName: { contains: search, mode: 'insensitive' } },
-        { clientCompany: { contains: search, mode: 'insensitive' } },
+      // 검색어가 있으면 AND 조건으로 추가
+      where.AND = [
+        {
+          OR: [
+            { productName: { contains: search, mode: 'insensitive' } },
+            { projectName: { contains: search, mode: 'insensitive' } },
+            { clientCompany: { contains: search, mode: 'insensitive' } },
+          ],
+        },
       ]
     }
 
@@ -85,6 +112,9 @@ export async function GET(request: NextRequest) {
 // POST /api/sales-quotes - 생성
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth()
+    const createdById = session?.user?.id
+
     const body = await request.json()
     const {
       projectName,
@@ -186,6 +216,7 @@ export async function POST(request: NextRequest) {
       const quote = await prisma.salesQuote.create({
         data: {
           deal: { connect: { id: deal.id } },
+          ...(createdById && { createdBy: { connect: { id: createdById } } }),
           projectName,
           managerName,
           clientCompany,
@@ -280,6 +311,7 @@ export async function POST(request: NextRequest) {
       const quote = await prisma.salesQuote.create({
         data: {
           deal: { connect: { id: deal.id } },
+          ...(createdById && { createdBy: { connect: { id: createdById } } }),
           projectName,
           managerName,
           clientCompany,

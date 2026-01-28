@@ -1,23 +1,23 @@
-import NextAuth from 'next-auth'
-import Credentials from 'next-auth/providers/credentials'
-import bcrypt from 'bcryptjs'
-import prisma from '@/lib/db'
+import NextAuth from "next-auth";
+import Credentials from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
+import prisma from "@/lib/db";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
-      name: 'credentials',
+      name: "credentials",
       credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' },
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          return null
+          return null;
         }
 
-        const email = credentials.email as string
-        const password = credentials.password as string
+        const email = credentials.email as string;
+        const password = credentials.password as string;
 
         const user = await prisma.user.findUnique({
           where: { email },
@@ -26,20 +26,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               include: { role: true },
             },
           },
-        })
+        });
 
         if (!user || !user.passwordHash) {
-          return null
+          return null;
         }
 
         if (!user.isActive) {
-          
-          throw new Error('비활성화된 계정입니다')
+          throw new Error("비활성화된 계정입니다");
         }
 
-        const isPasswordValid = await bcrypt.compare(password, user.passwordHash)
+        const isPasswordValid = await bcrypt.compare(
+          password,
+          user.passwordHash,
+        );
         if (!isPasswordValid) {
-          return null
+          return null;
         }
 
         return {
@@ -49,36 +51,36 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           department: user.department ?? undefined,
           position: user.position ?? undefined,
           roles: user.roles.map((r) => r.role.name),
-        }
+        };
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id
-        token.department = user.department
-        token.position = user.position
-        token.roles = user.roles
+        token.id = user.id;
+        token.department = user.department;
+        token.position = user.position;
+        token.roles = user.roles;
       }
-      return token
+      return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string
-        session.user.department = token.department as string | undefined
-        session.user.position = token.position as string | undefined
-        session.user.roles = token.roles as string[] | undefined
+        session.user.id = token.id as string;
+        session.user.department = token.department as string | undefined;
+        session.user.position = token.position as string | undefined;
+        session.user.roles = token.roles as string[] | undefined;
       }
-      return session
+      return session;
     },
   },
   pages: {
-    signIn: '/login',
-    error: '/login',
+    signIn: "/login",
+    error: "/login",
   },
   session: {
-    strategy: 'jwt',
+    strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30일
   },
-})
+});

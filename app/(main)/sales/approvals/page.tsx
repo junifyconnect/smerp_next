@@ -138,44 +138,44 @@ export default function SalesApprovalsPage() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">품의코드</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">고객사</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">담당자</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">매출(VAT포함)</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">매입</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">상태</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">작성일</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">품의코드</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">고객사</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">담당자</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">매출(VAT포함)</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-600">매입</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-600">상태</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-600">작성일</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-100">
               {approvals.map((approval) => (
                 <tr key={approval.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-2">
                     <Link
                       href={`/sales/approvals/${approval.id}`}
-                      className="text-blue-600 hover:text-blue-800 font-medium"
+                      className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                     >
                       {approval.approvalCode || approval.approvalNumber}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900">
+                  <td className="px-4 py-2 text-sm text-gray-900">
                     {approval.clientCompany || '-'}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                  <td className="px-4 py-2 text-sm text-gray-600">
                     {approval.managerName || '-'}
                   </td>
-                  <td className="px-4 py-3 text-sm text-right font-medium">
+                  <td className="px-4 py-2 text-sm text-right font-medium">
                     {approval.totalWithVat?.toLocaleString() || 0}원
                   </td>
-                  <td className="px-4 py-3 text-sm text-right text-gray-600">
+                  <td className="px-4 py-2 text-sm text-right text-gray-600">
                     {approval.purchaseTotal?.toLocaleString() || 0}원
                   </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusLabels[approval.status]?.color || 'bg-gray-100'}`}>
+                  <td className="px-4 py-2 text-center">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusLabels[approval.status]?.color || 'bg-gray-100'}`}>
                       {statusLabels[approval.status]?.label || approval.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-center text-gray-500">
+                  <td className="px-4 py-2 text-sm text-center text-gray-500">
                     {new Date(approval.createdAt).toLocaleDateString('ko-KR')}
                   </td>
                 </tr>

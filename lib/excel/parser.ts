@@ -123,10 +123,20 @@ function getCellValue(sheet: ExcelJS.Worksheet, address: string): string {
   if (value === null || value === undefined) return ''
   if (typeof value === 'string') return value.trim()
   if (typeof value === 'number') return value.toString()
-  if (value instanceof Date) return value.toISOString()
+  if (value instanceof Date) {
+    // Invalid Date 체크
+    if (isNaN(value.getTime())) return ''
+    return value.toISOString()
+  }
   if (typeof value === 'object') {
     if ('result' in value && value.result !== undefined) {
-      return String(value.result)
+      const result = value.result
+      // result가 Invalid Date인 경우 빈 문자열 반환
+      if (result instanceof Date && isNaN(result.getTime())) return ''
+      const str = String(result)
+      // "Invalid Date" 문자열도 빈 값으로 처리
+      if (str === 'Invalid Date') return ''
+      return str
     }
     if ('text' in value && value.text) {
       return String(value.text).trim()

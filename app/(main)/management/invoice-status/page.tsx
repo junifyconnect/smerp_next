@@ -1,92 +1,116 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import { useState, useEffect, useCallback } from 'react'
 
-interface SalesItem {
+interface InvoiceItem {
   id: string
-  approvalCode: string
+  approvalId: string
+  itemId?: string | null  // 원본 아이템 ID
+  approvalCode: string | null
+  approvalVersion: number
+  approvalDate: string | null
+  clientCompany?: string
+  vendorCompany?: string
+  managerName?: string
+
+  // 아이템 정보
   partNumber: string | null
-  itemName: string | null
-  clientCompany: string | null
-  quantity: number | null
+  productName: string
+  description?: string
+  quantity: number
   unitPrice: number
   totalPrice: number
+  isConsolidated?: boolean  // optional - InvoiceRecord에는 없음
+  purchaseDate?: string
+  invoiceNumber?: string | null  // 세금계산서 번호
+
+  // 계산서 발행 상태
+  invoiceStatus: string // PENDING, ISSUED, AMENDMENT_NEEDED, AMENDED, CANCELLATION_NEEDED, CANCELLED
   invoiceDate: string | null
-  invoiceGroupId: string | null
+  invoiceRemarks: string | null
+
+  createdAt?: string
 }
 
-interface PurchaseItem {
-  id: string
-  approvalCode: string
-  partNumber: string | null
-  itemName: string | null
-  vendorCompany: string | null
-  quantity: number | null
-  unitPrice: number
+interface Summary {
   totalPrice: number
-  invoiceDate: string | null
-  invoiceGroupId: string | null
+  count: number
+  byInvoiceStatus: Record<string, number>
+  byVendorCompany?: Record<string, number>
 }
 
 type TabType = 'sales' | 'purchase'
-type ViewType = 'unissued' | 'issued'
+
+const invoiceStatusLabels: Record<string, { label: string; color: string }> = {
+  PENDING: { label: '미발행', color: 'bg-orange-100 text-orange-700' },
+  ISSUED: { label: '발행완료', color: 'bg-green-100 text-green-700' },
+  AMENDMENT_NEEDED: { label: '수정필요', color: 'bg-yellow-100 text-yellow-800' },
+  AMENDED: { label: '수정발행', color: 'bg-purple-100 text-purple-700' },
+  CANCELLATION_NEEDED: { label: '취소필요', color: 'bg-pink-100 text-pink-700' },
+  CANCELLED: { label: '취소완료', color: 'bg-red-100 text-red-700' },
+}
 
 export default function InvoiceStatusPage() {
   const [activeTab, setActiveTab] = useState<TabType>('sales')
-  const [activeView, setActiveView] = useState<ViewType>('unissued')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const [salesItems, setSalesItems] = useState<SalesItem[]>([])
-  const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([])
+  const [salesItems, setSalesItems] = useState<InvoiceItem[]>([])
+  const [purchaseItems, setPurchaseItems] = useState<InvoiceItem[]>([])
+  const [salesSummary, setSalesSummary] = useState<Summary | null>(null)
+  const [purchaseSummary, setPurchaseSummary] = useState<Summary | null>(null)
+
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [filterInvoiceStatus, setFilterInvoiceStatus] = useState<string>('')
   const [batchDate, setBatchDate] = useState(() => {
     const today = new Date()
     return today.toISOString().split('T')[0]
   })
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
+      const params = new URLSearchParams({ limit: '500' })
+      if (filterInvoiceStatus) params.set('invoiceStatus', filterInvoiceStatus)
+
       const [salesRes, purchaseRes] = await Promise.all([
-        fetch('/api/management/sales-invoice-status?limit=500'),
-        fetch('/api/management/purchase-invoice-status?limit=500'),
+        fetch(`/api/management/sales-invoice-status?${params}`),
+        fetch(`/api/management/purchase-invoice-status?${params}`),
       ])
 
       const salesJson = await salesRes.json()
       const purchaseJson = await purchaseRes.json()
 
-      if (salesRes.ok) setSalesItems(salesJson.items || [])
-      if (purchaseRes.ok) setPurchaseItems(purchaseJson.items || [])
+      if (salesRes.ok) {
+        setSalesItems(salesJson.items || [])
+        setSalesSummary(salesJson.summary || null)
+      }
+      if (purchaseRes.ok) {
+        setPurchaseItems(purchaseJson.items || [])
+        setPurchaseSummary(purchaseJson.summary || null)
+      }
     } catch (err) {
       setError(String(err))
     } finally {
       setLoading(false)
     }
-  }
+  }, [filterInvoiceStatus])
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [fetchData])
 
   useEffect(() => {
     setSelectedIds(new Set())
-  }, [activeTab, activeView])
+  }, [activeTab, filterInvoiceStatus])
 
-  const allItems = activeTab === 'sales' ? salesItems : purchaseItems
-  const unissuedItems = allItems.filter((item) => !item.invoiceDate)
-  const issuedItems = allItems.filter((item) => !!item.invoiceDate)
-  const currentItems = activeView === 'unissued' ? unissuedItems : issuedItems
+  const currentItems = activeTab === 'sales' ? salesItems : purchaseItems
+  const currentSummary = activeTab === 'sales' ? salesSummary : purchaseSummary
 
-  // 미발행: 품의코드 기준 정렬, 발행완료: 계산서그룹 기준 정렬
+  // 품의코드 기준 정렬
   const sortedItems = [...currentItems].sort((a, b) => {
-    if (activeView === 'unissued') {
-      return (a.approvalCode || '').localeCompare(b.approvalCode || '')
-    } else {
-      return (a.invoiceGroupId || '').localeCompare(b.invoiceGroupId || '')
-    }
+    return (a.approvalCode || '').localeCompare(b.approvalCode || '')
   })
 
   const toggleSelection = (id: string) => {
@@ -106,74 +130,39 @@ export default function InvoiceStatusPage() {
     }
   }
 
-  const generateGroupId = () => {
-    const prefix = activeTab === 'sales' ? 'S' : 'P'
-    const today = new Date()
-    const yy = String(today.getFullYear()).slice(-2)
-    const mm = String(today.getMonth() + 1).padStart(2, '0')
-    const dd = String(today.getDate()).padStart(2, '0')
-    const dateStr = `${yy}${mm}${dd}`
-
-    const items = activeTab === 'sales' ? salesItems : purchaseItems
-    const todayGroups = items
-      .filter(item => item.invoiceGroupId?.startsWith(`INV-${prefix}-${dateStr}`))
-      .map(item => item.invoiceGroupId)
-
-    let seq = 1
-    if (todayGroups.length > 0) {
-      const maxSeq = Math.max(...todayGroups.map(g => parseInt(g?.split('-')[3] || '0')))
-      seq = maxSeq + 1
-    }
-
-    return `INV-${prefix}-${dateStr}-${String(seq).padStart(3, '0')}`
-  }
-
-  const handleIssue = async () => {
-    const ids = Array.from(selectedIds)
-    if (ids.length === 0 || !batchDate) return
-
-    try {
-      const apiPath = activeTab === 'sales'
-        ? '/api/management/sales-invoice-status'
-        : '/api/management/purchase-invoice-status'
-
-      const groupId = generateGroupId()
-
-      await Promise.all(ids.map(id =>
-        fetch(`${apiPath}/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ invoiceDate: batchDate, invoiceGroupId: groupId }),
-        })
-      ))
-
-      alert(`${ids.length}건 발행 완료\n계산서: ${groupId}`)
-      setSelectedIds(new Set())
-      fetchData()
-    } catch (err) {
-      alert(String(err))
-    }
-  }
-
-  const handleCancel = async () => {
+  const handleUpdateStatus = async (status: string) => {
     const ids = Array.from(selectedIds)
     if (ids.length === 0) return
-    if (!confirm(`${ids.length}건의 발행을 취소하시겠습니까?`)) return
+
+    const statusLabel = invoiceStatusLabels[status]?.label || status
+    if (!confirm(`${ids.length}건을 "${statusLabel}" 상태로 변경하시겠습니까?`)) return
 
     try {
       const apiPath = activeTab === 'sales'
         ? '/api/management/sales-invoice-status'
         : '/api/management/purchase-invoice-status'
 
-      await Promise.all(ids.map(id =>
-        fetch(`${apiPath}/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ invoiceDate: null, invoiceGroupId: null }),
-        })
-      ))
+      const body: Record<string, unknown> = { ids, invoiceStatus: status }
 
-      alert(`${ids.length}건 발행 취소 완료`)
+      // 발행완료 상태로 변경 시 발행일도 설정
+      if (status === 'ISSUED' || status === 'AMENDED') {
+        body.invoiceDate = batchDate
+      }
+      // 취소 시 발행일 제거
+      if (status === 'CANCELLED') {
+        body.invoiceDate = null
+      }
+
+      const res = await fetch(apiPath, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!res.ok) throw new Error('업데이트 실패')
+
+      const result = await res.json()
+      alert(result.message)
       setSelectedIds(new Set())
       fetchData()
     } catch (err) {
@@ -187,7 +176,7 @@ export default function InvoiceStatusPage() {
   }
 
   const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return ''
+    if (!dateStr) return '-'
     const date = new Date(dateStr)
     const yy = String(date.getFullYear()).slice(-2)
     const mm = String(date.getMonth() + 1).padStart(2, '0')
@@ -195,13 +184,11 @@ export default function InvoiceStatusPage() {
     return `${yy}.${mm}.${dd}`
   }
 
-  // rowSpan 계산 (미발행: 품의코드, 발행완료: 계산서그룹)
-  const getRowSpanInfo = (items: (SalesItem | PurchaseItem)[]) => {
+  // rowSpan 계산 (품의코드 기준)
+  const getRowSpanInfo = (items: InvoiceItem[]) => {
     const rowSpanMap = new Map<string, { count: number; firstIndex: number }>()
     items.forEach((item, index) => {
-      const key = activeView === 'unissued'
-        ? (item.approvalCode || 'UNKNOWN')
-        : (item.invoiceGroupId || 'UNKNOWN')
+      const key = item.approvalCode || 'UNKNOWN'
       if (!rowSpanMap.has(key)) {
         rowSpanMap.set(key, { count: 1, firstIndex: index })
       } else {
@@ -213,21 +200,14 @@ export default function InvoiceStatusPage() {
 
   const rowSpanMap = getRowSpanInfo(sortedItems)
 
-  // 그룹 색상 (발행완료 뷰)
-  const groupColors = ['bg-emerald-50', 'bg-sky-50', 'bg-amber-50', 'bg-rose-50', 'bg-violet-50', 'bg-orange-50']
-  const getGroupColor = (groupId: string | null) => {
-    if (!groupId || activeView === 'unissued') return ''
-    const uniqueGroups = [...new Set(sortedItems.map(i => i.invoiceGroupId).filter(Boolean))]
-    const index = uniqueGroups.indexOf(groupId)
-    return groupColors[index % groupColors.length]
-  }
-
   return (
     <div className="space-y-4">
       {/* 헤더 */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">계산서 발행현황</h1>
-        <p className="text-gray-500 mt-1">매출/매입 계산서 발행 관리</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">계산서 발행현황</h1>
+          <p className="text-gray-500 mt-1">품의서 승인 후 계산서 발행 관리</p>
+        </div>
       </div>
 
       {/* 메인 탭: 매출/매입 */}
@@ -264,83 +244,85 @@ export default function InvoiceStatusPage() {
         </button>
       </div>
 
+      {/* 요약 카드 - 발행상태별 */}
+      {currentSummary && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {Object.entries(invoiceStatusLabels).map(([key, { label, color }]) => (
+            <div
+              key={key}
+              onClick={() => setFilterInvoiceStatus(filterInvoiceStatus === key ? '' : key)}
+              className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                filterInvoiceStatus === key
+                  ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${color.replace('text-', 'bg-').split(' ')[0]}`} />
+                <span className="text-sm text-gray-600">{label}</span>
+              </div>
+              <div className="text-xl font-bold mt-1">
+                {currentSummary.byInvoiceStatus[key] || 0}건
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 총 금액 */}
+      {currentSummary && (
+        <div className="bg-gray-50 rounded-lg p-4 border">
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600">총 금액 ({currentSummary.count}건)</span>
+            <span className="text-2xl font-bold text-gray-900">
+              {formatNumber(currentSummary.totalPrice)}원
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* 컨텐츠 */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        {/* 서브 탭: 미발행/발행완료 */}
-        <div className="flex border-b border-gray-200">
-          <button
-            onClick={() => setActiveView('unissued')}
-            className="flex-1 px-4 py-3 text-sm font-medium transition-colors"
-            style={activeView === 'unissued' ? {
-              backgroundColor: activeTab === 'sales' ? '#eff6ff' : '#faf5ff',
-              color: activeTab === 'sales' ? '#1d4ed8' : '#7e22ce',
-              borderBottom: `2px solid ${activeTab === 'sales' ? '#2563eb' : '#9333ea'}`,
-            } : { color: '#6b7280' }}
-          >
-            미발행
-            <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-orange-100 text-orange-700">
-              {unissuedItems.length}
-            </span>
-          </button>
-          <button
-            onClick={() => setActiveView('issued')}
-            className="flex-1 px-4 py-3 text-sm font-medium transition-colors"
-            style={activeView === 'issued' ? {
-              backgroundColor: activeTab === 'sales' ? '#eff6ff' : '#faf5ff',
-              color: activeTab === 'sales' ? '#1d4ed8' : '#7e22ce',
-              borderBottom: `2px solid ${activeTab === 'sales' ? '#2563eb' : '#9333ea'}`,
-            } : { color: '#6b7280' }}
-          >
-            발행완료
-            <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">
-              {issuedItems.length}
-            </span>
-          </button>
-        </div>
-
         {/* 액션바 */}
         <div className={`flex items-center gap-4 p-4 border-b ${
           activeTab === 'sales' ? 'bg-blue-50/50' : 'bg-purple-50/50'
         }`}>
           <span className={`text-sm font-medium ${
-            selectedIds.size > 0
-              ? (activeView === 'issued' ? 'text-red-600' : (activeTab === 'sales' ? 'text-blue-700' : 'text-purple-700'))
-              : 'text-gray-400'
+            selectedIds.size > 0 ? 'text-blue-700' : 'text-gray-400'
           }`}>
             {selectedIds.size > 0 ? `${selectedIds.size}건 선택` : '품목을 선택하세요'}
           </span>
           <div className="flex-1" />
 
-          {activeView === 'unissued' && (
-            <>
-              <input
-                type="date"
-                value={batchDate}
-                onChange={(e) => setBatchDate(e.target.value)}
-                disabled={selectedIds.size === 0}
-                className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100"
-              />
-              <button
-                onClick={handleIssue}
-                disabled={selectedIds.size === 0 || !batchDate}
-                className={`px-4 py-1.5 text-white rounded-lg text-sm font-medium disabled:opacity-50 ${
-                  activeTab === 'sales' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-purple-600 hover:bg-purple-700'
-                }`}
-              >
-                발행등록
-              </button>
-            </>
-          )}
+          <input
+            type="date"
+            value={batchDate}
+            onChange={(e) => setBatchDate(e.target.value)}
+            disabled={selectedIds.size === 0}
+            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100"
+          />
 
-          {activeView === 'issued' && (
-            <button
-              onClick={handleCancel}
-              disabled={selectedIds.size === 0}
-              className="px-4 py-1.5 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 disabled:opacity-50"
-            >
-              발행취소
-            </button>
-          )}
+          <button
+            onClick={() => handleUpdateStatus('ISSUED')}
+            disabled={selectedIds.size === 0}
+            className="px-4 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+          >
+            발행완료
+          </button>
+          <button
+            onClick={() => handleUpdateStatus('AMENDED')}
+            disabled={selectedIds.size === 0}
+            className="px-4 py-1.5 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50"
+          >
+            수정발행
+          </button>
+          <button
+            onClick={() => handleUpdateStatus('CANCELLED')}
+            disabled={selectedIds.size === 0}
+            className="px-4 py-1.5 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 disabled:opacity-50"
+          >
+            취소발행
+          </button>
         </div>
 
         {loading && <div className="p-8 text-center text-gray-500">로딩 중...</div>}
@@ -348,18 +330,17 @@ export default function InvoiceStatusPage() {
 
         {!loading && sortedItems.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            <div className="text-4xl mb-2">{activeView === 'unissued' ? '✅' : '📋'}</div>
-            <p>{activeView === 'unissued' ? '미발행 항목이 없습니다' : '발행된 계산서가 없습니다'}</p>
+            <div className="text-4xl mb-2">📋</div>
+            <p>계산서 발행 대상이 없습니다</p>
+            <p className="text-sm mt-1">품의서가 승인되면 자동으로 표시됩니다</p>
           </div>
         ) : !loading && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="px-3 py-3 text-left font-medium text-gray-700">
-                    {activeView === 'unissued' ? '품의코드' : '계산서'}
-                  </th>
-                  <th className="px-2 py-3 text-center w-10">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">품의코드</th>
+                  <th className="px-2 py-2 text-center w-10">
                     <input
                       type="checkbox"
                       checked={selectedIds.size === sortedItems.length && sortedItems.length > 0}
@@ -367,28 +348,24 @@ export default function InvoiceStatusPage() {
                       className="w-4 h-4"
                     />
                   </th>
-                  <th className="px-3 py-3 text-left font-medium text-gray-700">P/N</th>
-                  <th className="px-3 py-3 text-left font-medium text-gray-700">품목명</th>
-                  <th className="px-3 py-3 text-left font-medium text-gray-700">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">품목명</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">
                     {activeTab === 'sales' ? '매출처' : '매입처'}
                   </th>
-                  <th className="px-3 py-3 text-right font-medium text-gray-700">수량</th>
-                  <th className="px-3 py-3 text-right font-medium text-gray-700">단가</th>
-                  <th className="px-3 py-3 text-right font-medium text-gray-700">합계</th>
-                  {activeView === 'issued' && (
-                    <th className="px-3 py-3 text-center font-medium text-green-700 bg-green-50">발행일</th>
-                  )}
+                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">수량</th>
+                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">단가</th>
+                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">합계</th>
+                  <th className="px-3 py-2 text-center text-xs font-medium text-gray-600">발행상태</th>
+                  <th className="px-3 py-2 text-center text-xs font-medium text-gray-600">발행일</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {sortedItems.map((item, index) => {
-                  const key = activeView === 'unissued'
-                    ? (item.approvalCode || 'UNKNOWN')
-                    : (item.invoiceGroupId || 'UNKNOWN')
+                  const key = item.approvalCode || 'UNKNOWN'
                   const spanInfo = rowSpanMap.get(key)!
                   const isFirstInGroup = spanInfo.firstIndex === index
                   const rowSpan = spanInfo.count
-                  const groupColor = getGroupColor(item.invoiceGroupId)
+                  const statusInfo = invoiceStatusLabels[item.invoiceStatus] || invoiceStatusLabels.PENDING
 
                   return (
                     <tr
@@ -396,35 +373,19 @@ export default function InvoiceStatusPage() {
                       onClick={() => toggleSelection(item.id)}
                       className={`cursor-pointer ${
                         selectedIds.has(item.id)
-                          ? (activeView === 'issued' ? 'bg-red-100 hover:bg-red-200' : 'bg-blue-100 hover:bg-blue-200')
-                          : groupColor
-                            ? `${groupColor} hover:brightness-95`
-                            : 'hover:bg-gray-50'
+                          ? 'bg-blue-100 hover:bg-blue-200'
+                          : 'hover:bg-gray-50'
                       }`}
                     >
                       {isFirstInGroup && (
                         <td
-                          className={`px-3 py-2 border-r border-gray-200 font-mono font-medium ${
-                            activeView === 'issued' ? 'bg-gray-50/80' : 'bg-gray-50/50'
-                          }`}
+                          className="px-3 py-2 border-r border-gray-200 font-mono font-medium bg-gray-50/50"
                           rowSpan={rowSpan}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {activeView === 'unissued' ? (
-                            <Link
-                              href="/sales/approvals"
-                              className="text-blue-600 hover:underline"
-                            >
-                              {item.approvalCode}
-                            </Link>
-                          ) : (
-                            <div>
-                              <div className="text-gray-800">{item.invoiceGroupId}</div>
-                              <div className="text-xs text-green-600 font-normal">
-                                {formatDate(item.invoiceDate)}
-                              </div>
-                            </div>
-                          )}
+                          <div className="text-blue-600">{item.approvalCode}</div>
+                          <div className="text-xs text-gray-400">v{item.approvalVersion}</div>
+                          <div className="text-xs text-gray-400">{formatDate(item.approvalDate)}</div>
                         </td>
                       )}
                       <td className="px-2 py-2 text-center" onClick={(e) => e.stopPropagation()}>
@@ -435,21 +396,29 @@ export default function InvoiceStatusPage() {
                           className="w-4 h-4"
                         />
                       </td>
-                      <td className="px-3 py-2 text-gray-600 truncate max-w-[100px]">{item.partNumber || '-'}</td>
-                      <td className="px-3 py-2 truncate max-w-[150px]">{item.itemName || '-'}</td>
-                      <td className="px-3 py-2 text-gray-600 truncate max-w-[120px]">
-                        {activeTab === 'sales'
-                          ? (item as SalesItem).clientCompany || '-'
-                          : (item as PurchaseItem).vendorCompany || '-'}
+                      <td className="px-3 py-2">
+                        <div className="truncate max-w-[200px] font-medium">{item.productName}</div>
+                        {item.partNumber && (
+                          <div className="text-xs text-gray-400 truncate">{item.partNumber}</div>
+                        )}
+                        {item.isConsolidated && (
+                          <span className="text-xs bg-gray-100 text-gray-500 px-1 rounded">통합</span>
+                        )}
                       </td>
-                      <td className="px-3 py-2 text-right">{item.quantity || '-'}</td>
+                      <td className="px-3 py-2 text-gray-600 truncate max-w-[120px]">
+                        {activeTab === 'sales' ? item.clientCompany : item.vendorCompany}
+                      </td>
+                      <td className="px-3 py-2 text-right">{item.quantity}</td>
                       <td className="px-3 py-2 text-right">{formatNumber(item.unitPrice)}</td>
                       <td className="px-3 py-2 text-right font-medium">{formatNumber(item.totalPrice)}</td>
-                      {activeView === 'issued' && (
-                        <td className="px-3 py-2 text-center bg-green-50/50 text-green-700 font-medium">
-                          {formatDate(item.invoiceDate)}
-                        </td>
-                      )}
+                      <td className="px-3 py-2 text-center">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}>
+                          {statusInfo.label}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-center text-gray-600">
+                        {formatDate(item.invoiceDate)}
+                      </td>
                     </tr>
                   )
                 })}

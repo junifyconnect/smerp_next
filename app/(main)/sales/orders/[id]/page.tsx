@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 
 interface OrderItem {
@@ -52,6 +53,8 @@ interface SalesOrder {
   vatAmount: number
   totalWithVat: number
   notes?: string
+  createdById?: string
+  createdBy?: { id: string; name: string }
   createdAt: string
   updatedAt: string
   items: OrderItem[]
@@ -77,6 +80,7 @@ const fileTypeLabels: Record<string, string> = {
 export default function SalesOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
+  const { data: session } = useSession()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [order, setOrder] = useState<SalesOrder | null>(null)
   const [loading, setLoading] = useState(true)
@@ -85,6 +89,9 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [versions, setVersions] = useState<OrderVersion[]>([])
   const [uploading, setUploading] = useState(false)
   const [creatingRevision, setCreatingRevision] = useState(false)
+
+  // 현재 로그인된 사용자가 작성자인지 확인
+  const isCreator = session?.user?.id && order?.createdById === session.user.id
 
   const fetchFiles = useCallback(async () => {
     try {
@@ -305,7 +312,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
             </svg>
             엑셀 다운로드
           </a>
-          {order.status === 'DRAFT' && (
+          {order.status === 'DRAFT' && isCreator && (
             <>
               <Link
                 href={`/sales/orders/${id}/edit`}
@@ -319,9 +326,12 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
               <button
                 onClick={() => handleStatusChange('SENT')}
                 disabled={updating}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
               >
-                발송
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                {updating ? '처리중...' : '발송하기'}
               </button>
             </>
           )}

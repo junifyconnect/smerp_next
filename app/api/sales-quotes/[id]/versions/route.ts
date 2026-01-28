@@ -5,7 +5,10 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
-// GET /api/sales-quotes/[id]/versions - 같은 Deal의 모든 버전 조회
+/**
+ * @deprecated 견적서는 버전 관리 기능 사용 안 함 (UI에서 제거됨)
+ * GET /api/sales-quotes/[id]/versions - 같은 원본의 모든 버전 조회
+ */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params
@@ -13,7 +16,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // 현재 견적서 조회
     const currentQuote = await prisma.salesQuote.findUnique({
       where: { id },
-      select: { dealId: true },
+      select: {
+        originalId: true,
+        version: true,
+      },
     })
 
     if (!currentQuote) {
@@ -23,13 +29,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    if (!currentQuote.dealId) {
-      return NextResponse.json({ versions: [], currentId: id })
-    }
+    // 같은 원본의 모든 버전 조회
+    // originalId가 있으면 그걸로, 없으면 현재 id로 (자기가 첫 버전)
+    const rootId = currentQuote.originalId || id
 
-    // 같은 Deal의 모든 견적서 조회 (생성일 역순)
     const versions = await prisma.salesQuote.findMany({
-      where: { dealId: currentQuote.dealId },
+      where: {
+        OR: [
+          { id: rootId },                    // 첫 버전
+          { originalId: rootId },            // 그 이후 버전들
+        ],
+      },
       select: {
         id: true,
         status: true,
@@ -38,30 +48,25 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         createdAt: true,
         projectName: true,
         clientCompany: true,
+        version: true,
+        isLatest: true,
         items: {
           take: 1,
           select: { description: true },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { version: 'desc' }, // 최신 버전 먼저
     })
 
-    // 버전 번호 계산 (생성 순서)
-    const sortedByCreation = [...versions].sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    )
-
-    const versionsWithNumber = versions.map((v) => ({
+    const versionsWithMeta = versions.map((v) => ({
       ...v,
-      version: sortedByCreation.findIndex((s) => s.id === v.id) + 1,
-      displayName: v.projectName || v.items[0]?.description || v.clientCompany || v.id.slice(0, 8),
+      displayName: v.projectName || v.items[0]?.description || v.clientCompany || `v${v.version}`,
       isCurrent: v.id === id,
     }))
 
     return NextResponse.json({
-      versions: versionsWithNumber,
+      versions: versionsWithMeta,
       currentId: id,
-      dealId: currentQuote.dealId,
       totalVersions: versions.length,
     })
   } catch (error) {
