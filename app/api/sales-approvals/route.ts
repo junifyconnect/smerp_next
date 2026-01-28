@@ -202,16 +202,36 @@ export async function POST(request: NextRequest) {
     // 매출 품목 결정: 최신 구조(products + standaloneItems) > 새 구조(salesItems) > 기존 구조(items) > 견적서 데이터
     let finalSalesItems: { partNumber?: string; productName?: string; quantity?: number; unitPrice?: number; details?: { partNumber?: string; description?: string; quantity?: number; sortOrder?: number }[]; sortOrder?: number }[] = []
     // 매입 품목도 함께 수집 (최신 구조에서)
-    let newPurchaseItems: { productName?: string; partNumber?: string; description?: string; quantity?: number; unitPrice?: number; vendorCompany?: string; sortOrder?: number }[] = []
+    // 매입 아이템 구조
+    // - 통합 매입: 아이템 1개 + 디테일 N개
+    // - 개별 매입: 아이템 N개 + 디테일 각 1개
+    let newPurchaseItems: {
+      productName?: string
+      quantity?: number
+      unitPrice?: number
+      vendorCompany?: string
+      isConsolidated?: boolean
+      salesItemIndex?: number       // 매출 제품 인덱스
+      salesItemDetailIndex?: number // 매출 품목 인덱스 (개별 매입 시)
+      sortOrder?: number
+      details?: {
+        partNumber?: string
+        description?: string
+        quantity?: number
+        sortOrder?: number
+      }[]
+    }[] = []
 
     if (products.length > 0 || standaloneItems.length > 0) {
       // 최신 구조: 제품(매출) + 품목(매입) 분리
       let salesIndex = 0
       let purchaseIndex = 0
 
-      // 제품에서 매출 품목 생성
+      // 제품에서 매출/매입 품목 생성
       for (const product of products) {
         if (product.name || product.salesUnitPrice > 0) {
+          const currentSalesIndex = salesIndex  // 현재 매출 아이템 인덱스 저장
+
           // 제품 → 매출 품목
           const productDetails = (product.items || []).map((item: { partNumber?: string; description?: string; quantity?: number }, dIdx: number) => ({
             partNumber: item.partNumber,
@@ -227,33 +247,54 @@ export async function POST(request: NextRequest) {
             details: productDetails,
           })
 
-          // 제품 레벨 매입 정보가 있으면 제품 자체를 매입 품목으로 추가 (일괄 매입)
-          if (product.purchaseUnitPrice > 0 || product.vendorCompany) {
+          const productItems = product.items || []
+          const hasProductLevelPurchase = product.purchaseUnitPrice > 0 || product.vendorCompany
+
+          if (hasProductLevelPurchase) {
+            // 통합 매입: 아이템 1개 + 디테일 N개
             newPurchaseItems.push({
               productName: product.name || '제품',
-              partNumber: '',
-              description: `${product.name || '제품'} 일괄 매입`,
               quantity: product.quantity || 1,
               unitPrice: product.purchaseUnitPrice || 0,
               vendorCompany: product.vendorCompany || '',
+              isConsolidated: true,
+              salesItemIndex: currentSalesIndex,
               sortOrder: purchaseIndex++,
-            })
-          }
-
-          // 제품 소속 품목들 → 매입 품목 (품목별 개별 매입)
-          // 매입 정보가 있는 품목만 매입 품목으로 생성 (통합 매입 시에는 품목에 매입 정보가 없음)
-          for (const item of (product.items || [])) {
-            if (item.purchaseUnitPrice > 0 || item.vendorCompany) {
-              newPurchaseItems.push({
-                productName: item.description || item.partNumber || '품목', // 개별 품목명 사용
-                partNumber: item.partNumber,
-                description: item.description,
+              details: productItems.map((item: { partNumber?: string; description?: string; quantity?: number }, iIdx: number) => ({
+                partNumber: item.partNumber || '',
+                description: item.description || '',
                 quantity: item.quantity || 1,
-                unitPrice: item.purchaseUnitPrice || 0,
-                vendorCompany: item.vendorCompany || '',
-                sortOrder: purchaseIndex++,
-              })
-            }
+                sortOrder: iIdx,
+              })),
+            })
+          } else {
+            // 개별 매입: 아이템 N개 + 디테일 각 1개
+            productItems.forEach((item: {
+              partNumber?: string
+              description?: string
+              quantity?: number
+              purchaseUnitPrice?: number
+              vendorCompany?: string
+            }, iIdx: number) => {
+              if (item.purchaseUnitPrice > 0 || item.vendorCompany) {
+                newPurchaseItems.push({
+                  productName: item.description || item.partNumber || '품목',
+                  quantity: item.quantity || 1,
+                  unitPrice: item.purchaseUnitPrice || 0,
+                  vendorCompany: item.vendorCompany || '',
+                  isConsolidated: false,
+                  salesItemIndex: currentSalesIndex,
+                  salesItemDetailIndex: iIdx,  // 매출 품목 인덱스
+                  sortOrder: purchaseIndex++,
+                  details: [{
+                    partNumber: item.partNumber || '',
+                    description: item.description || '',
+                    quantity: item.quantity || 1,
+                    sortOrder: 0,
+                  }],
+                })
+              }
+            })
           }
         }
       }
@@ -261,6 +302,8 @@ export async function POST(request: NextRequest) {
       // 독립 품목에서 매출 + 매입 품목 생성
       for (const item of standaloneItems) {
         if (item.partNumber || item.description || item.salesUnitPrice > 0 || item.purchaseUnitPrice > 0) {
+          const currentSalesIndex = salesIndex
+
           // 독립 품목 → 매출 품목
           finalSalesItems.push({
             productName: item.description || item.partNumber || '품목',
@@ -274,12 +317,13 @@ export async function POST(request: NextRequest) {
           if (item.purchaseUnitPrice > 0 || item.vendorCompany) {
             newPurchaseItems.push({
               productName: item.description || item.partNumber || '품목',
-              partNumber: item.partNumber,
-              description: item.description,
               quantity: item.quantity || 1,
               unitPrice: item.purchaseUnitPrice || 0,
               vendorCompany: item.vendorCompany || '',
+              isConsolidated: true,  // 독립 품목은 통합 취급
+              salesItemIndex: currentSalesIndex,
               sortOrder: purchaseIndex++,
+              details: [],
             })
           }
         }
@@ -351,21 +395,36 @@ export async function POST(request: NextRequest) {
     const totalWithVat = totalAmount + vatAmount
 
     // 매입 품목 처리: 최신 구조(newPurchaseItems) > 새 구조(purchaseGroups) > 기존 구조(purchaseItems)
-    let finalPurchaseItems: { productName?: string; quantity?: number; unitPrice?: number; vendorCompany?: string; purchaseDate?: string; details?: { partNumber?: string; description?: string; quantity?: number; sortOrder?: number }[]; sortOrder?: number }[] = []
+    let finalPurchaseItems: {
+      productName?: string
+      quantity?: number
+      unitPrice?: number
+      vendorCompany?: string
+      purchaseDate?: string
+      isConsolidated?: boolean
+      salesItemIndex?: number
+      salesItemDetailIndex?: number  // 개별 매입 시 매출 품목 인덱스
+      details?: {
+        partNumber?: string
+        description?: string
+        quantity?: number
+        sortOrder?: number
+      }[]
+      sortOrder?: number
+    }[] = []
 
     if (newPurchaseItems.length > 0) {
-      // 최신 구조: 제품의 품목들 + 독립 품목에서 수집된 매입 정보
+      // 최신 구조 그대로 사용
       finalPurchaseItems = newPurchaseItems.map((item, index) => ({
         productName: item.productName || '제품',
         quantity: item.quantity || 1,
         unitPrice: item.unitPrice || 0,
         vendorCompany: item.vendorCompany,
+        isConsolidated: item.isConsolidated,
+        salesItemIndex: item.salesItemIndex,
+        salesItemDetailIndex: item.salesItemDetailIndex,
         sortOrder: item.sortOrder ?? index,
-        details: item.partNumber || item.description ? [{
-          partNumber: item.partNumber,
-          description: item.description,
-          sortOrder: 0,
-        }] : [],
+        details: item.details || [],
       }))
     } else if (purchaseGroups.length > 0) {
       // 새 UI에서 전송된 매입 그룹 데이터를 purchaseItems로 변환
@@ -407,42 +466,44 @@ export async function POST(request: NextRequest) {
     const purchaseItemsWithTotal = finalPurchaseItems.map((item, index: number) => {
       const qty = item.quantity || 1
       const price = item.unitPrice || 0
+      const details = item.details || []
+      const isConsolidated = item.isConsolidated ?? false
+      // 개별 매입: 아이템당 금액, 통합 매입: 아이템 금액
       const itemTotal = qty * price
       purchaseTotal += itemTotal
-      const details = item.details || []
-      // 디테일이 없거나 productName에 '일괄'이 포함되어 있으면 통합으로 간주
-      const isConsolidated = details.length === 0 || (item.productName || '').includes('일괄')
       return {
-                productName: item.productName || '제품',
+        productName: item.productName || '제품',
         sortOrder: item.sortOrder ?? index,
         quantity: qty,
         unitPrice: price,
         totalPrice: itemTotal,
         purchaseDate: item.purchaseDate ? new Date(item.purchaseDate) : null,
         vendorCompany: item.vendorCompany,
-        // 통합 여부
         isConsolidated,
-        // P/N: 개별인 경우 디테일에서 가져옴
-        partNumber: !isConsolidated && details.length === 1 ? details[0]?.partNumber : null,
-        details: {
-          create: details.map((detail, detailIndex) => ({
-            partNumber: detail.partNumber,
-            description: detail.description,
-            quantity: detail.quantity,
-            sortOrder: detail.sortOrder ?? detailIndex,
-          })),
-        },
+        salesItemIndex: item.salesItemIndex,
+        salesItemDetailIndex: item.salesItemDetailIndex,  // 개별 매입 시 매출 품목 인덱스
+        details,
       }
     })
 
     const purchaseTotalWithVat = purchaseTotal + Math.round(purchaseTotal * 0.1)
 
-    // 매입처 자동 등록 (고유한 매입처명만)
-    const uniqueVendors = [...new Set(
-      purchaseItemsWithTotal
-        .map(item => item.vendorCompany?.trim())
-        .filter((v): v is string => !!v)
-    )]
+    // 매입처 자동 등록 (고유한 매입처명만 - 제품 레벨 + 품목 레벨 모두)
+    const allVendors: string[] = []
+    purchaseItemsWithTotal.forEach(item => {
+      if (item.vendorCompany?.trim()) {
+        allVendors.push(item.vendorCompany.trim())
+      }
+      // 개별 매입인 경우 details의 vendorCompany도 포함
+      if (!item.isConsolidated && item.details) {
+        item.details.forEach((d: { vendorCompany?: string }) => {
+          if (d.vendorCompany?.trim()) {
+            allVendors.push(d.vendorCompany.trim())
+          }
+        })
+      }
+    })
+    const uniqueVendors = [...new Set(allVendors)]
 
     for (const vendorName of uniqueVendors) {
       try {
@@ -457,6 +518,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 1. 품의서 먼저 생성 (아이템 없이)
     const approval = await prisma.salesApproval.create({
       data: {
         approvalNumber,
@@ -481,13 +543,88 @@ export async function POST(request: NextRequest) {
         purchaseTotal,
         purchaseTotalWithVat,
         createdById,
-        items: {
-          create: itemsWithTotal,
-        },
-        purchaseItems: {
-          create: purchaseItemsWithTotal,
-        },
       },
+    })
+
+    // 2. 매출 아이템 생성 및 ID 맵 수집
+    const createdSalesItemsMap: { itemId: string; detailIds: string[] }[] = []
+
+    for (const item of itemsWithTotal) {
+      const createdItem = await prisma.salesApprovalItem.create({
+        data: {
+          approvalId: approval.id,
+          productName: item.productName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+          sortOrder: item.sortOrder,
+          isConsolidated: item.isConsolidated,
+          partNumber: item.partNumber,
+          details: item.details,
+        },
+        include: {
+          details: { orderBy: { sortOrder: 'asc' } },
+        },
+      })
+
+      createdSalesItemsMap.push({
+        itemId: createdItem.id,
+        detailIds: createdItem.details.map(d => d.id),
+      })
+    }
+
+    // 3. 매입 아이템 생성
+    for (let i = 0; i < purchaseItemsWithTotal.length; i++) {
+      const item = purchaseItemsWithTotal[i]
+
+      // salesItemId, salesItemDetailId 결정
+      let salesItemId: string | null = null
+      let salesItemDetailId: string | null = null
+
+      if (item.salesItemIndex !== undefined && createdSalesItemsMap[item.salesItemIndex]) {
+        const salesItemInfo = createdSalesItemsMap[item.salesItemIndex]
+        salesItemId = salesItemInfo.itemId
+
+        // 개별 매입 시 salesItemDetailId 설정
+        if (!item.isConsolidated && item.salesItemDetailIndex !== undefined) {
+          salesItemDetailId = salesItemInfo.detailIds[item.salesItemDetailIndex] || null
+        }
+      }
+
+      // details 생성 데이터 준비
+      const detailsCreate = (item.details || []).map((detail: {
+        partNumber?: string
+        description?: string
+        quantity?: number
+        sortOrder?: number
+      }, detailIndex: number) => ({
+        partNumber: detail.partNumber || '',
+        description: detail.description || '',
+        quantity: detail.quantity || 1,
+        sortOrder: detail.sortOrder ?? detailIndex,
+      }))
+
+      await prisma.salesApprovalPurchaseItem.create({
+        data: {
+          approvalId: approval.id,
+          salesItemId,
+          salesItemDetailId,  // 개별 매입 시 매출 품목 연결
+          productName: item.productName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+          sortOrder: item.sortOrder,
+          purchaseDate: item.purchaseDate,
+          vendorCompany: item.vendorCompany,
+          isConsolidated: item.isConsolidated,
+          details: { create: detailsCreate },
+        },
+      })
+    }
+
+    // 4. 최종 결과 조회
+    const result = await prisma.salesApproval.findUnique({
+      where: { id: approval.id },
       include: {
         items: {
           include: { details: { orderBy: { sortOrder: 'asc' } } },
@@ -501,7 +638,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(approval, { status: 201 })
+    return NextResponse.json(result, { status: 201 })
   } catch (error) {
     console.error('품의서 생성 오류:', error)
     return NextResponse.json(

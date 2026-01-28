@@ -166,6 +166,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         }),
         prisma.salesApprovalPurchaseItem.findMany({
           where: { approvalId: id },
+          include: { details: { orderBy: { sortOrder: 'asc' } } },
         }),
       ])
 
@@ -222,7 +223,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                 itemId: item.id,
                 invoiceType: 'PURCHASE',
                 productName: item.productName,
-                partNumber: item.partNumber,
+                // partNumber는 details에서 가져옴 (첫 번째 품목 기준)
+                partNumber: item.details[0]?.partNumber || null,
                 quantity: item.quantity,
                 unitPrice: item.unitPrice || 0,
                 totalPrice: item.totalPrice || 0,

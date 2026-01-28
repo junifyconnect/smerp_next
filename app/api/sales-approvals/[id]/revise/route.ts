@@ -133,17 +133,22 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const purchaseItems = body.purchaseItems || originalApproval.purchaseItems.map(item => ({
       sourceItemId: item.id,
       productName: item.productName,
-      partNumber: item.partNumber,
       isConsolidated: item.isConsolidated,
       quantity: item.quantity,
       unitPrice: Number(item.unitPrice),
       vendorCompany: item.vendorCompany,
       sortOrder: item.sortOrder,
       details: item.details.map(d => ({
+        sourceDetailId: d.id,
         partNumber: d.partNumber,
         description: d.description,
         quantity: d.quantity,
         sortOrder: d.sortOrder,
+        // 개별 매입 필드들도 복사
+        salesItemDetailId: d.salesItemDetailId,
+        vendorCompany: d.vendorCompany,
+        unitPrice: d.unitPrice ? Number(d.unitPrice) : null,
+        totalPrice: d.totalPrice ? Number(d.totalPrice) : null,
       })),
     }))
 
@@ -215,13 +220,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         let invoiceStatus: 'PENDING' | 'ISSUED' | 'AMENDMENT_NEEDED' = 'PENDING'
 
         if (originalItem) {
-          if (originalItem.salesInvoiceStatus === 'ISSUED') {
-            // 이미 발행된 경우 - 변경 여부 확인
+          const prevStatus = originalItem.salesInvoiceStatus
+          // 이미 발행됐거나 수정 필요 상태면 계속 추적
+          if (prevStatus === 'ISSUED' || prevStatus === 'AMENDMENT_NEEDED') {
             const isModified =
               (item.quantity || 1) !== originalItem.quantity ||
               (item.unitPrice || 0) !== Number(originalItem.unitPrice)
 
-            invoiceStatus = isModified ? 'AMENDMENT_NEEDED' : 'ISSUED'
+            if (prevStatus === 'ISSUED') {
+              // 발행 완료 상태에서 변경되면 수정 필요, 아니면 발행 유지
+              invoiceStatus = isModified ? 'AMENDMENT_NEEDED' : 'ISSUED'
+            } else {
+              // 이미 수정 필요 상태면 계속 수정 필요 유지
+              invoiceStatus = 'AMENDMENT_NEEDED'
+            }
           }
           // PENDING이면 그대로 PENDING
         }
@@ -254,8 +266,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       // 삭제된 매출 아이템 처리 (원본에 있고 새 버전에 없는 것)
       for (const originalItem of originalApproval.items) {
-        if (!copiedSalesItemIds.has(originalItem.id) && originalItem.salesInvoiceStatus === 'ISSUED') {
-          // 발행된 아이템이 삭제됨 → 취소 필요 표시
+        const prevStatus = originalItem.salesInvoiceStatus
+        // 발행됐거나 수정 필요 상태인 아이템이 삭제되면 취소 필요
+        if (!copiedSalesItemIds.has(originalItem.id) &&
+            (prevStatus === 'ISSUED' || prevStatus === 'AMENDMENT_NEEDED')) {
           await tx.salesApprovalItem.update({
             where: { id: originalItem.id },
             data: { salesInvoiceStatus: 'CANCELLATION_NEEDED' },
@@ -278,14 +292,22 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         let invoiceStatus: 'PENDING' | 'ISSUED' | 'AMENDMENT_NEEDED' = 'PENDING'
 
         if (originalItem) {
-          if (originalItem.purchaseInvoiceStatus === 'ISSUED') {
-            // 이미 발행된 경우 - 변경 여부 확인
+          const prevStatus = originalItem.purchaseInvoiceStatus
+          // 이미 발행됐거나 수정 필요 상태면 계속 추적
+          if (prevStatus === 'ISSUED' || prevStatus === 'AMENDMENT_NEEDED') {
             const isModified =
               (item.quantity || 1) !== originalItem.quantity ||
               (item.unitPrice || 0) !== Number(originalItem.unitPrice)
 
-            invoiceStatus = isModified ? 'AMENDMENT_NEEDED' : 'ISSUED'
+            if (prevStatus === 'ISSUED') {
+              // 발행 완료 상태에서 변경되면 수정 필요, 아니면 발행 유지
+              invoiceStatus = isModified ? 'AMENDMENT_NEEDED' : 'ISSUED'
+            } else {
+              // 이미 수정 필요 상태면 계속 수정 필요 유지
+              invoiceStatus = 'AMENDMENT_NEEDED'
+            }
           }
+          // PENDING이면 그대로 PENDING
         }
 
         await tx.salesApprovalPurchaseItem.create({
@@ -294,7 +316,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             sourceItemId: item.sourceItemId || null,
             sortOrder: item.sortOrder ?? i,
             productName: item.productName || '품목',
-            partNumber: item.partNumber || null,
             isConsolidated: item.isConsolidated || false,
             quantity: item.quantity || 1,
             unitPrice: item.unitPrice || 0,
@@ -304,11 +325,27 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             purchaseInvoiceDate: invoiceStatus === 'ISSUED' ? originalItem?.purchaseInvoiceDate : null,
             invoiceRemarks: originalItem?.invoiceRemarks || null,
             details: {
-              create: (item.details || []).map((detail, detailIndex) => ({
+              create: (item.details || []).map((detail: {
+                sourceDetailId?: string
+                partNumber?: string
+                description?: string
+                quantity?: number
+                sortOrder?: number
+                salesItemDetailId?: string | null
+                vendorCompany?: string | null
+                unitPrice?: number | null
+                totalPrice?: number | null
+              }, detailIndex: number) => ({
                 sortOrder: detail.sortOrder ?? detailIndex,
                 partNumber: detail.partNumber || '',
                 description: detail.description || '',
                 quantity: detail.quantity || 1,
+                // 새 구조 필드들
+                sourceDetailId: detail.sourceDetailId || null,
+                salesItemDetailId: detail.salesItemDetailId || null,
+                vendorCompany: detail.vendorCompany || null,
+                unitPrice: detail.unitPrice || null,
+                totalPrice: detail.totalPrice || null,
               })),
             },
           },
@@ -317,8 +354,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       // 삭제된 매입 아이템 처리 (원본에 있고 새 버전에 없는 것)
       for (const originalItem of originalApproval.purchaseItems) {
-        if (!copiedPurchaseItemIds.has(originalItem.id) && originalItem.purchaseInvoiceStatus === 'ISSUED') {
-          // 발행된 아이템이 삭제됨 → 취소 필요 표시
+        const prevStatus = originalItem.purchaseInvoiceStatus
+        // 발행됐거나 수정 필요 상태인 아이템이 삭제되면 취소 필요
+        if (!copiedPurchaseItemIds.has(originalItem.id) &&
+            (prevStatus === 'ISSUED' || prevStatus === 'AMENDMENT_NEEDED')) {
           await tx.salesApprovalPurchaseItem.update({
             where: { id: originalItem.id },
             data: { purchaseInvoiceStatus: 'CANCELLATION_NEEDED' },

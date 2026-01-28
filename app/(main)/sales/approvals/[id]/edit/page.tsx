@@ -7,7 +7,8 @@ import VendorAutocomplete from '@/components/inputs/VendorAutocomplete'
 
 // 품목 (제품 하위)
 interface Item {
-  purchaseItemId?: string  // 기존 매입 아이템 ID (버전 추적용)
+  salesItemDetailId?: string  // 매출 품목 상세 ID
+  purchaseItemId?: string     // 매입 아이템 ID (버전 추적용)
   partNumber: string
   description: string
   quantity: number
@@ -20,6 +21,7 @@ interface Item {
 interface ProductGroup {
   id: string
   salesItemId?: string     // 기존 매출 아이템 ID (버전 추적용)
+  purchaseItemId?: string  // 기존 매입 아이템 ID (버전 추적용)
   name: string
   quantity: number
   salesUnitPrice: number
@@ -33,6 +35,11 @@ interface ApiItemDetail {
   partNumber?: string
   description?: string
   quantity?: number
+  // 매입 품목 디테일 전용 (새 구조)
+  salesItemDetailId?: string
+  vendorCompany?: string
+  unitPrice?: number | string
+  totalPrice?: number | string
 }
 
 interface ApiItem {
@@ -44,6 +51,9 @@ interface ApiItem {
   isConsolidated?: boolean
   partNumber?: string | null
   details?: ApiItemDetail[]
+  // 매입 아이템 전용
+  salesItemId?: string       // 연결된 매출 제품 ID
+  salesItemDetailId?: string // 연결된 매출 품목 ID (개별 매입 시)
 }
 
 function EditSalesApprovalForm() {
@@ -141,64 +151,58 @@ function EditSalesApprovalForm() {
         const salesItems: ApiItem[] = data.items || []
         const purchaseItems: ApiItem[] = data.purchaseItems || []
 
-        // purchaseItems를 P/N + 품목명으로 맵핑 (복합키) - ID도 함께 저장
-        const purchaseItemByKey = new Map<string, ApiItem>()
-        purchaseItems.forEach(item => {
-          const pn = item.details?.[0]?.partNumber || item.partNumber || ''
-          const desc = item.details?.[0]?.description || ''
-          const key = `${pn}::${desc}`
-          purchaseItemByKey.set(key, item)  // item에 id 포함
-          // P/N만으로도 매칭 가능하도록 (fallback)
-          if (pn && !purchaseItemByKey.has(pn)) {
-            purchaseItemByKey.set(pn, item)
-          }
-        })
-
         if (salesItems.length > 0) {
+          // 통합 매입용: salesItemId로 그룹핑
+          const consolidatedPurchaseByItemId = new Map<string, ApiItem>()
+          // 개별 매입용: salesItemDetailId로 맵핑 (purchaseItem 레벨에서)
+          const individualPurchaseByDetailId = new Map<string, ApiItem>()
+
+          purchaseItems.forEach(pi => {
+            if (pi.isConsolidated && pi.salesItemId) {
+              // 통합 매입: salesItemId로 맵핑
+              consolidatedPurchaseByItemId.set(pi.salesItemId, pi)
+            } else if (!pi.isConsolidated && pi.salesItemDetailId) {
+              // 개별 매입: salesItemDetailId로 맵핑 (purchaseItem 레벨)
+              individualPurchaseByDetailId.set(pi.salesItemDetailId, pi)
+            }
+          })
+
           // 각 salesItem을 제품으로 변환
           const loadedProducts: ProductGroup[] = salesItems.map((salesItem, idx) => {
-            // 통합 제품인 경우: details 각각을 purchaseItem과 P/N으로 매칭
-            // 개별 품목인 경우: partNumber로 직접 매칭
-            const isConsolidated = salesItem.isConsolidated || (salesItem.details && salesItem.details.length > 0)
+            // 통합 매입 찾기
+            const productPurchase = salesItem.id ? consolidatedPurchaseByItemId.get(salesItem.id) : undefined
 
             // details를 하위 품목으로 변환
             const itemDetails: Item[] = (salesItem.details || []).map((detail) => {
-              const pn = detail.partNumber || ''
-              const desc = detail.description || ''
-              // P/N + 품목명 복합키로 먼저 매칭, 없으면 P/N만으로 매칭
-              const compositeKey = `${pn}::${desc}`
-              const matchedPurchase = purchaseItemByKey.get(compositeKey) || purchaseItemByKey.get(pn)
+              // 개별 매입 찾기 (detail.id로 purchaseItem 찾기)
+              const individualPurchase = detail.id ? individualPurchaseByDetailId.get(detail.id) : undefined
+              // 개별 매입이 있으면 그거 사용, 없으면 통합 매입 사용
+              const effectivePurchase = individualPurchase || productPurchase
+
+              const purchaseUnitPrice = Number(effectivePurchase?.unitPrice) || 0
+              const purchaseVendor = effectivePurchase?.vendorCompany || ''
+
               return {
-                purchaseItemId: matchedPurchase?.id,  // 매입 아이템 ID 보존
-                partNumber: pn,
-                description: desc,
+                salesItemDetailId: detail.id,
+                purchaseItemId: effectivePurchase?.id,
+                partNumber: detail.partNumber || '',
+                description: detail.description || '',
                 quantity: detail.quantity || 1,
                 salesUnitPrice: 0,
-                purchaseUnitPrice: Number(matchedPurchase?.unitPrice) || 0,
-                vendorCompany: matchedPurchase?.vendorCompany || '',
+                purchaseUnitPrice,
+                vendorCompany: purchaseVendor,
               }
             })
 
-            // 제품 레벨 매입 정보: 개별 품목이면 직접 매칭, 통합이면 합산하지 않음 (0)
-            let productPurchasePrice = 0
-            let productVendor = ''
-            if (!isConsolidated) {
-              const pn = salesItem.partNumber || salesItem.details?.[0]?.partNumber || ''
-              const desc = salesItem.details?.[0]?.description || ''
-              const compositeKey = `${pn}::${desc}`
-              const matchedPurchase = purchaseItemByKey.get(compositeKey) || purchaseItemByKey.get(pn)
-              productPurchasePrice = Number(matchedPurchase?.unitPrice) || 0
-              productVendor = matchedPurchase?.vendorCompany || ''
-            }
-
             return {
               id: `product-${idx}-${Date.now()}`,
-              salesItemId: salesItem.id,  // 매출 아이템 ID 보존
+              salesItemId: salesItem.id,
+              purchaseItemId: productPurchase?.id,
               name: salesItem.productName || '',
               quantity: salesItem.quantity || 1,
               salesUnitPrice: Number(salesItem.unitPrice) || 0,
-              purchaseUnitPrice: productPurchasePrice,
-              vendorCompany: productVendor,
+              purchaseUnitPrice: Number(productPurchase?.unitPrice) || 0,
+              vendorCompany: productPurchase?.vendorCompany || '',
               items: itemDetails,
             }
           })
@@ -463,56 +467,89 @@ function EditSalesApprovalForm() {
           })),
       ]
 
-      // 매입 아이템: 개별 품목별로 생성 (통합 제품도 개별 품목으로 분리)
+      // 매입 아이템 구조:
+      // - 통합 매입: 아이템 1개 + 디테일 N개
+      // - 개별 매입: 아이템 N개 + 디테일 각 1개
       const purchaseItemsPayload: {
-        sourceItemId?: string  // 기존 아이템 ID (버전 추적용)
+        sourceItemId?: string
+        salesItemIndex?: number
+        salesItemDetailIndex?: number  // 개별 매입 시 매출 품목 인덱스
         productName: string
         quantity: number
         unitPrice: number
         vendorCompany: string
         isConsolidated: boolean
-        partNumber: string | null
         sortOrder: number
-        details: { partNumber: string; description: string; quantity: number; sortOrder: number }[]
+        details: {
+          partNumber: string
+          description: string
+          quantity: number
+          sortOrder: number
+        }[]
       }[] = []
 
       let purchaseSortOrder = 0
 
-      // 제품들 → 매입 아이템 (개별 품목별로 분리)
-      products.forEach((product) => {
+      products.forEach((product, pIdx) => {
         if (product.items.length > 0) {
-          // 하위 품목이 있는 경우: 각 품목별로 개별 매입 아이템 생성
-          product.items.forEach((item) => {
-            // 매입가격이나 매입처가 있는 경우에만 생성
-            if (item.purchaseUnitPrice > 0 || item.vendorCompany) {
-              purchaseItemsPayload.push({
-                sourceItemId: item.purchaseItemId,  // 기존 아이템 ID (버전 추적용)
-                productName: item.description || item.partNumber || '품목',
-                quantity: item.quantity || 1,
-                unitPrice: item.purchaseUnitPrice || 0,
-                vendorCompany: item.vendorCompany || product.vendorCompany || '',
-                isConsolidated: false,
-                partNumber: item.partNumber || null,
-                sortOrder: purchaseSortOrder++,
-                details: [{
-                  partNumber: item.partNumber || '',
-                  description: item.description || '',
-                  quantity: item.quantity || 1,
-                  sortOrder: 0,
-                }],
-              })
-            }
-          })
-        } else {
-          // 하위 품목이 없는 경우: 제품 레벨로 매입 아이템 생성
-          if (product.purchaseUnitPrice > 0 || product.vendorCompany) {
+          // 하위 품목이 있는 경우
+          const hasProductLevelPurchase = product.purchaseUnitPrice > 0 || product.vendorCompany
+          const itemsWithPurchase = product.items.filter(item =>
+            item.purchaseUnitPrice > 0 || item.vendorCompany
+          )
+
+          if (hasProductLevelPurchase) {
+            // 통합 매입: 아이템 1개 + 디테일 N개
             purchaseItemsPayload.push({
+              sourceItemId: product.purchaseItemId,
+              salesItemIndex: pIdx,
               productName: product.name || '제품',
               quantity: product.quantity || 1,
               unitPrice: product.purchaseUnitPrice || 0,
               vendorCompany: product.vendorCompany || '',
-              isConsolidated: false,
-              partNumber: null,
+              isConsolidated: true,
+              sortOrder: purchaseSortOrder++,
+              details: product.items.map((item, iIdx) => ({
+                partNumber: item.partNumber || '',
+                description: item.description || '',
+                quantity: item.quantity || 1,
+                sortOrder: iIdx,
+              })),
+            })
+          } else if (itemsWithPurchase.length > 0) {
+            // 개별 매입: 아이템 N개 + 디테일 각 1개
+            product.items.forEach((item, iIdx) => {
+              if (item.purchaseUnitPrice > 0 || item.vendorCompany) {
+                purchaseItemsPayload.push({
+                  salesItemIndex: pIdx,
+                  salesItemDetailIndex: iIdx,  // 매출 품목 인덱스
+                  productName: item.description || item.partNumber || '품목',
+                  quantity: item.quantity || 1,
+                  unitPrice: item.purchaseUnitPrice || 0,
+                  vendorCompany: item.vendorCompany || '',
+                  isConsolidated: false,
+                  sortOrder: purchaseSortOrder++,
+                  details: [{
+                    partNumber: item.partNumber || '',
+                    description: item.description || '',
+                    quantity: item.quantity || 1,
+                    sortOrder: 0,
+                  }],
+                })
+              }
+            })
+          }
+        } else {
+          // 하위 품목이 없는 경우: 제품 레벨로 통합 매입
+          if (product.purchaseUnitPrice > 0 || product.vendorCompany) {
+            purchaseItemsPayload.push({
+              sourceItemId: product.purchaseItemId,
+              salesItemIndex: pIdx,
+              productName: product.name || '제품',
+              quantity: product.quantity || 1,
+              unitPrice: product.purchaseUnitPrice || 0,
+              vendorCompany: product.vendorCompany || '',
+              isConsolidated: true,
               sortOrder: purchaseSortOrder++,
               details: [],
             })
@@ -520,18 +557,18 @@ function EditSalesApprovalForm() {
         }
       })
 
-      // 독립 품목들 → 매입 아이템
+      // 독립 품목들 → 매입 아이템 (통합 취급)
       standaloneItems
         .filter(item => item.partNumber?.trim() || item.description?.trim() || item.purchaseUnitPrice > 0)
-        .forEach((item) => {
+        .forEach((item, idx) => {
           if (item.purchaseUnitPrice > 0 || item.vendorCompany) {
             purchaseItemsPayload.push({
+              salesItemIndex: products.length + idx,  // 독립 품목은 제품 다음 인덱스
               productName: item.description || item.partNumber || '품목',
               quantity: item.quantity || 1,
               unitPrice: item.purchaseUnitPrice || 0,
               vendorCompany: item.vendorCompany || '',
-              isConsolidated: false,
-              partNumber: item.partNumber || null,
+              isConsolidated: true,  // 독립 품목은 통합 취급
               sortOrder: purchaseSortOrder++,
               details: [{
                 partNumber: item.partNumber || '',

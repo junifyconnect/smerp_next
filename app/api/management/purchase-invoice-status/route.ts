@@ -75,8 +75,8 @@ export async function GET(request: NextRequest) {
       const searchFilter = {
         OR: [
           { productName: { contains: search, mode: 'insensitive' } },
-          { partNumber: { contains: search, mode: 'insensitive' } },
           { vendorCompany: { contains: search, mode: 'insensitive' } },
+          { details: { some: { partNumber: { contains: search, mode: 'insensitive' } } } },
         ],
       }
       latestWhere.AND = [...((latestWhere.AND as unknown[]) || []), searchFilter]
@@ -141,7 +141,8 @@ export async function GET(request: NextRequest) {
       approvalDate: item.approval.approvalDate,
       clientCompany: item.approval.clientCompany,
       managerName: item.approval.managerName,
-      partNumber: item.partNumber,
+      // partNumber는 details에서 가져옴 (첫 번째 품목 기준)
+      partNumber: item.details[0]?.partNumber || null,
       productName: item.productName,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
@@ -153,6 +154,7 @@ export async function GET(request: NextRequest) {
       invoiceDate: item.purchaseInvoiceDate,
       invoiceRemarks: item.invoiceRemarks,
       createdAt: item.createdAt,
+      details: item.details,
     }))
 
     // 집계

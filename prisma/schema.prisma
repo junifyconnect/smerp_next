@@ -498,8 +498,9 @@ model SalesApprovalItem {
   salesInvoiceDate   DateTime? @map("sales_invoice_date") @db.Date
   invoiceRemarks     String?   @map("invoice_remarks") @db.Text
 
-  approval SalesApproval            @relation(fields: [approvalId], references: [id], onDelete: Cascade)
-  details  SalesApprovalItemDetail[]
+  approval       SalesApproval               @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+  details        SalesApprovalItemDetail[]
+  purchaseItems  SalesApprovalPurchaseItem[] // 이 매출 아이템을 위한 매입들
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -514,15 +515,22 @@ model SalesApprovalItemDetail {
   id     String @id @default(uuid())
   itemId String @map("item_id")
 
+  // 복사 원본 추적 (단순 복사 방식)
+  sourceDetailId String? @map("source_detail_id") // 복사 원본 품목 ID (신규면 null)
+
   sortOrder   Int     @default(0) @map("sort_order")
   partNumber  String? @map("part_number") // 품목명 (예: 예시_서버랙, 예시_전원)
   description String? @db.Text // 상세 설명 (여러 줄 가능)
   quantity    Int?    // 수량 (선택)
 
-  item      SalesApprovalItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  createdAt DateTime          @default(now()) @map("created_at")
+  item            SalesApprovalItem                 @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  purchaseItems   SalesApprovalPurchaseItem[]       // 이 매출 품목을 위한 매입 아이템들 (개별 매입 시)
+  purchaseDetails SalesApprovalPurchaseItemDetail[] // 이 매출 품목을 위한 매입 품목들
+
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@index([itemId])
+  @@index([sourceDetailId])
   @@map("sales_approval_item_details")
 }
 
@@ -530,30 +538,39 @@ model SalesApprovalPurchaseItem {
   id         String @id @default(uuid())
   approvalId String @map("approval_id") // 소속 품의서 ID
 
+  // 매출 연결
+  salesItemId       String? @map("sales_item_id")        // 연결된 매출 제품 ID
+  salesItemDetailId String? @map("sales_item_detail_id") // 연결된 매출 품목 ID (개별 매입 시)
+
   // 복사 원본 추적 (단순 복사 방식)
   sourceItemId String? @map("source_item_id") // 복사 원본 아이템 ID (신규면 null)
 
-  sortOrder      Int       @default(0) @map("sort_order")
-  partNumber     String?   @map("part_number") // P/N (개별일 때)
-  productName    String    @map("product_name") // 품목명/통합명
-  quantity       Int       @default(1)
-  unitPrice      Decimal?  @map("unit_price") @db.Decimal(15, 2)
-  totalPrice     Decimal?  @map("total_price") @db.Decimal(15, 2)
-  purchaseDate   DateTime? @map("purchase_date") @db.Date
-  vendorCompany  String?   @map("vendor_company")
-  isConsolidated Boolean   @default(false) @map("is_consolidated") // 통합 여부
+  sortOrder      Int     @default(0) @map("sort_order")
+  productName    String  @map("product_name") // 제품명
+  isConsolidated Boolean @default(false) @map("is_consolidated") // 일괄 매입 여부
 
-  // 계산서 발행 상태
+  // 일괄 매입용 필드 (isConsolidated = true 일 때 사용)
+  vendorCompany String?   @map("vendor_company") // 매입처
+  quantity      Int       @default(1)
+  unitPrice     Decimal?  @map("unit_price") @db.Decimal(15, 2)
+  totalPrice    Decimal?  @map("total_price") @db.Decimal(15, 2)
+  purchaseDate  DateTime? @map("purchase_date") @db.Date
+
+  // 계산서 발행 상태 (일괄 매입 시)
   purchaseInvoiceStatus String    @default("PENDING") @map("purchase_invoice_status")
   purchaseInvoiceDate   DateTime? @map("purchase_invoice_date") @db.Date
   invoiceRemarks        String?   @map("invoice_remarks") @db.Text
 
-  approval SalesApproval                     @relation(fields: [approvalId], references: [id], onDelete: Cascade)
-  details  SalesApprovalPurchaseItemDetail[]
+  approval        SalesApproval                     @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+  salesItem       SalesApprovalItem?                @relation(fields: [salesItemId], references: [id], onDelete: SetNull)
+  salesItemDetail SalesApprovalItemDetail?          @relation(fields: [salesItemDetailId], references: [id], onDelete: SetNull)
+  details         SalesApprovalPurchaseItemDetail[]
 
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([approvalId])
+  @@index([salesItemId])
+  @@index([salesItemDetailId])
   @@index([sourceItemId])
   @@index([purchaseInvoiceStatus])
   @@map("sales_approval_purchase_items")
@@ -562,17 +579,37 @@ model SalesApprovalPurchaseItem {
 // 품의서 매입 품목 상세 (하위 품목)
 model SalesApprovalPurchaseItemDetail {
   id     String @id @default(uuid())
-  itemId String @map("item_id")
+  itemId String @map("item_id") // 부모 매입 제품
+
+  // 매출 품목 연결 (어떤 매출 품목을 위한 매입인지)
+  salesItemDetailId String? @map("sales_item_detail_id") // 연결된 매출 품목 ID
+
+  // 복사 원본 추적 (단순 복사 방식)
+  sourceDetailId String? @map("source_detail_id") // 복사 원본 품목 ID (신규면 null)
 
   sortOrder   Int     @default(0) @map("sort_order")
-  partNumber  String? @map("part_number") // 품목명 (예: 예시_서버랙, 예시_전원)
+  partNumber  String? @map("part_number") // P/N
   description String? @db.Text // 상세 설명 (여러 줄 가능)
   quantity    Int?    // 수량 (선택)
 
-  item      SalesApprovalPurchaseItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  createdAt DateTime                  @default(now()) @map("created_at")
+  // 개별 매입용 필드 (isConsolidated = false 일 때 사용)
+  vendorCompany String?  @map("vendor_company") // 매입처
+  unitPrice     Decimal? @map("unit_price") @db.Decimal(15, 2)
+  totalPrice    Decimal? @map("total_price") @db.Decimal(15, 2)
+
+  // 계산서 발행 상태 (개별 매입 시)
+  purchaseInvoiceStatus String?   @map("purchase_invoice_status")
+  purchaseInvoiceDate   DateTime? @map("purchase_invoice_date") @db.Date
+
+  item            SalesApprovalPurchaseItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  salesItemDetail SalesApprovalItemDetail?  @relation(fields: [salesItemDetailId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@index([itemId])
+  @@index([salesItemDetailId])
+  @@index([sourceDetailId])
+  @@index([purchaseInvoiceStatus])
   @@map("sales_approval_purchase_item_details")
 }
 

@@ -2,6 +2,51 @@
 
 import { useState, useEffect, useCallback } from 'react'
 
+interface ComparisonItem {
+  id: string
+  productName: string
+  partNumber: string | null
+  quantity: number
+  unitPrice: number
+  totalPrice: number
+  vendorCompany?: string
+  invoiceStatus: string
+  changeType: 'added' | 'modified' | 'deleted' | 'unchanged'
+  current: {
+    quantity: number
+    unitPrice: number
+    totalPrice: number
+  } | null
+  previous: {
+    quantity: number
+    unitPrice: number
+    totalPrice: number
+    invoiceStatus?: string
+  } | null
+}
+
+interface VersionInfo {
+  id: string
+  approvalCode: string | null
+  version: number
+  status: string
+  isLatest: boolean
+  totalWithVat: number
+  approvalDate: string | null
+}
+
+interface CompareData {
+  approvalCode: string | null
+  clientCompany: string | null
+  versions: VersionInfo[]
+  currentVersion: VersionInfo | null
+  previousVersion: VersionInfo | null
+  comparison: {
+    sales: ComparisonItem[]
+    purchase: ComparisonItem[]
+  }
+}
+
 interface InvoiceItem {
   id: string
   approvalId: string
@@ -67,6 +112,13 @@ export default function InvoiceStatusPage() {
     return today.toISOString().split('T')[0]
   })
 
+  // 버전 비교 모달
+  const [compareModalOpen, setCompareModalOpen] = useState(false)
+  const [compareApprovalId, setCompareApprovalId] = useState<string | null>(null)
+  const [compareData, setCompareData] = useState<CompareData | null>(null)
+  const [compareLoading, setCompareLoading] = useState(false)
+  const [compareTab, setCompareTab] = useState<'sales' | 'purchase'>('sales')
+
   const fetchData = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -104,6 +156,31 @@ export default function InvoiceStatusPage() {
   useEffect(() => {
     setSelectedIds(new Set())
   }, [activeTab, filterInvoiceStatus])
+
+  // 버전 비교 데이터 가져오기
+  const fetchCompareData = useCallback(async (approvalId: string) => {
+    setCompareLoading(true)
+    setCompareData(null)
+    try {
+      const res = await fetch(`/api/sales-approvals/${approvalId}/compare`)
+      if (!res.ok) throw new Error('비교 데이터를 불러오는데 실패했습니다')
+      const data = await res.json()
+      setCompareData(data)
+      setCompareTab('sales')
+    } catch (err) {
+      console.error(err)
+      alert('버전 비교 데이터를 불러오는데 실패했습니다')
+      setCompareModalOpen(false)
+    } finally {
+      setCompareLoading(false)
+    }
+  }, [])
+
+  const openCompareModal = (approvalId: string) => {
+    setCompareApprovalId(approvalId)
+    setCompareModalOpen(true)
+    fetchCompareData(approvalId)
+  }
 
   const currentItems = activeTab === 'sales' ? salesItems : purchaseItems
   const currentSummary = activeTab === 'sales' ? salesSummary : purchaseSummary
@@ -394,7 +471,12 @@ export default function InvoiceStatusPage() {
                           rowSpan={rowSpan}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <div className="text-blue-600">{item.approvalCode}</div>
+                          <button
+                            onClick={() => openCompareModal(item.approvalId)}
+                            className="text-blue-600 hover:text-blue-800 hover:underline text-left"
+                          >
+                            {item.approvalCode}
+                          </button>
                           <div className="text-xs text-gray-400">v{item.approvalVersion}</div>
                           <div className="text-xs text-gray-400">{formatDate(item.approvalDate)}</div>
                         </td>
@@ -438,6 +520,248 @@ export default function InvoiceStatusPage() {
           </div>
         )}
       </div>
+
+      {/* 버전 비교 모달 */}
+      {compareModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setCompareModalOpen(false)}
+          />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-5xl max-h-[85vh] overflow-hidden mx-4">
+            {/* 모달 헤더 */}
+            <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">버전별 품목 비교</h2>
+                {compareData && (
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {compareData.approvalCode} - {compareData.clientCompany}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => setCompareModalOpen(false)}
+                className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* 모달 컨텐츠 */}
+            <div className="overflow-y-auto max-h-[calc(85vh-80px)]">
+              {compareLoading ? (
+                <div className="p-12 text-center text-gray-500">로딩 중...</div>
+              ) : compareData ? (
+                <div className="p-6 space-y-4">
+                  {/* 버전 정보 */}
+                  <div className="flex gap-4">
+                    <div className="flex-1 p-4 bg-gray-100 rounded-lg">
+                      <div className="text-xs text-gray-500 mb-1">이전 버전</div>
+                      {compareData.previousVersion ? (
+                        <>
+                          <div className="font-medium">v{compareData.previousVersion.version}</div>
+                          <div className="text-sm text-gray-600">
+                            {formatNumber(compareData.previousVersion.totalWithVat)}원
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-gray-400">없음</div>
+                      )}
+                    </div>
+                    <div className="flex items-center">
+                      <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="text-xs text-blue-600 mb-1">현재 버전</div>
+                      {compareData.currentVersion && (
+                        <>
+                          <div className="font-medium">v{compareData.currentVersion.version}</div>
+                          <div className="text-sm text-gray-600">
+                            {formatNumber(compareData.currentVersion.totalWithVat)}원
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 변경 요약 */}
+                  <div className="flex gap-2 text-xs">
+                    <span className="px-2 py-1 bg-green-100 text-green-700 rounded">
+                      추가: {compareData.comparison[compareTab].filter(i => i.changeType === 'added').length}
+                    </span>
+                    <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded">
+                      수정: {compareData.comparison[compareTab].filter(i => i.changeType === 'modified').length}
+                    </span>
+                    <span className="px-2 py-1 bg-red-100 text-red-700 rounded">
+                      삭제: {compareData.comparison[compareTab].filter(i => i.changeType === 'deleted').length}
+                    </span>
+                    <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded">
+                      유지: {compareData.comparison[compareTab].filter(i => i.changeType === 'unchanged').length}
+                    </span>
+                  </div>
+
+                  {/* 매출/매입 탭 */}
+                  <div className="flex gap-1 border-b">
+                    <button
+                      onClick={() => setCompareTab('sales')}
+                      className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                        compareTab === 'sales'
+                          ? 'border-blue-600 text-blue-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      매출 ({compareData.comparison.sales.length})
+                    </button>
+                    <button
+                      onClick={() => setCompareTab('purchase')}
+                      className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                        compareTab === 'purchase'
+                          ? 'border-purple-600 text-purple-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      매입 ({compareData.comparison.purchase.length})
+                    </button>
+                  </div>
+
+                  {/* 비교 테이블 */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-600 w-16">변경</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">품목명</th>
+                          {compareTab === 'purchase' && (
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">매입처</th>
+                          )}
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">수량</th>
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">단가</th>
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">합계</th>
+                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-600">계산서</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {compareData.comparison[compareTab].map((item) => {
+                          const changeStyles: Record<string, string> = {
+                            added: 'bg-green-50',
+                            modified: 'bg-yellow-50',
+                            deleted: 'bg-red-50 line-through opacity-60',
+                            unchanged: '',
+                          }
+                          const changeBadges: Record<string, { label: string; color: string }> = {
+                            added: { label: '추가', color: 'bg-green-100 text-green-700' },
+                            modified: { label: '수정', color: 'bg-yellow-100 text-yellow-700' },
+                            deleted: { label: '삭제', color: 'bg-red-100 text-red-700' },
+                            unchanged: { label: '유지', color: 'bg-gray-100 text-gray-600' },
+                          }
+                          const badge = changeBadges[item.changeType]
+                          const statusInfo = invoiceStatusLabels[item.invoiceStatus] || invoiceStatusLabels.PENDING
+
+                          return (
+                            <tr key={item.id} className={changeStyles[item.changeType]}>
+                              <td className="px-3 py-2">
+                                <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${badge.color}`}>
+                                  {badge.label}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2">
+                                <div className="font-medium truncate max-w-[200px]">{item.productName}</div>
+                                {item.partNumber && (
+                                  <div className="text-xs text-gray-400 truncate">{item.partNumber}</div>
+                                )}
+                              </td>
+                              {compareTab === 'purchase' && (
+                                <td className="px-3 py-2 text-gray-600 truncate max-w-[100px]">
+                                  {item.vendorCompany}
+                                </td>
+                              )}
+                              <td className="px-3 py-2 text-right">
+                                {item.changeType === 'modified' && item.previous && item.current &&
+                                  item.current.quantity !== item.previous.quantity ? (
+                                  <div>
+                                    <div className="text-gray-400 line-through text-xs">{item.previous.quantity}</div>
+                                    <div className="text-yellow-700 font-medium">{item.current.quantity}</div>
+                                  </div>
+                                ) : (
+                                  item.quantity
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-right">
+                                {item.changeType === 'modified' && item.previous && item.current &&
+                                  Number(item.current.unitPrice) !== Number(item.previous.unitPrice) ? (
+                                  <div>
+                                    <div className="text-gray-400 line-through text-xs">{formatNumber(Number(item.previous.unitPrice))}</div>
+                                    <div className="text-yellow-700 font-medium">{formatNumber(Number(item.current.unitPrice))}</div>
+                                  </div>
+                                ) : (
+                                  formatNumber(Number(item.unitPrice))
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-right font-medium">
+                                {item.changeType === 'modified' && item.previous && item.current &&
+                                  Number(item.current.totalPrice) !== Number(item.previous.totalPrice) ? (
+                                  <div>
+                                    <div className="text-gray-400 line-through text-xs">{formatNumber(Number(item.previous.totalPrice))}</div>
+                                    <div className="text-yellow-700 font-medium">{formatNumber(Number(item.current.totalPrice))}</div>
+                                  </div>
+                                ) : (
+                                  formatNumber(Number(item.totalPrice))
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}>
+                                  {statusInfo.label}
+                                </span>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                        {compareData.comparison[compareTab].length === 0 && (
+                          <tr>
+                            <td colSpan={compareTab === 'purchase' ? 7 : 6} className="px-3 py-8 text-center text-gray-400">
+                              품목이 없습니다
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* 전체 버전 이력 */}
+                  {compareData.versions.length > 1 && (
+                    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                      <div className="text-xs font-medium text-gray-500 mb-2">전체 버전 이력</div>
+                      <div className="flex gap-2 flex-wrap">
+                        {compareData.versions.map((v) => (
+                          <div
+                            key={v.id}
+                            className={`px-3 py-1.5 rounded-lg text-sm ${
+                              v.isLatest
+                                ? 'bg-blue-100 text-blue-700 font-medium'
+                                : 'bg-white border text-gray-600'
+                            }`}
+                          >
+                            v{v.version}
+                            <span className="text-xs ml-1 opacity-70">
+                              ({formatNumber(v.totalWithVat)}원)
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-12 text-center text-gray-500">데이터를 불러올 수 없습니다</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
