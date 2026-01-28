@@ -13,7 +13,7 @@ interface ItemDetail {
 }
 
 interface ItemInput {
-  sourceItemId?: string // 복사 원본 아이템 ID (수정된 아이템)
+  sourceItemId?: string  // 복사 원본 아이템 ID (수정된 아이템)
   productName?: string
   partNumber?: string | null
   isConsolidated?: boolean

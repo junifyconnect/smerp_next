@@ -430,7 +430,7 @@ function EditSalesApprovalForm() {
       const salesItemsPayload = [
         // 제품들 → 매출 아이템
         ...products.map((product, pIdx) => ({
-          id: product.salesItemId,  // 기존 아이템 ID (버전 추적용)
+          sourceItemId: product.salesItemId,  // 기존 아이템 ID (버전 추적용)
           productName: product.name || '제품',
           quantity: product.quantity || 1,
           unitPrice: product.salesUnitPrice || 0,
@@ -465,7 +465,7 @@ function EditSalesApprovalForm() {
 
       // 매입 아이템: 개별 품목별로 생성 (통합 제품도 개별 품목으로 분리)
       const purchaseItemsPayload: {
-        id?: string  // 기존 아이템 ID (버전 추적용)
+        sourceItemId?: string  // 기존 아이템 ID (버전 추적용)
         productName: string
         quantity: number
         unitPrice: number
@@ -486,7 +486,7 @@ function EditSalesApprovalForm() {
             // 매입가격이나 매입처가 있는 경우에만 생성
             if (item.purchaseUnitPrice > 0 || item.vendorCompany) {
               purchaseItemsPayload.push({
-                id: item.purchaseItemId,  // 기존 아이템 ID (버전 추적용)
+                sourceItemId: item.purchaseItemId,  // 기존 아이템 ID (버전 추적용)
                 productName: item.description || item.partNumber || '품목',
                 quantity: item.quantity || 1,
                 unitPrice: item.purchaseUnitPrice || 0,

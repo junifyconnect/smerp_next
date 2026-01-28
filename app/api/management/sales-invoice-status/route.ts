@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 
 // GET /api/management/sales-invoice-status - 매출 계산서 발행현황 목록 조회
-// InvoiceRecord 테이블에서 조회
+// 아이템 테이블에서 직접 조회 (상태값이 아이템에 저장됨)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -12,125 +12,180 @@ export async function GET(request: NextRequest) {
     // 필터 파라미터
     const yearMonth = searchParams.get('yearMonth') // 25.12 형식
     const clientCompany = searchParams.get('clientCompany')
-    const invoiceStatus = searchParams.get('invoiceStatus') // PENDING, ISSUED, AMENDED, CANCELLED
+    const invoiceStatus = searchParams.get('invoiceStatus')
     const search = searchParams.get('search')
     const approvalId = searchParams.get('approvalId')
 
-    // InvoiceRecord 조회 조건
-    const where: Record<string, unknown> = {
-      invoiceType: 'SALES',
+    // 1. 최신 버전 승인된 품의서의 아이템 조회 (PENDING, ISSUED, AMENDMENT_NEEDED, AMENDED)
+    const latestWhere: Record<string, unknown> = {
+      approval: {
+        status: 'APPROVED',
+        isLatest: true,
+      },
     }
 
+    // 2. 취소 필요 아이템 조회 (이전 버전에서)
+    const cancellationWhere: Record<string, unknown> = {
+      approval: {
+        status: 'APPROVED',
+        isLatest: false,
+      },
+      salesInvoiceStatus: 'CANCELLATION_NEEDED',
+    }
+
+    // 공통 필터 적용
     if (clientCompany) {
-      where.clientCompany = { contains: clientCompany, mode: 'insensitive' }
+      latestWhere.approval = {
+        ...(latestWhere.approval as object),
+        clientCompany: { contains: clientCompany, mode: 'insensitive' },
+      }
+      cancellationWhere.approval = {
+        ...(cancellationWhere.approval as object),
+        clientCompany: { contains: clientCompany, mode: 'insensitive' },
+      }
     }
 
     if (invoiceStatus) {
-      where.status = invoiceStatus
+      if (invoiceStatus === 'CANCELLATION_NEEDED') {
+        // 취소 필요만 조회
+        latestWhere.salesInvoiceStatus = 'NONE_MATCH' // 최신 버전에서는 없음
+      } else {
+        latestWhere.salesInvoiceStatus = invoiceStatus
+        cancellationWhere.salesInvoiceStatus = 'NONE_MATCH' // 취소 필요가 아니면 제외
+      }
     }
 
     if (approvalId) {
-      where.approvalId = approvalId
+      latestWhere.approvalId = approvalId
+      cancellationWhere.approvalId = approvalId
     }
 
-    // yearMonth 필터 (발행일 기준)
     if (yearMonth) {
       const [year, month] = yearMonth.split('.')
       const fullYear = parseInt(`20${year}`)
       const monthNum = parseInt(month)
       const startDate = new Date(fullYear, monthNum - 1, 1)
       const endDate = new Date(fullYear, monthNum, 0, 23, 59, 59)
-      where.OR = [
-        // 발행일 기준
-        {
-          invoiceDate: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-        // 미발행인 경우 생성일 기준
-        {
-          status: 'PENDING',
-          createdAt: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-      ]
+
+      const dateFilter = {
+        OR: [
+          { salesInvoiceDate: { gte: startDate, lte: endDate } },
+          { salesInvoiceStatus: 'PENDING', createdAt: { gte: startDate, lte: endDate } },
+        ],
+      }
+      latestWhere.AND = [dateFilter]
+      cancellationWhere.AND = [dateFilter]
     }
 
     if (search) {
-      where.AND = [
-        {
-          OR: [
-            { productName: { contains: search, mode: 'insensitive' } },
-            { partNumber: { contains: search, mode: 'insensitive' } },
-          ],
-        },
-      ]
+      const searchFilter = {
+        OR: [
+          { productName: { contains: search, mode: 'insensitive' } },
+          { partNumber: { contains: search, mode: 'insensitive' } },
+        ],
+      }
+      latestWhere.AND = [...((latestWhere.AND as unknown[]) || []), searchFilter]
+      cancellationWhere.AND = [...((cancellationWhere.AND as unknown[]) || []), searchFilter]
     }
 
-    // 전체 개수 조회
-    const total = await prisma.invoiceRecord.count({ where })
-
-    // 페이지네이션 적용하여 조회
-    const records = await prisma.invoiceRecord.findMany({
-      where,
-      include: {
-        approval: {
-          select: {
-            id: true,
-            approvalCode: true,
-            approvalDate: true,
-            version: true,
-            clientCompany: true,
-            managerName: true,
+    // 조회 실행
+    const [latestItems, cancellationItems] = await Promise.all([
+      prisma.salesApprovalItem.findMany({
+        where: latestWhere,
+        include: {
+          approval: {
+            select: {
+              id: true,
+              approvalCode: true,
+              approvalDate: true,
+              version: true,
+              clientCompany: true,
+              managerName: true,
+            },
           },
+          details: { orderBy: { sortOrder: 'asc' } },
         },
-      },
-      orderBy: [
-        { invoiceDate: 'desc' },
-        { createdAt: 'desc' },
-      ],
-      skip: (page - 1) * limit,
-      take: limit,
-    })
+        orderBy: [
+          { salesInvoiceDate: 'desc' },
+          { createdAt: 'desc' },
+        ],
+      }),
+      prisma.salesApprovalItem.findMany({
+        where: cancellationWhere,
+        include: {
+          approval: {
+            select: {
+              id: true,
+              approvalCode: true,
+              approvalDate: true,
+              version: true,
+              clientCompany: true,
+              managerName: true,
+            },
+          },
+          details: { orderBy: { sortOrder: 'asc' } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ])
+
+    // 합치기
+    const allItems = [...latestItems, ...cancellationItems]
+    const total = allItems.length
+
+    // 페이지네이션 적용
+    const paginatedItems = allItems.slice((page - 1) * limit, page * limit)
 
     // 결과 변환
-    const items = records.map(record => ({
-      id: record.id,
-      approvalId: record.approvalId,
-      itemId: record.itemId,
-      approvalCode: record.approval.approvalCode,
-      approvalVersion: record.approval.version,
-      approvalDate: record.approval.approvalDate,
-      clientCompany: record.clientCompany || record.approval.clientCompany,
-      managerName: record.approval.managerName,
-      partNumber: record.partNumber,
-      productName: record.productName,
-      quantity: record.quantity,
-      unitPrice: record.unitPrice,
-      totalPrice: record.totalPrice,
-      invoiceStatus: record.status,
-      invoiceDate: record.invoiceDate,
-      invoiceNumber: record.invoiceNumber,
-      invoiceRemarks: record.remarks,
-      createdAt: record.createdAt,
+    const items = paginatedItems.map(item => ({
+      id: item.id,
+      approvalId: item.approvalId,
+      itemId: item.id,
+      approvalCode: item.approval.approvalCode,
+      approvalVersion: item.approval.version,
+      approvalDate: item.approval.approvalDate,
+      clientCompany: item.approval.clientCompany,
+      managerName: item.approval.managerName,
+      partNumber: item.partNumber,
+      productName: item.productName,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      totalPrice: item.totalPrice,
+      isConsolidated: item.isConsolidated,
+      invoiceStatus: item.salesInvoiceStatus,
+      invoiceDate: item.salesInvoiceDate,
+      invoiceRemarks: item.invoiceRemarks,
+      createdAt: item.createdAt,
     }))
 
     // 집계
-    const totalPrice = records.reduce((sum, item) => sum + Number(item.totalPrice || 0), 0)
+    const totalPrice = paginatedItems.reduce((sum, item) => sum + Number(item.totalPrice || 0), 0)
 
     // 발행 상태별 집계 (전체 기준)
-    const statusCounts = await prisma.invoiceRecord.groupBy({
-      by: ['status'],
-      where: { invoiceType: 'SALES' },
-      _count: true,
-    })
-    const byInvoiceStatus = statusCounts.reduce((acc, item) => {
-      acc[item.status] = item._count
+    const [latestStatusCounts, cancellationCount] = await Promise.all([
+      prisma.salesApprovalItem.groupBy({
+        by: ['salesInvoiceStatus'],
+        where: {
+          approval: { status: 'APPROVED', isLatest: true },
+        },
+        _count: true,
+      }),
+      prisma.salesApprovalItem.count({
+        where: {
+          approval: { status: 'APPROVED', isLatest: false },
+          salesInvoiceStatus: 'CANCELLATION_NEEDED',
+        },
+      }),
+    ])
+
+    const byInvoiceStatus = latestStatusCounts.reduce((acc, item) => {
+      acc[item.salesInvoiceStatus] = item._count
       return acc
     }, {} as Record<string, number>)
+
+    if (cancellationCount > 0) {
+      byInvoiceStatus['CANCELLATION_NEEDED'] = cancellationCount
+    }
 
     return NextResponse.json({
       items,
@@ -153,83 +208,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/management/sales-invoice-status - 계산서 발행 기록 생성
-// 아이템에서 InvoiceRecord로 복사
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { itemIds, approvalId } = body
-
-    if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0) {
-      return NextResponse.json(
-        { error: '발행할 항목을 선택해주세요' },
-        { status: 400 }
-      )
-    }
-
-    // 품의서 정보 조회
-    const approval = await prisma.salesApproval.findUnique({
-      where: { id: approvalId },
-      select: {
-        id: true,
-        originalId: true,
-        clientCompany: true,
-      },
-    })
-
-    if (!approval) {
-      return NextResponse.json(
-        { error: '품의서를 찾을 수 없습니다' },
-        { status: 404 }
-      )
-    }
-
-    const chainRootId = approval.originalId || approval.id
-
-    // 아이템 조회
-    const items = await prisma.salesApprovalItem.findMany({
-      where: { id: { in: itemIds } },
-    })
-
-    // InvoiceRecord 생성
-    const records = await Promise.all(
-      items.map(item =>
-        prisma.invoiceRecord.create({
-          data: {
-            approvalId: chainRootId,
-            itemId: item.id,
-            invoiceType: 'SALES',
-            productName: item.productName,
-            partNumber: item.partNumber,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice || 0,
-            totalPrice: item.totalPrice || 0,
-            clientCompany: approval.clientCompany,
-            status: 'PENDING',
-          },
-        })
-      )
-    )
-
-    return NextResponse.json({
-      message: `${records.length}건의 발행 기록이 생성되었습니다`,
-      count: records.length,
-      ids: records.map(r => r.id),
-    })
-  } catch (error) {
-    console.error('매출 계산서 발행 기록 생성 오류:', error)
-    return NextResponse.json(
-      { error: '발행 기록 생성에 실패했습니다' },
-      { status: 500 }
-    )
-  }
-}
-
 // PATCH /api/management/sales-invoice-status - 계산서 발행 상태 일괄 업데이트
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json()
-    const { ids, invoiceStatus, invoiceDate, invoiceNumber, remarks } = body
+    const { ids, invoiceStatus, invoiceDate, remarks } = body
 
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json(
@@ -241,22 +224,18 @@ export async function PATCH(request: NextRequest) {
     const updateData: Record<string, unknown> = {}
 
     if (invoiceStatus) {
-      updateData.status = invoiceStatus
+      updateData.salesInvoiceStatus = invoiceStatus
     }
 
     if (invoiceDate !== undefined) {
-      updateData.invoiceDate = invoiceDate ? new Date(invoiceDate) : null
-    }
-
-    if (invoiceNumber !== undefined) {
-      updateData.invoiceNumber = invoiceNumber
+      updateData.salesInvoiceDate = invoiceDate ? new Date(invoiceDate) : null
     }
 
     if (remarks !== undefined) {
-      updateData.remarks = remarks
+      updateData.invoiceRemarks = remarks
     }
 
-    const result = await prisma.invoiceRecord.updateMany({
+    const result = await prisma.salesApprovalItem.updateMany({
       where: { id: { in: ids } },
       data: updateData,
     })

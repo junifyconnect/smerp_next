@@ -367,14 +367,25 @@ export default function InvoiceStatusPage() {
                   const rowSpan = spanInfo.count
                   const statusInfo = invoiceStatusLabels[item.invoiceStatus] || invoiceStatusLabels.PENDING
 
+                  // 상태별 배경색
+                  const statusBgColors: Record<string, string> = {
+                    PENDING: 'bg-orange-50',
+                    ISSUED: 'bg-green-50',
+                    AMENDMENT_NEEDED: 'bg-yellow-100',
+                    AMENDED: 'bg-purple-50',
+                    CANCELLATION_NEEDED: 'bg-pink-100',
+                    CANCELLED: 'bg-red-50',
+                  }
+                  const statusBg = statusBgColors[item.invoiceStatus] || ''
+
                   return (
                     <tr
                       key={item.id}
                       onClick={() => toggleSelection(item.id)}
                       className={`cursor-pointer ${
                         selectedIds.has(item.id)
-                          ? 'bg-blue-100 hover:bg-blue-200'
-                          : 'hover:bg-gray-50'
+                          ? 'bg-blue-200 hover:bg-blue-300'
+                          : `${statusBg} hover:brightness-95`
                       }`}
                     >
                       {isFirstInGroup && (

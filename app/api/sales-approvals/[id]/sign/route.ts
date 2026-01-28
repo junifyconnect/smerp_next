@@ -93,6 +93,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           salesManager: { select: { id: true, name: true, signatureUrl: true } },
           teamLeader: { select: { id: true, name: true, signatureUrl: true } },
           ceo: { select: { id: true, name: true, signatureUrl: true } },
+          items: {
+            include: { details: { orderBy: { sortOrder: 'asc' } } },
+            orderBy: { sortOrder: 'asc' },
+          },
+          purchaseItems: {
+            include: { details: { orderBy: { sortOrder: 'asc' } } },
+            orderBy: { sortOrder: 'asc' },
+          },
         },
       })
 
@@ -119,6 +127,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           salesManager: { select: { id: true, name: true, signatureUrl: true } },
           teamLeader: { select: { id: true, name: true, signatureUrl: true } },
           ceo: { select: { id: true, name: true, signatureUrl: true } },
+          items: {
+            include: { details: { orderBy: { sortOrder: 'asc' } } },
+            orderBy: { sortOrder: 'asc' },
+          },
+          purchaseItems: {
+            include: { details: { orderBy: { sortOrder: 'asc' } } },
+            orderBy: { sortOrder: 'asc' },
+          },
         },
       })
 
