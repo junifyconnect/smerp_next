@@ -105,9 +105,6 @@ interface Document {
   purchaseItems?: PurchaseItem[]
   deal?: { id: string; name: string; status: string }
   // 품의서 전용 필드
-  totalAmount?: number
-  vatAmount?: number
-  totalWithVat?: number
   purchaseTotal?: number
   purchaseTotalWithVat?: number
   // 결재선

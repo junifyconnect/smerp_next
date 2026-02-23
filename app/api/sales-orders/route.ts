@@ -55,9 +55,6 @@ export async function GET(request: NextRequest) {
         where,
         include: {
           items: true,
-          deal: {
-            select: { id: true, name: true },
-          },
           createdBy: {
             select: { id: true, name: true },
           },
@@ -95,7 +92,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const {
-      dealId,
       orderDate,
       managerName,
       deliveryAddress,
@@ -134,7 +130,6 @@ export async function POST(request: NextRequest) {
     const order = await prisma.salesOrder.create({
       data: {
         orderNumber,
-        dealId: dealId || undefined,
         orderDate: orderDate ? new Date(orderDate) : new Date(),
         managerName,
         deliveryAddress,

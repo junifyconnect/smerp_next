@@ -63,9 +63,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer())
+    const arrayBuffer = await file.arrayBuffer()
     const workbook = new ExcelJS.Workbook()
-    await workbook.xlsx.load(buffer)
+    await workbook.xlsx.load(arrayBuffer)
 
     const sheets: AnalyzedSheet[] = []
 
@@ -111,9 +111,11 @@ export async function POST(request: NextRequest) {
           if (cell.value !== null && cell.value !== undefined) {
             isEmpty = false
 
-            if (cell.formula || cell.sharedFormula) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const cellAny = cell as any
+            if (cell.formula || cellAny.sharedFormula) {
               type = 'formula'
-              formula = cell.formula || cell.sharedFormula
+              formula = cell.formula || cellAny.sharedFormula
               value = cell.result as string | number | boolean | Date | null
             } else if (cell.value instanceof Date) {
               type = 'date'

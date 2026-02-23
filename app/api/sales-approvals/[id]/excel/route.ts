@@ -14,12 +14,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const approval = await prisma.salesApproval.findUnique({
       where: { id },
       include: {
-        items: {
-          include: { details: { orderBy: { sortOrder: 'asc' } } },
-          orderBy: { sortOrder: 'asc' },
-        },
-        purchaseItems: {
-          include: { details: { orderBy: { sortOrder: 'asc' } } },
+        products: {
+          include: { items: { orderBy: { sortOrder: 'asc' } } },
           orderBy: { sortOrder: 'asc' },
         },
         salesManager: { select: { name: true, signatureUrl: true } },
@@ -29,25 +25,34 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     })
 
     if (!approval) {
-      return NextResponse.json(
-        { error: '품의서를 찾을 수 없습니다' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: '품의서를 찾을 수 없습니다' }, { status: 404 })
     }
 
-    // DocumentData 형식으로 변환 (새 구조 -> 기존 형식)
-    // details를 description 문자열로 합침
-    const purchaseItems: PurchaseItem[] = approval.purchaseItems.map((item) => ({
-      partNumber: item.productName || undefined,
-      description: item.details.map((d) =>
-        `${d.partNumber ? `[${d.partNumber}] ` : ''}${d.description || ''}${d.quantity ? ` x${d.quantity}` : ''}`
+    // Products → flat items for excel (매출 쪽)
+    const salesItems = approval.products.map((product) => ({
+      partNumber: product.name || undefined,
+      description: product.items.map(i =>
+        `${i.partNumber ? `[${i.partNumber}] ` : ''}${i.description || ''}`
       ).join('\n') || undefined,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice ? Number(item.unitPrice) : undefined,
-      totalPrice: item.totalPrice ? Number(item.totalPrice) : undefined,
-      purchaseDate: item.purchaseDate || undefined,
-      vendorCompany: item.vendorCompany || undefined,
+      quantity: product.quantity,
+      unitPrice: product.unitPrice ? Number(product.unitPrice) : undefined,
+      totalPrice: product.totalPrice ? Number(product.totalPrice) : undefined,
     }))
+
+    // Items → flat purchase items (매입 쪽)
+    const purchaseItems: PurchaseItem[] = approval.products.flatMap((product) =>
+      product.items
+        .filter(item => item.vendorName || item.purchasePrice)
+        .map(item => ({
+          partNumber: item.partNumber || undefined,
+          description: item.description || undefined,
+          quantity: item.purchaseQty,
+          unitPrice: item.purchasePrice ? Number(item.purchasePrice) : undefined,
+          totalPrice: item.purchaseTotal ? Number(item.purchaseTotal) : undefined,
+          purchaseDate: item.purchaseDate || undefined,
+          vendorCompany: item.vendorName || undefined,
+        }))
+    )
 
     const data: DocumentData = {
       docNumber: approval.approvalNumber,
@@ -65,21 +70,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       receiverPhone: approval.receiverPhone || undefined,
       notes: approval.notes || undefined,
       managerName: approval.managerName || undefined,
-      items: approval.items.map((item) => ({
-        partNumber: item.productName || undefined,
-        description: item.details.map((d) =>
-          `${d.partNumber ? `[${d.partNumber}] ` : ''}${d.description || ''}${d.quantity ? ` x${d.quantity}` : ''}`
-        ).join('\n') || undefined,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice ? Number(item.unitPrice) : undefined,
-        totalPrice: item.totalPrice ? Number(item.totalPrice) : undefined,
-      })),
+      items: salesItems,
       purchaseItems,
-      totalAmount: approval.totalAmount ? Number(approval.totalAmount) : undefined,
-      vatAmount: approval.vatAmount ? Number(approval.vatAmount) : undefined,
-      totalWithVat: approval.totalWithVat ? Number(approval.totalWithVat) : undefined,
-      purchaseTotal: approval.purchaseTotal ? Number(approval.purchaseTotal) : undefined,
-      // 서명 정보
+      totalAmount: approval.totalSalesAmount ? Number(approval.totalSalesAmount) : undefined,
+      purchaseTotal: approval.totalPurchaseAmount ? Number(approval.totalPurchaseAmount) : undefined,
       signatures: {
         salesManager: approval.salesManager ? {
           name: approval.salesManager.name,
@@ -101,7 +95,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const buffer = await generateSalesApproval(data)
 
-    // 파일명 생성
     const dateStr = approval.approvalDate
       ? approval.approvalDate.toISOString().split('T')[0].replace(/-/g, '.')
       : new Date().toISOString().split('T')[0].replace(/-/g, '.')
@@ -117,9 +110,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     })
   } catch (error) {
     console.error('품의서 엑셀 다운로드 오류:', error)
-    return NextResponse.json(
-      { error: '엑셀 파일 생성에 실패했습니다' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: '엑셀 파일 생성에 실패했습니다' }, { status: 500 })
   }
 }

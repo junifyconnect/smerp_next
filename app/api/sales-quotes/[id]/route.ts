@@ -10,7 +10,6 @@ interface ItemInput {
   partNumber?: string
   description?: string
   quantity?: number
-  srpPrice?: number
   unitPrice?: number
   sortOrder?: number
 }
@@ -20,10 +19,7 @@ interface ProductInput {
   id?: string
   name: string
   quantity?: number
-  srpPrice?: number
   unitPrice?: number
-  isConsolidated?: boolean
-  consolidatedPrice?: number // 레거시 호환
   items?: ItemInput[]
   sortOrder?: number
 }
@@ -40,12 +36,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           include: { items: { orderBy: { sortOrder: 'asc' } } },
           orderBy: { sortOrder: 'asc' },
         },
-        items: {
-          where: { productId: null }, // 독립 품목만
-          orderBy: { sortOrder: 'asc' },
-        },
         files: true,
-        deal: { select: { id: true, name: true, status: true } },
         createdBy: { select: { id: true, name: true } },
       },
     })
@@ -56,8 +47,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         { status: 404 }
       )
     }
-
-    console.log('[API] Quote products:', quote.products?.length, quote.products)
 
     return NextResponse.json(quote)
   } catch (error) {
@@ -75,9 +64,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const { id } = await params
     const body = await request.json()
     const {
-      dealId,
       projectName,
-      productName,
       managerName,
       clientCompany,
       clientContact,
@@ -92,18 +79,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       paymentTerms,
       notes,
       status,
-      // 새 구조: 제품 그룹 + 독립 품목
       products,
-      standaloneItems,
-      // 레거시 호환: 기존 flat items 구조
-      items,
-      // 통합 견적 (레거시)
-      isConsolidated,
-      consolidatedName,
-      consolidatedPrice,
     } = body
 
-    // 상태 변경 검증: SENT 이후에는 ACCEPTED/REJECTED만 가능
+    // 상태 변경 검증
     if (status !== undefined) {
       const currentQuote = await prisma.salesQuote.findUnique({
         where: { id },
@@ -112,14 +91,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
       if (currentQuote) {
         const currentStatus = currentQuote.status
-        // SENT 상태에서는 ACCEPTED 또는 REJECTED로만 변경 가능
         if (currentStatus === 'SENT' && !['ACCEPTED', 'REJECTED'].includes(status)) {
           return NextResponse.json(
             { error: '발송 후에는 수락/거절만 가능합니다' },
             { status: 400 }
           )
         }
-        // ACCEPTED/REJECTED 상태에서는 변경 불가
         if (['ACCEPTED', 'REJECTED'].includes(currentStatus)) {
           return NextResponse.json(
             { error: '확정된 견적서는 상태를 변경할 수 없습니다' },
@@ -131,11 +108,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const updateData: Record<string, unknown> = {}
 
-    if (dealId !== undefined) {
-      updateData.deal = dealId ? { connect: { id: dealId } } : { disconnect: true }
-    }
     if (projectName !== undefined) updateData.projectName = projectName
-    if (productName !== undefined) updateData.productName = productName
     if (managerName !== undefined) updateData.managerName = managerName
     if (clientCompany !== undefined) updateData.clientCompany = clientCompany
     if (clientContact !== undefined) updateData.clientContact = clientContact
@@ -144,11 +117,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (clientMobile !== undefined) updateData.clientMobile = clientMobile
     if (clientCP !== undefined) updateData.clientMobile = clientCP
     if (clientEmail !== undefined) updateData.clientEmail = clientEmail
-
-    // 통합 견적 (레거시)
-    if (isConsolidated !== undefined) updateData.isConsolidated = isConsolidated
-    if (consolidatedName !== undefined) updateData.consolidatedName = consolidatedName
-    if (consolidatedPrice !== undefined) updateData.consolidatedPrice = consolidatedPrice
     if (quoteDate !== undefined) updateData.quoteDate = quoteDate ? new Date(quoteDate) : null
     if (validUntil !== undefined) updateData.validUntil = validUntil
     if (deliveryDate !== undefined) updateData.deliveryDate = deliveryDate && deliveryDate !== '별도협의' ? new Date(deliveryDate) : null
@@ -156,114 +124,45 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (notes !== undefined) updateData.notes = notes
     if (status !== undefined) updateData.status = status
 
-    // 새 구조 사용 여부 판단
-    const useNewStructure = products !== undefined || standaloneItems !== undefined
-
-    if (useNewStructure) {
-      // 새 구조: 제품 그룹 + 독립 품목
+    // 제품 + 품목 업데이트
+    if (products !== undefined) {
       let totalAmount = 0
 
-      // 기존 제품 및 품목 삭제
+      // 기존 제품 삭제 (cascade로 품목도 삭제됨)
       await prisma.salesQuoteProduct.deleteMany({ where: { quoteId: id } })
-      await prisma.salesQuoteItem.deleteMany({ where: { quoteId: id } })
 
-      // 제품 그룹 처리
-      if (products && products.length > 0) {
-        for (let pIdx = 0; pIdx < products.length; pIdx++) {
-          const product: ProductInput = products[pIdx]
-          const qty = product.quantity || 1
-          const unitPrice = product.unitPrice || product.consolidatedPrice || 0
-          const productTotal = qty * unitPrice
+      // 새 제품 + 품목 생성
+      for (let pIdx = 0; pIdx < products.length; pIdx++) {
+        const product: ProductInput = products[pIdx]
+        const qty = product.quantity || 1
+        const unitPrice = product.unitPrice || 0
+        const productTotal = qty * unitPrice
+        totalAmount += productTotal
 
-          totalAmount += productTotal
-
-          // 제품 생성
-          const createdProduct = await prisma.salesQuoteProduct.create({
-            data: {
-              quoteId: id,
-              sortOrder: product.sortOrder ?? pIdx,
-              name: product.name,
-              quantity: qty,
-              srpPrice: product.srpPrice,
-              unitPrice: unitPrice,
-              totalPrice: productTotal,
-              isConsolidated: true,
-              consolidatedPrice: productTotal, // 레거시 호환
-            },
-          })
-
-          // 참고용 상세 품목 생성
-          if (product.items && product.items.length > 0) {
-            const productItems = product.items.map((item: ItemInput, iIdx: number) => {
-              return {
-                quoteId: id,
-                productId: createdProduct.id,
-                sortOrder: item.sortOrder ?? iIdx,
-                partNumber: item.partNumber,
-                description: item.description,
-                quantity: item.quantity || 1,
-                srpPrice: item.srpPrice,
-                unitPrice: item.unitPrice || 0,
-                totalPrice: (item.quantity || 1) * (item.unitPrice || 0),
-              }
-            })
-
-            await prisma.salesQuoteItem.createMany({ data: productItems })
-          }
-        }
-      }
-
-      // 독립 품목 처리
-      if (standaloneItems && standaloneItems.length > 0) {
-        const standaloneItemsData = standaloneItems.map((item: ItemInput, idx: number) => {
-          const qty = item.quantity || 1
-          const price = item.unitPrice || 0
-          const itemTotal = qty * price
-          totalAmount += itemTotal
-          return {
+        const createdProduct = await prisma.salesQuoteProduct.create({
+          data: {
             quoteId: id,
-            productId: null,
-            sortOrder: item.sortOrder ?? (idx + 1000),
-            partNumber: item.partNumber,
-            description: item.description,
+            sortOrder: product.sortOrder ?? pIdx,
+            name: product.name,
             quantity: qty,
-            srpPrice: item.srpPrice,
-            unitPrice: price,
-            totalPrice: itemTotal,
-          }
+            unitPrice: unitPrice,
+            totalPrice: productTotal,
+          },
         })
 
-        await prisma.salesQuoteItem.createMany({ data: standaloneItemsData })
-      }
-
-      const vatAmount = Math.round(totalAmount * 0.1)
-      const totalWithVat = totalAmount + vatAmount
-
-      updateData.totalAmount = totalAmount
-      updateData.vatAmount = vatAmount
-      updateData.totalWithVat = totalWithVat
-    } else if (items !== undefined) {
-      // 레거시 구조: 기존 flat items
-      let totalAmount = 0
-      const itemsWithTotal = items.map((item: ItemInput, index: number) => {
-        const qty = item.quantity || 1
-        const price = item.unitPrice || 0
-        const itemTotal = qty * price
-        totalAmount += itemTotal
-        return {
-          partNumber: item.partNumber,
-          description: item.description,
-          quantity: qty,
-          srpPrice: item.srpPrice,
-          unitPrice: price,
-          totalPrice: itemTotal,
-          sortOrder: item.sortOrder ?? index,
+        if (product.items && product.items.length > 0) {
+          await prisma.salesQuoteItem.createMany({
+            data: product.items.map((item: ItemInput, iIdx: number) => ({
+              productId: createdProduct.id,
+              sortOrder: item.sortOrder ?? iIdx,
+              partNumber: item.partNumber,
+              description: item.description,
+              quantity: item.quantity || 1,
+              unitPrice: item.unitPrice || 0,
+              totalPrice: (item.quantity || 1) * (item.unitPrice || 0),
+            })),
+          })
         }
-      })
-
-      // 통합 견적인 경우 통합 금액 사용
-      if (isConsolidated && consolidatedPrice) {
-        totalAmount = consolidatedPrice
       }
 
       const vatAmount = Math.round(totalAmount * 0.1)
@@ -272,16 +171,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       updateData.totalAmount = totalAmount
       updateData.vatAmount = vatAmount
       updateData.totalWithVat = totalWithVat
-
-      // 기존 제품 및 아이템 삭제 후 새로 생성
-      await prisma.salesQuoteProduct.deleteMany({ where: { quoteId: id } })
-      await prisma.salesQuoteItem.deleteMany({ where: { quoteId: id } })
-      await prisma.salesQuoteItem.createMany({
-        data: itemsWithTotal.map((item) => ({
-          ...item,
-          quoteId: id,
-        })),
-      })
     }
 
     const quote = await prisma.salesQuote.update({
@@ -292,11 +181,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           include: { items: { orderBy: { sortOrder: 'asc' } } },
           orderBy: { sortOrder: 'asc' },
         },
-        items: {
-          where: { productId: null },
-          orderBy: { sortOrder: 'asc' },
-        },
-        deal: { select: { id: true, name: true, status: true } },
         createdBy: { select: { id: true, name: true } },
       },
     })

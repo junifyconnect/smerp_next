@@ -40,7 +40,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 품목 데이터 처리
-    const items = (parsed.maApprovalItems || []).map((item: Record<string, unknown>) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const items = (parsed.maApprovalItems || []).map((item: any) => ({
       smCode: item.smCode || '',
       vendorCode: item.vendorCode || '',
       clientCompany: item.clientCompany || '',

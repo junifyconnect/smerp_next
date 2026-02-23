@@ -71,7 +71,7 @@ export function canSign(
   signRole: keyof typeof SIGN_ROLES
 ): boolean {
   if (!user) return false
-  return user.roles.some((role) => SIGN_ROLES[signRole].includes(role))
+  return user.roles.some((role) => (SIGN_ROLES[signRole] as readonly string[]).includes(role))
 }
 
 // 권한 체크 (레거시 - 하위 호환)

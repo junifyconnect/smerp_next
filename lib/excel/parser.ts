@@ -388,7 +388,7 @@ function parseSalesQuote(sheet: ExcelJS.Worksheet): ParsedDocument {
     }
   }
   if (!notes) {
-    notes = getCellValue(sheet, 'B31') || undefined
+    notes = getCellValue(sheet, 'B31') || ''
   }
 
   return {

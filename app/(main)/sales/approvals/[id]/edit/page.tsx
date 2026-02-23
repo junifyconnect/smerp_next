@@ -7,8 +7,9 @@ import VendorAutocomplete from '@/components/inputs/VendorAutocomplete'
 
 // 품목 (제품 하위)
 interface Item {
-  salesItemDetailId?: string  // 매출 품목 상세 ID
-  purchaseItemId?: string     // 매입 아이템 ID (버전 추적용)
+  salesItemDetailId?: string   // 매출 품목 상세 ID
+  purchaseItemId?: string      // 매입 아이템 ID (버전 추적용)
+  purchaseDetailId?: string    // 매입 품목 상세 ID (버전 추적용)
   partNumber: string
   description: string
   quantity: number
@@ -156,14 +157,27 @@ function EditSalesApprovalForm() {
           const consolidatedPurchaseByItemId = new Map<string, ApiItem>()
           // 개별 매입용: salesItemDetailId로 맵핑 (purchaseItem 레벨에서)
           const individualPurchaseByDetailId = new Map<string, ApiItem>()
+          // 매입 Detail ID 맵: salesItemDetailId → purchaseDetailId
+          const purchaseDetailIdMap = new Map<string, string>()
 
           purchaseItems.forEach(pi => {
             if (pi.isConsolidated && pi.salesItemId) {
               // 통합 매입: salesItemId로 맵핑
               consolidatedPurchaseByItemId.set(pi.salesItemId, pi)
+              // 통합 매입의 details도 맵에 추가
+              pi.details?.forEach(pd => {
+                if (pd.salesItemDetailId && pd.id) {
+                  purchaseDetailIdMap.set(pd.salesItemDetailId, pd.id)
+                }
+              })
             } else if (!pi.isConsolidated && pi.salesItemDetailId) {
               // 개별 매입: salesItemDetailId로 맵핑 (purchaseItem 레벨)
               individualPurchaseByDetailId.set(pi.salesItemDetailId, pi)
+              // 개별 매입의 첫 번째 detail ID 저장
+              const firstDetail = pi.details?.[0]
+              if (firstDetail?.id) {
+                purchaseDetailIdMap.set(pi.salesItemDetailId, firstDetail.id)
+              }
             }
           })
 
@@ -178,6 +192,8 @@ function EditSalesApprovalForm() {
               const individualPurchase = detail.id ? individualPurchaseByDetailId.get(detail.id) : undefined
               // 개별 매입이 있으면 그거 사용, 없으면 통합 매입 사용
               const effectivePurchase = individualPurchase || productPurchase
+              // 매입 Detail ID 찾기
+              const purchaseDetailId = detail.id ? purchaseDetailIdMap.get(detail.id) : undefined
 
               const purchaseUnitPrice = Number(effectivePurchase?.unitPrice) || 0
               const purchaseVendor = effectivePurchase?.vendorCompany || ''
@@ -185,6 +201,7 @@ function EditSalesApprovalForm() {
               return {
                 salesItemDetailId: detail.id,
                 purchaseItemId: effectivePurchase?.id,
+                purchaseDetailId,
                 partNumber: detail.partNumber || '',
                 description: detail.description || '',
                 quantity: detail.quantity || 1,
@@ -481,6 +498,7 @@ function EditSalesApprovalForm() {
         isConsolidated: boolean
         sortOrder: number
         details: {
+          sourceDetailId?: string  // 버전 추적용
           partNumber: string
           description: string
           quantity: number
@@ -510,6 +528,7 @@ function EditSalesApprovalForm() {
               isConsolidated: true,
               sortOrder: purchaseSortOrder++,
               details: product.items.map((item, iIdx) => ({
+                sourceDetailId: item.purchaseDetailId,  // 버전 추적용
                 partNumber: item.partNumber || '',
                 description: item.description || '',
                 quantity: item.quantity || 1,
@@ -530,6 +549,7 @@ function EditSalesApprovalForm() {
                   isConsolidated: false,
                   sortOrder: purchaseSortOrder++,
                   details: [{
+                    sourceDetailId: item.purchaseDetailId,  // 버전 추적용
                     partNumber: item.partNumber || '',
                     description: item.description || '',
                     quantity: item.quantity || 1,

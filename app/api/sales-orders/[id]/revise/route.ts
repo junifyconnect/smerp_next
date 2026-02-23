@@ -15,7 +15,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       where: { id },
       include: {
         items: { orderBy: { sortOrder: 'asc' } },
-        deal: true,
+        
       },
     })
 
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       // 2. 새 버전 발주서 생성 (원본 데이터 복사, 상태는 DRAFT)
       return tx.salesOrder.create({
         data: {
-          deal: originalOrder.dealId ? { connect: { id: originalOrder.dealId } } : undefined,
+          // dealId removed in v2
           orderNumber: newOrderNumber,
           status: 'DRAFT',
           // 버전 관리
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           vatAmount: originalOrder.vatAmount,
           totalWithVat: originalOrder.totalWithVat,
           notes: originalOrder.notes,
-          createdById: originalOrder.createdById,
+          createdBy: { connect: { id: originalOrder.createdById } },
           items: {
             create: originalOrder.items.map((item, index) => ({
               sortOrder: item.sortOrder ?? index,
@@ -107,7 +107,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         },
         include: {
           items: { orderBy: { sortOrder: 'asc' } },
-          deal: { select: { id: true, name: true, status: true } },
           createdBy: { select: { id: true, name: true } },
         },
       })

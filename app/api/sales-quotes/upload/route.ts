@@ -16,54 +16,74 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 엑셀 파일 파싱
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    // 1. 먼저 동적 템플릿 파서 시도
+    // 1. 동적 템플릿 파서 시도
     let parsed = await parseWithDefaultTemplate(buffer, 'SALES_QUOTE', prisma)
 
-    // 2. 템플릿이 없으면 기본 파서 사용
+    // 2. 없으면 기본 파서
     if (!parsed) {
-      console.log('템플릿이 없어 기본 파서 사용 (SALES_QUOTE)')
       parsed = await parseExcel(buffer, 'SALES_QUOTE')
-    } else {
-      console.log('동적 템플릿 파서 사용 (SALES_QUOTE)')
     }
 
-    // Deal 자동 생성 - 견적서 업로드 시 자동으로 Deal 생성
-    const firstItemDesc = parsed.items[0]?.description
-    const dealName = parsed.projectName || firstItemDesc || parsed.clientCompany || `견적서 ${new Date().toLocaleDateString('ko-KR')}`
-    const deal = await prisma.deal.create({
-      data: {
-        name: dealName,
-        customerName: parsed.clientCompany || null,
-      },
-    })
-
-    // 금액 계산
+    // 금액 계산 — products 기반
     let totalAmount = 0
-    const itemsWithTotal = parsed.items.map((item, index) => {
-      const qty = item.quantity || 1
-      const price = item.unitPrice || 0
-      const itemTotal = qty * price
-      totalAmount += itemTotal
+    const productsData = (parsed.products || []).map((product, pIdx) => {
+      const qty = product.quantity || 1
+      const price = product.unitPrice || product.totalPrice || 0
+      const productTotal = qty * price
+      totalAmount += productTotal
+
       return {
-        partNumber: item.partNumber,
-        description: item.description,
+        sortOrder: pIdx,
+        name: product.name,
         quantity: qty,
-        srpPrice: item.srpPrice,
         unitPrice: price,
-        totalPrice: itemTotal,
-        sortOrder: index,
+        totalPrice: productTotal,
+        items: (product.items || []).map((item, iIdx) => ({
+          sortOrder: iIdx,
+          partNumber: item.partNumber,
+          description: item.description,
+          quantity: item.quantity || 1,
+          unitPrice: item.unitPrice || 0,
+          totalPrice: (item.quantity || 1) * (item.unitPrice || 0),
+        })),
       }
     })
+
+    // products가 없으면 flat items를 하나의 product로 묶기
+    if (productsData.length === 0 && parsed.items?.length > 0) {
+      const items = parsed.items.map((item, idx) => {
+        const qty = item.quantity || 1
+        const price = item.unitPrice || 0
+        const itemTotal = qty * price
+        totalAmount += itemTotal
+        return {
+          sortOrder: idx,
+          partNumber: item.partNumber,
+          description: item.description,
+          quantity: qty,
+          unitPrice: price,
+          totalPrice: itemTotal,
+        }
+      })
+
+      productsData.push({
+        sortOrder: 0,
+        name: parsed.projectName || parsed.clientCompany || '품목',
+        quantity: 1,
+        unitPrice: totalAmount,
+        totalPrice: totalAmount,
+        items,
+      })
+    }
 
     const vatAmount = Math.round(totalAmount * 0.1)
     const totalWithVat = totalAmount + vatAmount
 
+    // 견적서 생성
     const quote = await prisma.salesQuote.create({
       data: {
-        deal: { connect: { id: deal.id } },
         projectName: parsed.projectName,
         managerName: parsed.managerName,
         clientCompany: parsed.clientCompany,
@@ -80,18 +100,44 @@ export async function POST(request: NextRequest) {
         totalAmount,
         vatAmount,
         totalWithVat,
-        items: {
-          create: itemsWithTotal,
-        },
       },
+    })
+
+    // 제품 + 품목 생성
+    for (const p of productsData) {
+      const createdProduct = await prisma.salesQuoteProduct.create({
+        data: {
+          quoteId: quote.id,
+          sortOrder: p.sortOrder,
+          name: p.name,
+          quantity: p.quantity,
+          unitPrice: p.unitPrice,
+          totalPrice: p.totalPrice,
+        },
+      })
+
+      if (p.items.length > 0) {
+        await prisma.salesQuoteItem.createMany({
+          data: p.items.map((item) => ({
+            productId: createdProduct.id,
+            ...item,
+          })),
+        })
+      }
+    }
+
+    const result = await prisma.salesQuote.findUnique({
+      where: { id: quote.id },
       include: {
-        items: true,
-        deal: { select: { id: true, name: true } },
+        products: {
+          include: { items: { orderBy: { sortOrder: 'asc' } } },
+          orderBy: { sortOrder: 'asc' },
+        },
         createdBy: { select: { id: true, name: true } },
       },
     })
 
-    return NextResponse.json(quote, { status: 201 })
+    return NextResponse.json(result, { status: 201 })
   } catch (error) {
     console.error('엑셀 업로드 오류:', error)
     return NextResponse.json(

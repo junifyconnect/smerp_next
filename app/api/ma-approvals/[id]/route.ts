@@ -108,7 +108,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       // 기존 아이템 삭제 후 새로 생성
       await prisma.mAApprovalItem.deleteMany({ where: { approvalId: id } })
       await prisma.mAApprovalItem.createMany({
-        data: itemsData.map((item) => ({
+        data: itemsData.map((item: typeof itemsData[number]) => ({
           ...item,
           approvalId: id,
         })),

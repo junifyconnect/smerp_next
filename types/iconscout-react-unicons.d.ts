@@ -35,4 +35,11 @@ declare module '@iconscout/react-unicons' {
   export const UilPackage: FC<IconProps>
   export const UilUsersAlt: FC<IconProps>
   export const UilUpload: FC<IconProps>
+  export const UilSearch: FC<IconProps>
+  export const UilBuilding: FC<IconProps>
+  export const UilUser: FC<IconProps>
+  export const UilCalendarAlt: FC<IconProps>
+  export const UilPlane: FC<IconProps>
+  export const UilReceipt: FC<IconProps>
+  export const UilFileEditAlt: FC<IconProps>
 }

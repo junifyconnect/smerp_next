@@ -14,7 +14,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const quote = await prisma.salesQuote.findUnique({
       where: { id },
       include: {
-        items: { orderBy: { sortOrder: 'asc' } },
+        products: {
+          include: { items: { orderBy: { sortOrder: 'asc' } } },
+          orderBy: { sortOrder: 'asc' },
+        },
       },
     })
 
@@ -25,7 +28,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // DocumentData 형식으로 변환
+    // products → flat items for excel generator
+    const allItems = quote.products.flatMap((product) =>
+      product.items.map((item) => ({
+        partNumber: item.partNumber || undefined,
+        description: item.description || undefined,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice ? Number(item.unitPrice) : undefined,
+        totalPrice: item.totalPrice ? Number(item.totalPrice) : undefined,
+      }))
+    )
+
     const data: DocumentData = {
       docNumber: quote.id,
       clientCompany: quote.clientCompany || undefined,
@@ -40,14 +53,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       paymentTerms: quote.paymentTerms || undefined,
       notes: quote.notes || undefined,
       managerName: quote.managerName || undefined,
-      items: quote.items.map((item) => ({
-        partNumber: item.partNumber || undefined,
-        description: item.description || undefined,
-        quantity: item.quantity,
-        srpPrice: item.srpPrice ? Number(item.srpPrice) : undefined,
-        unitPrice: item.unitPrice ? Number(item.unitPrice) : undefined,
-        totalPrice: item.totalPrice ? Number(item.totalPrice) : undefined,
-      })),
+      items: allItems,
       totalAmount: quote.totalAmount ? Number(quote.totalAmount) : undefined,
       vatAmount: quote.vatAmount ? Number(quote.vatAmount) : undefined,
       totalWithVat: quote.totalWithVat ? Number(quote.totalWithVat) : undefined,
@@ -55,12 +61,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const buffer = await generateSalesQuote(data)
 
-    // 파일명 생성
     const dateStr = quote.quoteDate
       ? quote.quoteDate.toISOString().split('T')[0].replace(/-/g, '.')
       : new Date().toISOString().split('T')[0].replace(/-/g, '.')
     const clientName = quote.clientCompany || '고객사'
-    const projectName = quote.projectName || quote.items[0]?.description || '견적서'
+    const projectName = quote.projectName || allItems[0]?.description || '견적서'
     const fileName = encodeURIComponent(`${dateStr}_(${projectName})_(${clientName})_견적서.xlsx`)
 
     return new NextResponse(new Uint8Array(buffer), {

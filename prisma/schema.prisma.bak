@@ -28,9 +28,9 @@ model User {
   passwordHash    String?  @map("password_hash")
   name            String
   phone           String?
-  department      String? // SALES, MA, FINANCE, ADMIN (소속팀)
-  position        String? // 직급 (부장, CEO, 대리, 실장, 사원, 인턴 등)
-  role            String? // 권한 (영업, CEO, 기술, 관리자)
+  department      String?  // SALES, MA, FINANCE, ADMIN (소속팀)
+  position        String?  // 직급 (부장, CEO, 대리, 실장, 사원, 인턴 등)
+  role            String?  // 권한 (영업, CEO, 기술, 관리자)
   annualLeave     Float    @default(0) @map("annual_leave") // 연차
   additionalLeave Float    @default(0) @map("additional_leave") // 추가휴가
   signatureUrl    String?  @map("signature_url") // S3 서명 이미지 경로
@@ -39,11 +39,11 @@ model User {
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   // NextAuth 관계
-  sessions Session[]
+  sessions     Session[]
 
   roles           UserRole[]
   menuPermissions UserMenuPermission[]
-  excelImports    ExcelImport[]        @relation("ImportedBy")
+  excelImports    ExcelImport[] @relation("ImportedBy")
 
   // SalesQuote relations
   salesQuotes     SalesQuote[]     @relation("SalesQuoteCreatedBy")
@@ -106,7 +106,7 @@ enum PermissionLevel {
 model UserMenuPermission {
   id     String          @id @default(uuid())
   userId String          @map("user_id")
-  menu   String // SALES_QUOTE, SALES_APPROVAL, SALES_ORDER, MA_QUOTE, MA_APPROVAL, CLOUD, USER_MANAGEMENT
+  menu   String          // SALES_QUOTE, SALES_APPROVAL, SALES_ORDER, MA_QUOTE, MA_APPROVAL, CLOUD, USER_MANAGEMENT
   level  PermissionLevel @default(NONE)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -119,30 +119,67 @@ model UserMenuPermission {
 // ==================== 파일 타입 ====================
 
 enum FileType {
-  EXCEL_ORIGINAL // 업로드된 원본
-  EXCEL_GENERATED // 시스템 생성
-  CLIENT_PO // 고객 발주서
-  ATTACHMENT // 일반 첨부
-  SIGNED_ORIGINAL // 직인 찍힌 원본
+  EXCEL_ORIGINAL   // 업로드된 원본
+  EXCEL_GENERATED  // 시스템 생성
+  CLIENT_PO        // 고객 발주서
+  ATTACHMENT       // 일반 첨부
+  SIGNED_ORIGINAL  // 직인 찍힌 원본
 }
 
-// ==================== Deal 제거됨 (v2) ====================
+// ==================== Deal (거래) ====================
+
+enum DealStatus {
+  QUOTING      // 견적 진행중
+  NEGOTIATING  // 협상중 (견적 발송 후)
+  WON          // 수주 성공
+  LOST         // 수주 실패
+  ON_HOLD      // 보류
+}
+
+model Deal {
+  id          String     @id @default(uuid())
+  name        String     // 거래명: "ABC회사 서버 구축 건"
+  description String?    @db.Text
+
+  // 고객 연결 (나중에 Customer 모델 추가 시 연결)
+  customerName String?   @map("customer_name")
+
+  // 담당자
+  ownerId     String?    @map("owner_id")
+
+  status      DealStatus @default(QUOTING)
+
+  // 연결된 문서들
+  salesQuotes    SalesQuote[]
+  salesApprovals SalesApproval[]
+  salesOrders    SalesOrder[]
+  maQuotes       MAQuote[]
+  maApprovals    MAApproval[]
+
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([customerName])
+  @@index([createdAt(sort: Desc)])
+  @@map("deals")
+}
 
 // ==================== 거래처 (Customer) ====================
 
 model Customer {
-  id          String   @id @default(uuid())
-  companyName String   @unique @map("company_name") // 회사명
-  phone       String? // 대표 전화
-  fax         String? // 대표 팩스
-  address     String? // 주소
-  notes       String?  @db.Text // 비고
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(uuid())
+  companyName   String   @unique @map("company_name") // 회사명
+  phone         String?  // 대표 전화
+  fax           String?  // 대표 팩스
+  address       String?  // 주소
+  notes         String?  @db.Text // 비고
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   // 담당자 목록
-  contacts CustomerContact[]
+  contacts      CustomerContact[]
 
   @@index([companyName])
   @@index([isActive])
@@ -151,20 +188,20 @@ model Customer {
 
 // 거래처 담당자
 model CustomerContact {
-  id         String   @id @default(uuid())
-  customerId String   @map("customer_id")
-  name       String // 담당자명
-  department String? // 부서
-  position   String? // 직급
-  phone      String? // 전화
-  mobile     String? // 휴대폰 (C.P)
-  email      String? // 이메일
-  isDefault  Boolean  @default(false) @map("is_default") // 기본 담당자 여부
-  isActive   Boolean  @default(true) @map("is_active")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(uuid())
+  customerId    String   @map("customer_id")
+  name          String   // 담당자명
+  department    String?  // 부서
+  position      String?  // 직급
+  phone         String?  // 전화
+  mobile        String?  // 휴대폰 (C.P)
+  email         String?  // 이메일
+  isDefault     Boolean  @default(false) @map("is_default") // 기본 담당자 여부
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer      Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   @@index([customerId])
   @@index([isActive])
@@ -177,8 +214,8 @@ model Vendor {
   id          String   @id @default(uuid())
   name        String   @unique // 매입처명
   contactName String?  @map("contact_name") // 담당자명
-  phone       String? // 전화
-  email       String? // 이메일
+  phone       String?  // 전화
+  email       String?  // 이메일
   notes       String?  @db.Text // 비고
   usageCount  Int      @default(0) @map("usage_count") // 사용 횟수 (정렬용)
   isActive    Boolean  @default(true) @map("is_active")
@@ -194,15 +231,19 @@ model Vendor {
 // ==================== 영업 견적서 (SalesQuote) ====================
 
 enum QuoteStatus {
-  DRAFT // 작성중
-  SENT // 발송됨
-  ACCEPTED // 수락됨
-  REJECTED // 거절됨
+  DRAFT      // 작성중
+  SENT       // 발송됨
+  ACCEPTED   // 수락됨
+  REJECTED   // 거절됨
 }
 
 model SalesQuote {
   id     String      @id @default(uuid())
   status QuoteStatus @default(DRAFT)
+
+  // Deal 연결 (선택 - 기존 데이터 호환)
+  dealId String? @map("deal_id")
+  deal   Deal?   @relation(fields: [dealId], references: [id])
 
   // 프로젝트/물품 정보
   projectName String? @map("project_name")
@@ -212,9 +253,9 @@ model SalesQuote {
   // 매출처 (고객) 정보
   clientCompany String? @map("client_company")
   clientContact String? @map("client_contact") // 참조 (담당자)
-  clientPhone   String? @map("client_phone") // 전화
-  clientFax     String? @map("client_fax") // Fax
-  clientMobile  String? @map("client_mobile") // CP (휴대폰)
+  clientPhone   String? @map("client_phone")   // 전화
+  clientFax     String? @map("client_fax")     // Fax
+  clientMobile  String? @map("client_mobile")  // CP (휴대폰)
   clientEmail   String? @map("client_email")
 
   // 금액
@@ -231,13 +272,18 @@ model SalesQuote {
   // 기타
   notes String? @db.Text
 
-  // 버전 관리
-  version    Int     @default(1) // 버전 번호
-  originalId String? @map("original_id") // 최초 버전 ID (v1은 null)
-  isLatest   Boolean @default(true) @map("is_latest") // 최신 버전 여부
+  // 통합 견적
+  isConsolidated     Boolean  @default(false) @map("is_consolidated") // 통합 견적 여부
+  consolidatedName   String?  @map("consolidated_name")               // 통합 품명
+  consolidatedPrice  Decimal? @map("consolidated_price") @db.Decimal(15, 2) // 통합 금액
 
-  original SalesQuote?  @relation("QuoteVersions", fields: [originalId], references: [id])
-  versions SalesQuote[] @relation("QuoteVersions")
+  // 버전 관리
+  version    Int      @default(1)                           // 버전 번호
+  originalId String?  @map("original_id")                   // 최초 버전 ID (v1은 null)
+  isLatest   Boolean  @default(true) @map("is_latest")      // 최신 버전 여부
+
+  original   SalesQuote?  @relation("QuoteVersions", fields: [originalId], references: [id])
+  versions   SalesQuote[] @relation("QuoteVersions")
 
   // 메타
   createdById String?  @map("created_by")
@@ -247,11 +293,13 @@ model SalesQuote {
 
   // 관계
   products       SalesQuoteProduct[] // 제품 그룹들
+  items          SalesQuoteItem[]
   files          SalesQuoteFile[]
-  salesApprovals SalesApproval[] // 이 견적서를 기반으로 생성된 품의서들
+  salesApprovals SalesApproval[]   // 이 견적서를 기반으로 생성된 품의서들
 
   @@index([status])
   @@index([isLatest])
+  @@index([dealId])
   @@index([createdById])
   @@index([clientCompany])
   @@index([quoteDate(sort: Desc)])
@@ -264,14 +312,17 @@ model SalesQuoteProduct {
   id      String @id @default(uuid())
   quoteId String @map("quote_id")
 
-  sortOrder  Int      @default(0) @map("sort_order")
-  name       String // 제품명 (예: "영상편집용 조립PC")
-  quantity   Int      @default(1)
-  unitPrice  Decimal? @map("unit_price") @db.Decimal(15, 2)
-  totalPrice Decimal? @map("total_price") @db.Decimal(15, 2)
+  sortOrder         Int      @default(0) @map("sort_order")
+  name              String                                    // 제품명 (예: "R660XS 서버 시스템")
+  quantity          Int      @default(1)                      // 수량
+  srpPrice          Decimal? @map("srp_price") @db.Decimal(15, 2)    // SRP
+  unitPrice         Decimal? @map("unit_price") @db.Decimal(15, 2)   // 단가
+  totalPrice        Decimal? @map("total_price") @db.Decimal(15, 2)  // 합계
+  isConsolidated    Boolean  @default(true) @map("is_consolidated")  // 제품은 기본 통합
+  consolidatedPrice Decimal? @map("consolidated_price") @db.Decimal(15, 2) // 레거시 호환
 
   quote     SalesQuote       @relation(fields: [quoteId], references: [id], onDelete: Cascade)
-  items     SalesQuoteItem[]
+  items     SalesQuoteItem[] // 참고용 상세 내역
   createdAt DateTime         @default(now()) @map("created_at")
 
   @@index([quoteId])
@@ -279,19 +330,23 @@ model SalesQuoteProduct {
 }
 
 model SalesQuoteItem {
-  id        String @id @default(uuid())
-  productId String @map("product_id")
+  id        String  @id @default(uuid())
+  quoteId   String  @map("quote_id")
+  productId String? @map("product_id") // null이면 독립 품목
 
   sortOrder   Int      @default(0) @map("sort_order")
   partNumber  String?  @map("part_number") // P/N
-  description String?  @db.Text // 품명/스펙
+  description String?  @db.Text           // 품명
   quantity    Int      @default(1)
-  unitPrice   Decimal? @map("unit_price") @db.Decimal(15, 2) // 개별 매출단가 (선택)
-  totalPrice  Decimal? @map("total_price") @db.Decimal(15, 2)
+  srpPrice    Decimal? @map("srp_price") @db.Decimal(15, 2)   // 정가
+  unitPrice   Decimal? @map("unit_price") @db.Decimal(15, 2)  // 단가
+  totalPrice  Decimal? @map("total_price") @db.Decimal(15, 2) // 합계
 
-  product   SalesQuoteProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
-  createdAt DateTime          @default(now()) @map("created_at")
+  quote     SalesQuote         @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  product   SalesQuoteProduct? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  createdAt DateTime           @default(now()) @map("created_at")
 
+  @@index([quoteId])
   @@index([productId])
   @@map("sales_quote_items")
 }
@@ -318,13 +373,12 @@ model SalesQuoteFile {
 // ==================== 영업 품의서 (SalesApproval) ====================
 
 enum ApprovalStatus {
-  DRAFT // 작성중
-  PENDING // 승인대기 (레거시 - 이전 버전 호환용)
+  DRAFT             // 작성중
+  PENDING           // 승인대기 (레거시 - 이전 버전 호환용)
   PENDING_TEAM_LEAD // 영업팀장 승인대기
-  PENDING_CEO // 대표이사 승인대기
-  APPROVED // 승인완료
-  REJECTED // 반려
-  WITHDRAWN // 회수됨
+  PENDING_CEO       // 대표이사 승인대기
+  APPROVED          // 승인완료
+  REJECTED          // 반려
 }
 
 model SalesApproval {
@@ -332,22 +386,26 @@ model SalesApproval {
   approvalNumber String         @unique @map("approval_number") // SA-2025-0001
   status         ApprovalStatus @default(DRAFT)
 
+  // Deal 연결 (선택 - 기존 데이터 호환)
+  dealId String? @map("deal_id")
+  deal   Deal?   @relation(fields: [dealId], references: [id])
+
   // 원본 견적서 연결 (견적서 기반 품의서 작성 시)
   sourceQuoteId String?     @map("source_quote_id")
   sourceQuote   SalesQuote? @relation(fields: [sourceQuoteId], references: [id])
 
   // 기본 정보
-  approvalCode String?   @map("approval_code") // 품의코드 (D251202-01) - 버전 간 공유
-  approvalDate DateTime? @map("approval_date") @db.Date
-  managerName  String?   @map("manager_name") // 품의담당
+  approvalCode   String?   @map("approval_code") // 품의코드 (D251202-01) - 버전 간 공유
+  approvalDate   DateTime? @map("approval_date") @db.Date
+  managerName    String?   @map("manager_name") // 품의담당
 
   // 버전 관리
-  version    Int     @default(1) // 버전 번호
-  originalId String? @map("original_id") // 최초 버전 ID (v1은 null)
-  isLatest   Boolean @default(true) @map("is_latest") // 최신 버전 여부
+  version    Int      @default(1)                           // 버전 번호
+  originalId String?  @map("original_id")                   // 최초 버전 ID (v1은 null)
+  isLatest   Boolean  @default(true) @map("is_latest")      // 최신 버전 여부
 
-  original SalesApproval?  @relation("ApprovalVersions", fields: [originalId], references: [id])
-  versions SalesApproval[] @relation("ApprovalVersions")
+  original   SalesApproval?  @relation("ApprovalVersions", fields: [originalId], references: [id])
+  versions   SalesApproval[] @relation("ApprovalVersions")
 
   // 매출처 정보
   clientCompany String? @map("client_company")
@@ -355,18 +413,22 @@ model SalesApproval {
   clientPhone   String? @map("client_phone")
   endUser       String? @map("end_user")
 
-  // 금액 (자동 계산)
-  totalSalesAmount    Decimal @default(0) @map("total_sales_amount") @db.Decimal(15, 2)
-  totalPurchaseAmount Decimal @default(0) @map("total_purchase_amount") @db.Decimal(15, 2)
-  profitAmount        Decimal @default(0) @map("profit_amount") @db.Decimal(15, 2) // 매출-매입
+  // 금액
+  totalAmount  Decimal @default(0) @map("total_amount") @db.Decimal(15, 2)
+  vatAmount    Decimal @default(0) @map("vat_amount") @db.Decimal(15, 2)
+  totalWithVat Decimal @default(0) @map("total_with_vat") @db.Decimal(15, 2)
+
+  // 매입 금액
+  purchaseTotal      Decimal @default(0) @map("purchase_total") @db.Decimal(15, 2)
+  purchaseTotalWithVat Decimal @default(0) @map("purchase_total_with_vat") @db.Decimal(15, 2)
 
   // 조건
-  paymentTerms    String?   @map("payment_terms")
-  deliveryAddress String?   @map("delivery_address")
+  paymentTerms    String? @map("payment_terms")
+  deliveryAddress String? @map("delivery_address")
   deliveryDate    DateTime? @map("delivery_date") @db.Date
-  invoiceEmail    String?   @map("invoice_email")
-  receiverName    String?   @map("receiver_name")
-  receiverPhone   String?   @map("receiver_phone")
+  invoiceEmail    String? @map("invoice_email")
+  receiverName    String? @map("receiver_name")
+  receiverPhone   String? @map("receiver_phone")
 
   notes String? @db.Text
 
@@ -387,10 +449,10 @@ model SalesApproval {
   ceoSignedAt DateTime? @map("ceo_signed_at")
 
   // 반려 정보
-  rejectedById    String?   @map("rejected_by_id")
-  rejectedBy      User?     @relation("ApprovalRejector", fields: [rejectedById], references: [id])
-  rejectedAt      DateTime? @map("rejected_at")
-  rejectionReason String?   @map("rejection_reason") @db.Text
+  rejectedById   String?   @map("rejected_by_id")
+  rejectedBy     User?     @relation("ApprovalRejector", fields: [rejectedById], references: [id])
+  rejectedAt     DateTime? @map("rejected_at")
+  rejectionReason String?  @map("rejection_reason") @db.Text
 
   // 메타
   createdById String   @map("created_by")
@@ -398,11 +460,11 @@ model SalesApproval {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // 관계
-  products       SalesApprovalProduct[]
+  items          SalesApprovalItem[]
+  purchaseItems  SalesApprovalPurchaseItem[]
   files          SalesApprovalFile[]
-  invoiceRecords InvoiceRecord[] // 계산서 발행 기록
+  invoiceRecords InvoiceRecord[]  // 계산서 발행 기록
 
-  @@unique([approvalCode, version]) // 같은 품의코드 내 버전은 고유
   @@index([status])
   @@index([createdById])
   @@index([salesManagerId])
@@ -412,71 +474,140 @@ model SalesApproval {
   @@index([approvalCode])
   @@index([isLatest])
   @@index([originalId])
+  @@unique([approvalCode, version]) // 같은 품의코드 내 버전은 고유
   @@map("sales_approvals")
 }
 
-// ★ 품의서 제품 (매출 단위 = 매출 계산서 단위)
-model SalesApprovalProduct {
+model SalesApprovalItem {
   id         String @id @default(uuid())
-  approvalId String @map("approval_id")
+  approvalId String @map("approval_id") // 소속 품의서 ID
 
-  sortOrder  Int      @default(0) @map("sort_order")
-  name       String // 제품명 (예: "영상편집용 조립PC")
-  quantity   Int      @default(1)
-  unitPrice  Decimal? @map("unit_price") @db.Decimal(15, 2) // 매출 단가
-  totalPrice Decimal? @map("total_price") @db.Decimal(15, 2) // 매출 합계
+  // 복사 원본 추적 (단순 복사 방식)
+  sourceItemId String? @map("source_item_id") // 복사 원본 아이템 ID (신규면 null)
 
-  // 매출 계산서
-  salesInvoiceStatus String    @default("PENDING") @map("sales_invoice_status") // PENDING, ISSUED
+  sortOrder      Int      @default(0) @map("sort_order")
+  partNumber     String?  @map("part_number") // P/N (개별일 때)
+  productName    String   @map("product_name") // 품목명/통합명
+  quantity       Int      @default(1)
+  unitPrice      Decimal? @map("unit_price") @db.Decimal(15, 2)
+  totalPrice     Decimal? @map("total_price") @db.Decimal(15, 2)
+  isConsolidated Boolean  @default(false) @map("is_consolidated") // 통합 여부
+
+  // 계산서 발행 상태
+  salesInvoiceStatus String    @default("PENDING") @map("sales_invoice_status")
   salesInvoiceDate   DateTime? @map("sales_invoice_date") @db.Date
+  invoiceRemarks     String?   @map("invoice_remarks") @db.Text
 
-  // 버전 추적 (revise 시 원본 Product ID)
-  sourceProductId String? @map("source_product_id")
-
-  approval SalesApproval       @relation(fields: [approvalId], references: [id], onDelete: Cascade)
-  items    SalesApprovalItem[]
+  approval       SalesApproval               @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+  details        SalesApprovalItemDetail[]
+  purchaseItems  SalesApprovalPurchaseItem[] // 이 매출 아이템을 위한 매입들
 
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([approvalId])
-  @@index([sourceProductId])
-  @@map("sales_approval_products")
+  @@index([sourceItemId])
+  @@index([salesInvoiceStatus])
+  @@map("sales_approval_items")
 }
 
-// ★ 품의서 품목 (개별 부품 + 매입 정보)
-model SalesApprovalItem {
-  id        String @id @default(uuid())
-  productId String @map("product_id")
+// 품의서 매출 품목 상세 (하위 품목)
+model SalesApprovalItemDetail {
+  id     String @id @default(uuid())
+  itemId String @map("item_id")
+
+  // 복사 원본 추적 (단순 복사 방식)
+  sourceDetailId String? @map("source_detail_id") // 복사 원본 품목 ID (신규면 null)
 
   sortOrder   Int     @default(0) @map("sort_order")
-  partNumber  String? @map("part_number") // P/N (예: CPU, BOARD)
-  description String? @db.Text // 상세 스펙
+  partNumber  String? @map("part_number") // 품목명 (예: 예시_서버랙, 예시_전원)
+  description String? @db.Text // 상세 설명 (여러 줄 가능)
+  quantity    Int?    // 수량 (선택)
 
-  // 매출 (선택 - 품목별 매출가 필요할 때)
-  quantity       Int      @default(1)
-  salesUnitPrice Decimal? @map("sales_unit_price") @db.Decimal(15, 2) // nullable 예비
+  item            SalesApprovalItem                 @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  purchaseItems   SalesApprovalPurchaseItem[]       // 이 매출 품목을 위한 매입 아이템들 (개별 매입 시)
+  purchaseDetails SalesApprovalPurchaseItemDetail[] // 이 매출 품목을 위한 매입 품목들
 
-  // 매입
-  vendorName    String?   @map("vendor_name") // 매입처명
-  purchaseQty   Int       @default(1) @map("purchase_qty")
-  purchasePrice Decimal?  @map("purchase_price") @db.Decimal(15, 2) // 매입 단가
-  purchaseTotal Decimal?  @map("purchase_total") @db.Decimal(15, 2) // 매입 합계
-  purchaseDate  DateTime? @map("purchase_date") @db.Date // 매입일
+  createdAt DateTime @default(now()) @map("created_at")
 
-  // 매입 계산서
+  @@index([itemId])
+  @@index([sourceDetailId])
+  @@map("sales_approval_item_details")
+}
+
+model SalesApprovalPurchaseItem {
+  id         String @id @default(uuid())
+  approvalId String @map("approval_id") // 소속 품의서 ID
+
+  // 매출 연결
+  salesItemId       String? @map("sales_item_id")        // 연결된 매출 제품 ID
+  salesItemDetailId String? @map("sales_item_detail_id") // 연결된 매출 품목 ID (개별 매입 시)
+
+  // 복사 원본 추적 (단순 복사 방식)
+  sourceItemId String? @map("source_item_id") // 복사 원본 아이템 ID (신규면 null)
+
+  sortOrder      Int     @default(0) @map("sort_order")
+  productName    String  @map("product_name") // 제품명
+  isConsolidated Boolean @default(false) @map("is_consolidated") // UI 표시용 (통합/개별)
+
+  // 제품 레벨 정보 (참고용 - 계산서는 Detail에서 관리)
+  vendorCompany String?   @map("vendor_company") // 매입처 (통합 시)
+  quantity      Int       @default(1)
+  unitPrice     Decimal?  @map("unit_price") @db.Decimal(15, 2)
+  totalPrice    Decimal?  @map("total_price") @db.Decimal(15, 2)
+  purchaseDate  DateTime? @map("purchase_date") @db.Date
+
+  // NOTE: 계산서 발행 상태는 Detail 레벨에서 관리
+
+  approval        SalesApproval                     @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+  salesItem       SalesApprovalItem?                @relation(fields: [salesItemId], references: [id], onDelete: SetNull)
+  salesItemDetail SalesApprovalItemDetail?          @relation(fields: [salesItemDetailId], references: [id], onDelete: SetNull)
+  details         SalesApprovalPurchaseItemDetail[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([approvalId])
+  @@index([salesItemId])
+  @@index([salesItemDetailId])
+  @@index([sourceItemId])
+  @@map("sales_approval_purchase_items")
+}
+
+// 품의서 매입 품목 상세 (계산서 발행 단위)
+model SalesApprovalPurchaseItemDetail {
+  id     String @id @default(uuid())
+  itemId String @map("item_id") // 부모 매입 제품
+
+  // 매출 품목 연결 (어떤 매출 품목을 위한 매입인지)
+  salesItemDetailId String? @map("sales_item_detail_id") // 연결된 매출 품목 ID
+
+  // 복사 원본 추적 (단순 복사 방식)
+  sourceDetailId String? @map("source_detail_id") // 복사 원본 품목 ID (신규면 null)
+
+  sortOrder   Int     @default(0) @map("sort_order")
+  partNumber  String? @map("part_number") // P/N
+  description String? @db.Text // 상세 설명 (여러 줄 가능)
+  quantity    Int     @default(1) // 수량
+
+  // 매입 정보
+  vendorCompany String?  @map("vendor_company") // 매입처
+  unitPrice     Decimal? @map("unit_price") @db.Decimal(15, 2)
+  totalPrice    Decimal? @map("total_price") @db.Decimal(15, 2)
+
+  // 계산서 발행 상태 (항상 이 레벨에서 관리)
   purchaseInvoiceStatus String    @default("PENDING") @map("purchase_invoice_status")
   purchaseInvoiceDate   DateTime? @map("purchase_invoice_date") @db.Date
+  invoiceRemarks        String?   @map("invoice_remarks") @db.Text
 
-  // 버전 추적
-  sourceItemId String? @map("source_item_id")
+  item            SalesApprovalPurchaseItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  salesItemDetail SalesApprovalItemDetail?  @relation(fields: [salesItemDetailId], references: [id], onDelete: SetNull)
 
-  product   SalesApprovalProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
-  createdAt DateTime             @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
-  @@index([productId])
-  @@index([vendorName])
-  @@index([sourceItemId])
-  @@map("sales_approval_items")
+  @@index([itemId])
+  @@index([salesItemDetailId])
+  @@index([sourceDetailId])
+  @@index([purchaseInvoiceStatus])
+  @@map("sales_approval_purchase_item_details")
 }
 
 model SalesApprovalFile {
@@ -501,17 +632,21 @@ model SalesApprovalFile {
 // ==================== 영업 발주서 (SalesOrder) ====================
 
 enum OrderStatus {
-  DRAFT // 작성중
-  SENT // 발송완료
-  CONFIRMED // 확인됨
-  DELIVERED // 납품완료
-  CANCELLED // 취소
+  DRAFT      // 작성중
+  SENT       // 발송완료
+  CONFIRMED  // 확인됨
+  DELIVERED  // 납품완료
+  CANCELLED  // 취소
 }
 
 model SalesOrder {
   id          String      @id @default(uuid())
   orderNumber String      @unique @map("order_number") // SO-2025-0001
   status      OrderStatus @default(DRAFT)
+
+  // Deal 연결 (선택 - 기존 데이터 호환)
+  dealId String? @map("deal_id")
+  deal   Deal?   @relation(fields: [dealId], references: [id])
 
   // 발주 정보
   orderDate       DateTime? @map("order_date") @db.Date
@@ -534,12 +669,12 @@ model SalesOrder {
   notes String? @db.Text
 
   // 버전 관리
-  version    Int     @default(1) // 버전 번호
-  originalId String? @map("original_id") // 최초 버전 ID (v1은 null)
-  isLatest   Boolean @default(true) @map("is_latest") // 최신 버전 여부
+  version    Int      @default(1)                           // 버전 번호
+  originalId String?  @map("original_id")                   // 최초 버전 ID (v1은 null)
+  isLatest   Boolean  @default(true) @map("is_latest")      // 최신 버전 여부
 
-  original SalesOrder?  @relation("OrderVersions", fields: [originalId], references: [id])
-  versions SalesOrder[] @relation("OrderVersions")
+  original   SalesOrder?  @relation("OrderVersions", fields: [originalId], references: [id])
+  versions   SalesOrder[] @relation("OrderVersions")
 
   // 메타
   createdById String   @map("created_by")
@@ -603,6 +738,10 @@ model MAQuote {
   quoteNumber String      @unique @map("quote_number") // MQ-2025-0001
   status      QuoteStatus @default(DRAFT)
 
+  // Deal 연결 (선택 - 기존 데이터 호환)
+  dealId String? @map("deal_id")
+  deal   Deal?   @relation(fields: [dealId], references: [id])
+
   // 기본 정보
   quoteDate   DateTime? @map("quote_date") @db.Date
   managerName String?   @map("manager_name")
@@ -643,12 +782,12 @@ model MAQuoteItem {
   quoteId String @map("quote_id")
 
   sortOrder    Int       @default(0) @map("sort_order")
-  productName  String?   @map("product_name") // 기기명
-  modelType    String?   @map("model_type") // M/T
-  model        String? // Model
+  productName  String?   @map("product_name")  // 기기명
+  modelType    String?   @map("model_type")    // M/T
+  model        String?                          // Model
   serialNumber String?   @map("serial_number") // S/N
   serviceLevel String?   @map("service_level") // 서비스 레벨
-  period       String? // 기간 (1년)
+  period       String?                          // 기간 (1년)
   startDate    DateTime? @map("start_date") @db.Date
   endDate      DateTime? @map("end_date") @db.Date
   totalPrice   Decimal?  @map("total_price") @db.Decimal(15, 2)
@@ -666,6 +805,10 @@ model MAApproval {
   id             String         @id @default(uuid())
   approvalNumber String         @unique @map("approval_number") // MA-2025-0001
   status         ApprovalStatus @default(DRAFT)
+
+  // Deal 연결 (선택 - 기존 데이터 호환)
+  dealId String? @map("deal_id")
+  deal   Deal?   @relation(fields: [dealId], references: [id])
 
   // 기본 정보
   approvalDate DateTime? @map("approval_date") @db.Date
@@ -696,19 +839,19 @@ model MAApprovalItem {
   id         String @id @default(uuid())
   approvalId String @map("approval_id")
 
-  sortOrder           Int       @default(0) @map("sort_order")
-  smCode              String?   @map("sm_code")
-  vendorCode          String?   @map("vendor_code")
-  clientCompany       String?   @map("client_company") // 고객사
-  salesCompany        String?   @map("sales_company") // 매출처
-  salesPrice          Decimal?  @map("sales_price") @db.Decimal(15, 2)
-  quantity            Int       @default(1)
-  salesBillingType    String?   @map("sales_billing_type") // 청구구분(매출)
-  startDate           DateTime? @map("start_date") @db.Date
-  endDate             DateTime? @map("end_date") @db.Date
-  purchaseCompany     String?   @map("purchase_company") // 매입처
-  purchasePrice       Decimal?  @map("purchase_price") @db.Decimal(15, 2)
-  purchaseBillingType String?   @map("purchase_billing_type") // 청구구분(매입)
+  sortOrder    Int      @default(0) @map("sort_order")
+  smCode       String?  @map("sm_code")
+  vendorCode   String?  @map("vendor_code")
+  clientCompany String? @map("client_company")    // 고객사
+  salesCompany  String? @map("sales_company")     // 매출처
+  salesPrice   Decimal? @map("sales_price") @db.Decimal(15, 2)
+  quantity     Int      @default(1)
+  salesBillingType String? @map("sales_billing_type") // 청구구분(매출)
+  startDate    DateTime? @map("start_date") @db.Date
+  endDate      DateTime? @map("end_date") @db.Date
+  purchaseCompany  String?  @map("purchase_company")   // 매입처
+  purchasePrice    Decimal? @map("purchase_price") @db.Decimal(15, 2)
+  purchaseBillingType String? @map("purchase_billing_type") // 청구구분(매입)
 
   approval  MAApproval @relation(fields: [approvalId], references: [id], onDelete: Cascade)
   createdAt DateTime   @default(now()) @map("created_at")
@@ -764,12 +907,12 @@ model ExcelImport {
 // ==================== 알림 시스템 ====================
 
 enum NotificationType {
-  APPROVAL_REQUEST // 결재 요청
-  APPROVAL_APPROVED // 결재 승인
-  APPROVAL_REJECTED // 결재 반려
-  MA_EXPIRING // MA 만료 예정
-  PAYMENT_DUE // 결제 예정
-  SYSTEM // 시스템 알림
+  APPROVAL_REQUEST    // 결재 요청
+  APPROVAL_APPROVED   // 결재 승인
+  APPROVAL_REJECTED   // 결재 반려
+  MA_EXPIRING         // MA 만료 예정
+  PAYMENT_DUE         // 결제 예정
+  SYSTEM              // 시스템 알림
 }
 
 model Notification {
@@ -779,20 +922,20 @@ model Notification {
 
   // 알림 내용
   type    NotificationType
-  title   String // 알림 제목
-  message String           @db.Text // 알림 내용
+  title   String            // 알림 제목
+  message String @db.Text   // 알림 내용
 
   // 링크 정보 (클릭 시 이동)
-  linkUrl  String? @map("link_url") // 이동할 URL
+  linkUrl  String? @map("link_url")  // 이동할 URL
   linkType String? @map("link_type") // SALES_APPROVAL, MA_APPROVAL, INVOICE 등
 
   // 연관 데이터 (선택)
-  relatedId   String? @map("related_id") // 관련 문서 ID
+  relatedId   String? @map("related_id")   // 관련 문서 ID
   relatedType String? @map("related_type") // SalesApproval, MAApproval 등
 
   // 상태
-  isRead Boolean   @default(false) @map("is_read")
-  readAt DateTime? @map("read_at")
+  isRead   Boolean   @default(false) @map("is_read")
+  readAt   DateTime? @map("read_at")
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -805,19 +948,19 @@ model Notification {
 // ==================== 경영팀: 결제 상태 ====================
 
 enum PaymentStatus {
-  PENDING // 미결제
-  PARTIAL // 부분결제
+  PENDING   // 미결제
+  PARTIAL   // 부분결제
   COMPLETED // 결제완료
-  OVERDUE // 연체
+  OVERDUE   // 연체
 }
 
 // ==================== 경영팀: 매입장 유형 ====================
 
 enum PurchaseLedgerType {
   INVOICE // 세금계산서
-  CASH // 현금영수증
-  CARD // 법인카드
-  IMPORT // 수입
+  CASH    // 현금영수증
+  CARD    // 법인카드
+  IMPORT  // 수입
 }
 
 // ==================== 경영팀: 매출장 (Sales Ledger) ====================
@@ -835,7 +978,7 @@ model SalesLedger {
   endUser         String?  @map("end_user") // END-USER
 
   // 분류
-  category    String // MA, 상품, 건물임대, 장비임대
+  category    String  // MA, 상품, 건물임대, 장비임대
   subCategory String? @map("sub_category") // 월간-IBM, 월간-레노버, 스위치 등
 
   // 거래 내용
@@ -890,7 +1033,7 @@ model PurchaseLedger {
   clientCompany String?  @map("client_company") // 매출처 (연결된)
 
   // 분류
-  category    String // MA, 상품, 일반경비
+  category    String  // MA, 상품, 일반경비
   subCategory String? @map("sub_category") // 월간-IBM, 지급수수료 등
 
   // 품목 정보
@@ -910,7 +1053,7 @@ model PurchaseLedger {
   ledgerType PurchaseLedgerType @default(INVOICE) @map("ledger_type")
 
   // 수입 전용 필드
-  currency      String? // 통화 (USD 등)
+  currency      String?  // 통화 (USD 등)
   foreignAmount Decimal? @map("foreign_amount") @db.Decimal(15, 2) // 외화금액
   exchangeRate  Decimal? @map("exchange_rate") @db.Decimal(10, 4) // 환율
 
@@ -938,27 +1081,27 @@ model PurchaseLedger {
 // ==================== 캘린더 시스템 ====================
 
 enum CalendarEventType {
-  PERSONAL // 개인 일정
-  COMPANY // 사내 전체 일정
-  MEETING // 회의
-  DEADLINE // 마감일
-  HOLIDAY // 휴일/휴가
-  MA_EXPIRY // MA 만료
-  PAYMENT_DUE // 결제 예정
+  PERSONAL      // 개인 일정
+  COMPANY       // 사내 전체 일정
+  MEETING       // 회의
+  DEADLINE      // 마감일
+  HOLIDAY       // 휴일/휴가
+  MA_EXPIRY     // MA 만료
+  PAYMENT_DUE   // 결제 예정
 }
 
 model CalendarEvent {
   id String @id @default(uuid())
 
   // 이벤트 기본 정보
-  title       String // 일정 제목
-  description String?           @db.Text // 상세 설명
+  title       String          // 일정 제목
+  description String?    @db.Text // 상세 설명
   eventType   CalendarEventType @default(PERSONAL) @map("event_type")
 
   // 일시
-  startDate DateTime  @map("start_date") // 시작일시
-  endDate   DateTime? @map("end_date") // 종료일시 (없으면 하루짜리)
-  isAllDay  Boolean   @default(false) @map("is_all_day") // 종일 여부
+  startDate   DateTime  @map("start_date")   // 시작일시
+  endDate     DateTime? @map("end_date")     // 종료일시 (없으면 하루짜리)
+  isAllDay    Boolean   @default(false) @map("is_all_day") // 종일 여부
 
   // 범위: 개인 vs 전체
   isCompanyWide Boolean @default(false) @map("is_company_wide") // true면 전체 공개
@@ -1015,18 +1158,18 @@ model CalendarEventParticipant {
 // ==================== 휴가 관리 시스템 ====================
 
 enum LeaveType {
-  ANNUAL // 연차
-  HALF_AM // 오전 반차
-  HALF_PM // 오후 반차
-  SICK // 병가
-  FAMILY // 경조사
-  OFFICIAL // 공가
-  OTHER // 기타
+  ANNUAL       // 연차
+  HALF_AM      // 오전 반차
+  HALF_PM      // 오후 반차
+  SICK         // 병가
+  FAMILY       // 경조사
+  OFFICIAL     // 공가
+  OTHER        // 기타
 }
 
 enum LeaveStatus {
-  APPROVED // 승인 (자동 승인 방식)
-  CANCELLED // 취소
+  APPROVED     // 승인 (자동 승인 방식)
+  CANCELLED    // 취소
 }
 
 model LeaveRequest {
@@ -1038,7 +1181,7 @@ model LeaveRequest {
   leaveType LeaveType @map("leave_type")
   startDate DateTime  @map("start_date") @db.Date
   endDate   DateTime  @map("end_date") @db.Date
-  days      Float // 사용 일수 (1, 0.5 등)
+  days      Float     // 사용 일수 (1, 0.5 등)
 
   // 사유
   reason String? @db.Text
@@ -1066,58 +1209,58 @@ model LeaveRequest {
 // ==================== 계산서 발행 기록 ====================
 
 enum InvoiceStatus {
-  PENDING // 미발행
-  ISSUED // 발행완료
-  AMENDMENT_NEEDED // 수정 필요 (품의서 수정됨)
-  AMENDED // 수정발행 완료
-  CANCELLATION_NEEDED // 취소 필요 (아이템 삭제됨)
-  CANCELLED // 취소 완료
+  PENDING              // 미발행
+  ISSUED               // 발행완료
+  AMENDMENT_NEEDED     // 수정 필요 (품의서 수정됨)
+  AMENDED              // 수정발행 완료
+  CANCELLATION_NEEDED  // 취소 필요 (아이템 삭제됨)
+  CANCELLED            // 취소 완료
 }
 
 enum InvoiceType {
-  SALES // 매출 계산서
-  PURCHASE // 매입 계산서
+  SALES      // 매출 계산서
+  PURCHASE   // 매입 계산서
 }
 
 // 계산서 발행 기록 (아이템 삭제와 무관하게 유지)
 model InvoiceRecord {
-  id String @id @default(uuid())
+  id             String   @id @default(uuid())
 
   // 연결 정보
-  approvalId String  @map("approval_id") // 품의서 ID (체인 루트)
-  itemId     String? @map("item_id") // 원본 아이템 ID (삭제되어도 기록 유지)
+  approvalId     String   @map("approval_id")      // 품의서 ID (체인 루트)
+  itemId         String?  @map("item_id")          // 원본 아이템 ID (삭제되어도 기록 유지)
 
   // 계산서 유형
-  invoiceType InvoiceType @map("invoice_type") // SALES or PURCHASE
+  invoiceType    InvoiceType @map("invoice_type")  // SALES or PURCHASE
 
   // 아이템 스냅샷 (발행 시점 정보)
-  productName   String  @map("product_name")
-  partNumber    String? @map("part_number")
-  quantity      Int     @default(1)
-  unitPrice     Decimal @map("unit_price") @db.Decimal(15, 2)
-  totalPrice    Decimal @map("total_price") @db.Decimal(15, 2)
-  vendorCompany String? @map("vendor_company") // 매입 계산서인 경우
-  clientCompany String? @map("client_company") // 매출처 (품의서에서 복사)
+  productName    String   @map("product_name")
+  partNumber     String?  @map("part_number")
+  quantity       Int      @default(1)
+  unitPrice      Decimal  @map("unit_price") @db.Decimal(15, 2)
+  totalPrice     Decimal  @map("total_price") @db.Decimal(15, 2)
+  vendorCompany  String?  @map("vendor_company")   // 매입 계산서인 경우
+  clientCompany  String?  @map("client_company")   // 매출처 (품의서에서 복사)
 
   // 발행 정보
-  status        InvoiceStatus @default(PENDING)
-  invoiceDate   DateTime?     @map("invoice_date") @db.Date
-  invoiceNumber String?       @map("invoice_number") // 세금계산서 번호
-  remarks       String?       @db.Text
+  status         InvoiceStatus @default(PENDING)
+  invoiceDate    DateTime?     @map("invoice_date") @db.Date
+  invoiceNumber  String?       @map("invoice_number") // 세금계산서 번호
+  remarks        String?       @db.Text
 
   // 수정/취소 이력
-  amendedFromId String?   @map("amended_from_id") // 수정 전 기록 ID
-  cancelledAt   DateTime? @map("cancelled_at")
-  cancelReason  String?   @map("cancel_reason") @db.Text
+  amendedFromId  String?       @map("amended_from_id") // 수정 전 기록 ID
+  cancelledAt    DateTime?     @map("cancelled_at")
+  cancelReason   String?       @map("cancel_reason") @db.Text
 
   // 메타
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   // 관계
-  approval    SalesApproval   @relation(fields: [approvalId], references: [id], onDelete: Cascade)
-  amendedFrom InvoiceRecord?  @relation("InvoiceAmendments", fields: [amendedFromId], references: [id])
-  amendments  InvoiceRecord[] @relation("InvoiceAmendments")
+  approval       SalesApproval @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+  amendedFrom    InvoiceRecord? @relation("InvoiceAmendments", fields: [amendedFromId], references: [id])
+  amendments     InvoiceRecord[] @relation("InvoiceAmendments")
 
   @@index([approvalId])
   @@index([itemId])
@@ -1147,9 +1290,9 @@ model ExcelTemplate {
   fieldMappings Json @default("{}") @map("field_mappings")
 
   // 품목 테이블 설정
-  itemTableHeaderRow Int  @default(16) @map("item_table_header_row") // 헤더 행
-  itemTableStartRow  Int  @default(17) @map("item_table_start_row") // 데이터 시작 행
-  itemTableEndRow    Int? @map("item_table_end_row") // 데이터 종료 행 (null이면 빈 행까지)
+  itemTableHeaderRow Int @default(16) @map("item_table_header_row") // 헤더 행
+  itemTableStartRow  Int @default(17) @map("item_table_start_row")  // 데이터 시작 행
+  itemTableEndRow    Int? @map("item_table_end_row")                 // 데이터 종료 행 (null이면 빈 행까지)
 
   // 품목 열 매핑 (JSON)
   // { "partNumber": "C", "description": "D", "quantity": "E", "unitPrice": "F", "totalPrice": "G" }
@@ -1161,7 +1304,7 @@ model ExcelTemplate {
 
   // 메인/하위 품목 구분 설정
   mainItemDetection String? @map("main_item_detection") @db.Text // 메인 품목 감지 방법 (예: "unitPrice > 0")
-  subItemDetection  String? @map("sub_item_detection") @db.Text // 하위 품목 감지 방법
+  subItemDetection  String? @map("sub_item_detection") @db.Text  // 하위 품목 감지 방법
 
   // 합계 행 설정
   totalRowDetection String? @map("total_row_detection") @db.Text // 합계 행 감지 (예: "A열에 '합계' 포함")
@@ -1170,8 +1313,8 @@ model ExcelTemplate {
   analyzedData Json? @map("analyzed_data")
 
   // 상태
-  isActive  Boolean @default(true) @map("is_active")
-  isDefault Boolean @default(false) @map("is_default") // 해당 docType의 기본 양식
+  isActive  Boolean  @default(true) @map("is_active")
+  isDefault Boolean  @default(false) @map("is_default") // 해당 docType의 기본 양식
 
   // 메타
   createdAt DateTime @default(now()) @map("created_at")

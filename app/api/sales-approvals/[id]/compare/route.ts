@@ -5,12 +5,11 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
-// GET /api/sales-approvals/[id]/compare - 버전별 아이템 비교
+// GET /api/sales-approvals/[id]/compare - 버전별 비교
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params
 
-    // 현재 품의서 조회
     const currentApproval = await prisma.salesApproval.findUnique({
       where: { id },
       select: {
@@ -20,28 +19,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         originalId: true,
         status: true,
         clientCompany: true,
-        totalWithVat: true,
-        approvalDate: true,
       },
     })
 
     if (!currentApproval) {
-      return NextResponse.json(
-        { error: '품의서를 찾을 수 없습니다' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: '품의서를 찾을 수 없습니다' }, { status: 404 })
     }
 
-    // 체인 루트 ID
     const chainRootId = currentApproval.originalId || currentApproval.id
 
-    // 같은 체인의 모든 버전 조회
     const allVersions = await prisma.salesApproval.findMany({
       where: {
-        OR: [
-          { id: chainRootId },
-          { originalId: chainRootId },
-        ],
+        OR: [{ id: chainRootId }, { originalId: chainRootId }],
       },
       select: {
         id: true,
@@ -49,32 +38,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         version: true,
         status: true,
         isLatest: true,
-        totalWithVat: true,
-        approvalDate: true,
       },
       orderBy: { version: 'asc' },
     })
 
-    // 최신 버전과 이전 버전 찾기
     const latestVersion = allVersions.find(v => v.isLatest) || allVersions[allVersions.length - 1]
-    const previousVersion = allVersions.length > 1
-      ? allVersions[allVersions.length - 2]
-      : null
+    const previousVersion = allVersions.length > 1 ? allVersions[allVersions.length - 2] : null
+
+    // 최신 버전의 제품+품목 조회
+    const currentProducts = await prisma.salesApprovalProduct.findMany({
+      where: { approvalId: latestVersion.id },
+      include: { items: { orderBy: { sortOrder: 'asc' } } },
+      orderBy: { sortOrder: 'asc' },
+    })
 
     if (!previousVersion) {
-      // 이전 버전이 없으면 현재 버전만 반환
-      const items = await prisma.salesApprovalItem.findMany({
-        where: { approvalId: latestVersion.id },
-        include: { details: { orderBy: { sortOrder: 'asc' } } },
-        orderBy: { sortOrder: 'asc' },
-      })
-
-      const purchaseItems = await prisma.salesApprovalPurchaseItem.findMany({
-        where: { approvalId: latestVersion.id },
-        include: { details: { orderBy: { sortOrder: 'asc' } } },
-        orderBy: { sortOrder: 'asc' },
-      })
-
       return NextResponse.json({
         approvalCode: currentApproval.approvalCode,
         clientCompany: currentApproval.clientCompany,
@@ -82,214 +60,118 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         currentVersion: latestVersion,
         previousVersion: null,
         comparison: {
-          sales: items.map(item => ({
-            id: item.id,
-            productName: item.productName,
-            partNumber: item.partNumber,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            totalPrice: item.totalPrice,
-            invoiceStatus: item.salesInvoiceStatus,
+          products: currentProducts.map(p => ({
+            id: p.id,
+            name: p.name,
+            quantity: p.quantity,
+            unitPrice: p.unitPrice,
+            totalPrice: p.totalPrice,
+            salesInvoiceStatus: p.salesInvoiceStatus,
             changeType: 'unchanged' as const,
-            current: item,
-            previous: null,
-          })),
-          purchase: purchaseItems.map(item => ({
-            id: item.id,
-            productName: item.productName,
-            partNumber: item.partNumber,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            totalPrice: item.totalPrice,
-            vendorCompany: item.vendorCompany,
-            invoiceStatus: item.purchaseInvoiceStatus,
-            changeType: 'unchanged' as const,
-            current: item,
-            previous: null,
+            items: p.items.map(item => ({
+              id: item.id,
+              partNumber: item.partNumber,
+              description: item.description,
+              vendorName: item.vendorName,
+              purchasePrice: item.purchasePrice,
+              purchaseTotal: item.purchaseTotal,
+              purchaseInvoiceStatus: item.purchaseInvoiceStatus,
+              changeType: 'unchanged' as const,
+            })),
           })),
         },
       })
     }
 
-    // 두 버전의 아이템 조회
-    const [currentItems, previousItems, currentPurchaseItems, previousPurchaseItems] = await Promise.all([
-      prisma.salesApprovalItem.findMany({
-        where: { approvalId: latestVersion.id },
-        include: { details: { orderBy: { sortOrder: 'asc' } } },
-        orderBy: { sortOrder: 'asc' },
-      }),
-      prisma.salesApprovalItem.findMany({
-        where: { approvalId: previousVersion.id },
-        include: { details: { orderBy: { sortOrder: 'asc' } } },
-        orderBy: { sortOrder: 'asc' },
-      }),
-      prisma.salesApprovalPurchaseItem.findMany({
-        where: { approvalId: latestVersion.id },
-        include: { details: { orderBy: { sortOrder: 'asc' } } },
-        orderBy: { sortOrder: 'asc' },
-      }),
-      prisma.salesApprovalPurchaseItem.findMany({
-        where: { approvalId: previousVersion.id },
-        include: { details: { orderBy: { sortOrder: 'asc' } } },
-        orderBy: { sortOrder: 'asc' },
-      }),
-    ])
+    // 이전 버전의 제품+품목 조회
+    const previousProducts = await prisma.salesApprovalProduct.findMany({
+      where: { approvalId: previousVersion.id },
+      include: { items: { orderBy: { sortOrder: 'asc' } } },
+      orderBy: { sortOrder: 'asc' },
+    })
 
-    // 매출 아이템 비교
-    const salesComparison = []
-    const previousSalesMap = new Map(previousItems.map(i => [i.id, i]))
-    const matchedPreviousIds = new Set<string>()
+    // Product 비교 (sourceProductId 기반)
+    const prevProductMap = new Map(previousProducts.map(p => [p.id, p]))
+    const matchedPrevProductIds = new Set<string>()
 
-    for (const current of currentItems) {
-      const previous = current.sourceItemId ? previousSalesMap.get(current.sourceItemId) : null
+    const productComparison = []
+
+    for (const current of currentProducts) {
+      const previous = current.sourceProductId ? prevProductMap.get(current.sourceProductId) : null
 
       if (previous) {
-        matchedPreviousIds.add(previous.id)
+        matchedPrevProductIds.add(previous.id)
         const isModified =
           current.quantity !== previous.quantity ||
           Number(current.unitPrice) !== Number(previous.unitPrice)
 
-        salesComparison.push({
+        // Item 비교
+        const prevItemMap = new Map(previous.items.map(i => [i.id, i]))
+        const matchedPrevItemIds = new Set<string>()
+
+        const itemComparison = []
+        for (const curItem of current.items) {
+          const prevItem = curItem.sourceItemId ? prevItemMap.get(curItem.sourceItemId) : null
+          if (prevItem) {
+            matchedPrevItemIds.add(prevItem.id)
+            const itemModified =
+              curItem.quantity !== prevItem.quantity ||
+              Number(curItem.purchasePrice) !== Number(prevItem.purchasePrice)
+            itemComparison.push({
+              ...curItem,
+              changeType: itemModified ? 'modified' : 'unchanged',
+              previous: prevItem,
+            })
+          } else {
+            itemComparison.push({ ...curItem, changeType: 'added', previous: null })
+          }
+        }
+        // 삭제된 items
+        for (const prevItem of previous.items) {
+          if (!matchedPrevItemIds.has(prevItem.id)) {
+            itemComparison.push({ ...prevItem, changeType: 'deleted', previous: prevItem })
+          }
+        }
+
+        productComparison.push({
           id: current.id,
-          productName: current.productName,
-          partNumber: current.partNumber,
+          name: current.name,
           quantity: current.quantity,
           unitPrice: current.unitPrice,
           totalPrice: current.totalPrice,
-          invoiceStatus: current.salesInvoiceStatus,
+          salesInvoiceStatus: current.salesInvoiceStatus,
           changeType: isModified ? 'modified' : 'unchanged',
-          current: {
-            quantity: current.quantity,
-            unitPrice: current.unitPrice,
-            totalPrice: current.totalPrice,
-          },
-          previous: {
-            quantity: previous.quantity,
-            unitPrice: previous.unitPrice,
-            totalPrice: previous.totalPrice,
-            invoiceStatus: previous.salesInvoiceStatus,
-          },
+          previous: { quantity: previous.quantity, unitPrice: previous.unitPrice, totalPrice: previous.totalPrice },
+          items: itemComparison,
         })
       } else {
-        // 신규 아이템
-        salesComparison.push({
+        productComparison.push({
           id: current.id,
-          productName: current.productName,
-          partNumber: current.partNumber,
+          name: current.name,
           quantity: current.quantity,
           unitPrice: current.unitPrice,
           totalPrice: current.totalPrice,
-          invoiceStatus: current.salesInvoiceStatus,
+          salesInvoiceStatus: current.salesInvoiceStatus,
           changeType: 'added',
-          current: {
-            quantity: current.quantity,
-            unitPrice: current.unitPrice,
-            totalPrice: current.totalPrice,
-          },
           previous: null,
+          items: current.items.map(item => ({ ...item, changeType: 'added', previous: null })),
         })
       }
     }
 
-    // 삭제된 아이템 (이전 버전에 있고 현재 버전에 없는 것)
-    for (const previous of previousItems) {
-      if (!matchedPreviousIds.has(previous.id)) {
-        salesComparison.push({
-          id: previous.id,
-          productName: previous.productName,
-          partNumber: previous.partNumber,
-          quantity: previous.quantity,
-          unitPrice: previous.unitPrice,
-          totalPrice: previous.totalPrice,
-          invoiceStatus: previous.salesInvoiceStatus,
+    // 삭제된 products
+    for (const prev of previousProducts) {
+      if (!matchedPrevProductIds.has(prev.id)) {
+        productComparison.push({
+          id: prev.id,
+          name: prev.name,
+          quantity: prev.quantity,
+          unitPrice: prev.unitPrice,
+          totalPrice: prev.totalPrice,
+          salesInvoiceStatus: prev.salesInvoiceStatus,
           changeType: 'deleted',
-          current: null,
-          previous: {
-            quantity: previous.quantity,
-            unitPrice: previous.unitPrice,
-            totalPrice: previous.totalPrice,
-            invoiceStatus: previous.salesInvoiceStatus,
-          },
-        })
-      }
-    }
-
-    // 매입 아이템 비교
-    const purchaseComparison = []
-    const previousPurchaseMap = new Map(previousPurchaseItems.map(i => [i.id, i]))
-    const matchedPreviousPurchaseIds = new Set<string>()
-
-    for (const current of currentPurchaseItems) {
-      const previous = current.sourceItemId ? previousPurchaseMap.get(current.sourceItemId) : null
-
-      if (previous) {
-        matchedPreviousPurchaseIds.add(previous.id)
-        const isModified =
-          current.quantity !== previous.quantity ||
-          Number(current.unitPrice) !== Number(previous.unitPrice)
-
-        purchaseComparison.push({
-          id: current.id,
-          productName: current.productName,
-          partNumber: current.partNumber,
-          quantity: current.quantity,
-          unitPrice: current.unitPrice,
-          totalPrice: current.totalPrice,
-          vendorCompany: current.vendorCompany,
-          invoiceStatus: current.purchaseInvoiceStatus,
-          changeType: isModified ? 'modified' : 'unchanged',
-          current: {
-            quantity: current.quantity,
-            unitPrice: current.unitPrice,
-            totalPrice: current.totalPrice,
-          },
-          previous: {
-            quantity: previous.quantity,
-            unitPrice: previous.unitPrice,
-            totalPrice: previous.totalPrice,
-            invoiceStatus: previous.purchaseInvoiceStatus,
-          },
-        })
-      } else {
-        purchaseComparison.push({
-          id: current.id,
-          productName: current.productName,
-          partNumber: current.partNumber,
-          quantity: current.quantity,
-          unitPrice: current.unitPrice,
-          totalPrice: current.totalPrice,
-          vendorCompany: current.vendorCompany,
-          invoiceStatus: current.purchaseInvoiceStatus,
-          changeType: 'added',
-          current: {
-            quantity: current.quantity,
-            unitPrice: current.unitPrice,
-            totalPrice: current.totalPrice,
-          },
-          previous: null,
-        })
-      }
-    }
-
-    for (const previous of previousPurchaseItems) {
-      if (!matchedPreviousPurchaseIds.has(previous.id)) {
-        purchaseComparison.push({
-          id: previous.id,
-          productName: previous.productName,
-          partNumber: previous.partNumber,
-          quantity: previous.quantity,
-          unitPrice: previous.unitPrice,
-          totalPrice: previous.totalPrice,
-          vendorCompany: previous.vendorCompany,
-          invoiceStatus: previous.purchaseInvoiceStatus,
-          changeType: 'deleted',
-          current: null,
-          previous: {
-            quantity: previous.quantity,
-            unitPrice: previous.unitPrice,
-            totalPrice: previous.totalPrice,
-            invoiceStatus: previous.purchaseInvoiceStatus,
-          },
+          previous: { quantity: prev.quantity, unitPrice: prev.unitPrice, totalPrice: prev.totalPrice },
+          items: prev.items.map(item => ({ ...item, changeType: 'deleted', previous: item })),
         })
       }
     }
@@ -300,16 +182,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       versions: allVersions,
       currentVersion: latestVersion,
       previousVersion,
-      comparison: {
-        sales: salesComparison,
-        purchase: purchaseComparison,
-      },
+      comparison: { products: productComparison },
     })
   } catch (error) {
     console.error('버전 비교 오류:', error)
-    return NextResponse.json(
-      { error: '버전 비교에 실패했습니다' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: '버전 비교에 실패했습니다' }, { status: 500 })
   }
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { UilEdit, UilFileAlt, UilPlus, UilSearch, UilTrashAlt } from '@iconscout/react-unicons'
+import { UilEdit, UilFileAlt, UilSearch } from '@iconscout/react-unicons'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import React, { useCallback, useEffect, useRef, useState } from 'react'

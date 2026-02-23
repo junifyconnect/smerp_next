@@ -15,9 +15,6 @@ export async function GET(
         items: {
           orderBy: { sortOrder: "asc" },
         },
-        deal: {
-          select: { id: true, name: true },
-        },
       },
     })
 

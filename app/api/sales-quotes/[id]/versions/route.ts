@@ -13,7 +13,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params
 
-    // 현재 견적서 조회
     const currentQuote = await prisma.salesQuote.findUnique({
       where: { id },
       select: {
@@ -29,15 +28,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // 같은 원본의 모든 버전 조회
-    // originalId가 있으면 그걸로, 없으면 현재 id로 (자기가 첫 버전)
     const rootId = currentQuote.originalId || id
 
     const versions = await prisma.salesQuote.findMany({
       where: {
         OR: [
-          { id: rootId },                    // 첫 버전
-          { originalId: rootId },            // 그 이후 버전들
+          { id: rootId },
+          { originalId: rootId },
         ],
       },
       select: {
@@ -50,17 +47,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         clientCompany: true,
         version: true,
         isLatest: true,
-        items: {
-          take: 1,
-          select: { description: true },
-        },
       },
-      orderBy: { version: 'desc' }, // 최신 버전 먼저
+      orderBy: { version: 'desc' },
     })
 
     const versionsWithMeta = versions.map((v) => ({
       ...v,
-      displayName: v.projectName || v.items[0]?.description || v.clientCompany || `v${v.version}`,
+      displayName: v.projectName || v.clientCompany || `v${v.version}`,
       isCurrent: v.id === id,
     }))
 
