@@ -298,7 +298,7 @@ export function MADocumentForm({ docType, basePath, title, documentId }: MADocum
 
       if (response.ok) {
         const data = await response.json()
-        router.push(`${basePath}/${data.id}`)
+        router.replace(`${basePath}/${data.id}`)
       } else {
         const error = await response.json()
         alert(`저장 실패: ${error.error || '알 수 없는 오류'}`)

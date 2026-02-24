@@ -131,16 +131,46 @@ export function SalesApprovalForm({ basePath, title }: SalesApprovalFormProps) {
       const salesTotal = calcSalesTotal()
       const purchaseTotals = calcPurchaseTotals()
 
+      // UI의 flat 리스트를 API의 products→items 2단계 구조로 변환
+      const products = salesItems.map((salesItem, idx) => {
+        const purchaseItem = purchaseItems[idx]
+        return {
+          name: salesItem.partNumber || salesItem.description || `제품 ${idx + 1}`,
+          quantity: salesItem.quantity || 1,
+          unitPrice: salesItem.unitPrice || 0,
+          sortOrder: idx,
+          items: purchaseItem ? [{
+            partNumber: salesItem.partNumber,
+            description: salesItem.description,
+            quantity: salesItem.quantity || 1,
+            vendorName: purchaseItem.vendor,
+            purchaseQty: purchaseItem.quantity || 1,
+            purchasePrice: purchaseItem.unitPrice || 0,
+            purchaseDate: purchaseItem.dateOrInvoice || null,
+            sortOrder: 0,
+          }] : [],
+        }
+      })
+
       const res = await fetch('/api/sales-approvals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
-          salesItems,
-          purchaseItems,
-          salesTotalAmount: salesTotal,
-          purchaseTotalAmount: purchaseTotals.total,
-          purchaseTotalWithVat: purchaseTotals.totalWithVat,
+          approvalCode: formData.approvalCode,
+          approvalDate: formData.approvalDate,
+          managerName: formData.approvalOwner,
+          clientCompany: formData.salesContactLine,
+          endUser: formData.endUser,
+          mtSnInfo: formData.mtSn,
+          notes: formData.etc,
+          invoiceDueDate: formData.invoicePlannedDate,
+          invoiceEmail: formData.invoiceEmail,
+          paymentTerms: formData.paymentDue,
+          deliveryAddress: formData.shippingAddress,
+          receiverName: formData.shippingReceiver,
+          receiverPhone: formData.shippingReceiverPhone,
+          deliveryDate: formData.shippingDate,
+          products,
         }),
       })
 
@@ -150,7 +180,7 @@ export function SalesApprovalForm({ basePath, title }: SalesApprovalFormProps) {
       }
 
       const data = await res.json()
-      router.push(`${basePath}/${data.id}`)
+      router.replace(`${basePath}/${data.id}`)
     } catch (err) {
       alert(err instanceof Error ? err.message : '품의서 생성에 실패했습니다')
     } finally {

@@ -771,7 +771,7 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
       }
 
       const data = await response.json()
-      router.push(`${basePath}/${data.id}`)
+      router.replace(`${basePath}/${data.id}`)
     } catch (err) {
       alert(err instanceof Error ? err.message : (documentId ? '문서 수정에 실패했습니다' : '문서 생성에 실패했습니다'))
     } finally {

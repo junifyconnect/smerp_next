@@ -155,38 +155,31 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           }
         }
 
-        // 3. 매입 계산서 자동생성 (같은 vendorName Item 합산)
-        const vendorMap = new Map<string, { totalAmount: number; items: string[] }>()
+        // 3. 매입 계산서 자동생성 (Item 1개 = InvoiceRecord 1개)
         for (const product of products) {
           for (const item of product.items) {
-            if (item.vendorName && item.purchaseTotal) {
-              const key = item.vendorName
-              const existing = vendorMap.get(key) || { totalAmount: 0, items: [] }
-              existing.totalAmount += Number(item.purchaseTotal)
-              existing.items.push(item.partNumber || item.description || product.name)
-              vendorMap.set(key, existing)
-            }
-          }
-        }
+            if (!item.vendorName || !item.purchaseTotal || Number(item.purchaseTotal) === 0) continue
 
-        for (const [vendorName, data] of vendorMap) {
-          const existing = await tx.invoiceRecord.findFirst({
-            where: { approvalId: id, vendorCompany: vendorName, invoiceType: 'PURCHASE' },
-          })
-          if (!existing) {
-            await tx.invoiceRecord.create({
-              data: {
-                approvalId: id,
-                invoiceType: 'PURCHASE',
-                productName: data.items.join(', '),
-                quantity: 1,
-                unitPrice: data.totalAmount,
-                totalPrice: data.totalAmount,
-                vendorCompany: vendorName,
-                clientCompany: approval.clientCompany,
-                status: 'PENDING',
-              },
+            const existing = await tx.invoiceRecord.findFirst({
+              where: { approvalId: id, itemId: item.id, invoiceType: 'PURCHASE' },
             })
+            if (!existing) {
+              await tx.invoiceRecord.create({
+                data: {
+                  approvalId: id,
+                  itemId: item.id,
+                  invoiceType: 'PURCHASE',
+                  productName: item.partNumber || item.description || product.name,
+                  partNumber: item.partNumber,
+                  quantity: item.purchaseQty,
+                  unitPrice: item.purchasePrice || 0,
+                  totalPrice: item.purchaseTotal,
+                  vendorCompany: item.vendorName,
+                  clientCompany: approval.clientCompany,
+                  status: 'PENDING',
+                },
+              })
+            }
           }
         }
 

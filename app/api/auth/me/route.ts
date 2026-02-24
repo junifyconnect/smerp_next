@@ -50,7 +50,9 @@ export async function GET() {
       phone: user.phone,
       department: user.department,
       position: user.position,
-      signatureUrl: user.signatureUrl,
+      signatureUrl: user.signatureUrl
+        ? await (await import('@/lib/s3')).getPresignedDownloadUrl(user.signatureUrl)
+        : null,
       roles,
       menuPermissions,
     })

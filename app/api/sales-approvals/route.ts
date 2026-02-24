@@ -213,12 +213,14 @@ export async function POST(request: NextRequest) {
 
     const productsData = finalProducts.map((product: ProductInput, pIdx: number) => {
       const qty = product.quantity || 1
-      const price = product.unitPrice || 0
+      const price = product.unitPrice || product.salesUnitPrice || 0
       const productTotal = qty * price
       totalSalesAmount += productTotal
 
       const items = (product.items || []).map((item: ItemInput, iIdx: number) => {
-        const purchaseTotal = (item.purchaseQty || 1) * (item.purchasePrice || 0)
+        const pPrice = item.purchasePrice || item.purchaseUnitPrice || 0
+        const pQty = item.purchaseQty || item.quantity || 1
+        const purchaseTotal = pQty * pPrice
         totalPurchaseAmount += purchaseTotal
 
         return {
@@ -227,9 +229,9 @@ export async function POST(request: NextRequest) {
           description: item.description,
           quantity: item.quantity || 1,
           salesUnitPrice: item.salesUnitPrice,
-          vendorName: item.vendorName,
-          purchaseQty: item.purchaseQty || 1,
-          purchasePrice: item.purchasePrice,
+          vendorName: item.vendorName || item.vendorCompany || null,
+          purchaseQty: pQty,
+          purchasePrice: pPrice,
           purchaseTotal: purchaseTotal || item.purchaseTotal,
           purchaseDate: item.purchaseDate ? new Date(item.purchaseDate) : null,
         }

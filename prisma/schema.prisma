@@ -324,7 +324,6 @@ enum ApprovalStatus {
   PENDING_CEO // 대표이사 승인대기
   APPROVED // 승인완료
   REJECTED // 반려
-  WITHDRAWN // 회수됨
 }
 
 model SalesApproval {
@@ -427,8 +426,9 @@ model SalesApprovalProduct {
   totalPrice Decimal? @map("total_price") @db.Decimal(15, 2) // 매출 합계
 
   // 매출 계산서
-  salesInvoiceStatus String    @default("PENDING") @map("sales_invoice_status") // PENDING, ISSUED
-  salesInvoiceDate   DateTime? @map("sales_invoice_date") @db.Date
+  salesInvoiceStatus  String    @default("PENDING") @map("sales_invoice_status") // PENDING, ISSUED, NOT_REQUIRED, NEEDS_AMENDMENT, CANCELLED
+  salesInvoiceDate    DateTime? @map("sales_invoice_date") @db.Date
+  salesInvoiceRemarks String?   @map("sales_invoice_remarks") @db.Text // 기타사항
 
   // 버전 추적 (revise 시 원본 Product ID)
   sourceProductId String? @map("source_product_id")
@@ -1067,11 +1067,10 @@ model LeaveRequest {
 
 enum InvoiceStatus {
   PENDING // 미발행
-  ISSUED // 발행완료
-  AMENDMENT_NEEDED // 수정 필요 (품의서 수정됨)
-  AMENDED // 수정발행 완료
-  CANCELLATION_NEEDED // 취소 필요 (아이템 삭제됨)
-  CANCELLED // 취소 완료
+  ISSUED // 발행 완료
+  NEEDS_AMENDMENT // 수정 필요 (revise로 변경 감지)
+  NOT_REQUIRED // 발행 불필요
+  CANCELLED // 취소
 }
 
 enum InvoiceType {

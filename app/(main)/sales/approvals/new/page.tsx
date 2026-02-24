@@ -396,16 +396,16 @@ function NewSalesApprovalForm() {
             id: p.id || `product-${Date.now()}-${Math.random()}`,
             name: p.name || '',
             quantity: p.quantity || 1,
-            salesUnitPrice: p.salesUnitPrice || 0,
+            salesUnitPrice: p.salesUnitPrice || p.unitPrice || 0,
             purchaseUnitPrice: p.purchaseUnitPrice || 0,  // 제품 레벨 매입 (통합 매입)
-            vendorCompany: p.vendorCompany || '',  // 제품 레벨 매입처 (통합 매입)
+            vendorCompany: p.vendorCompany || p.vendorName || '',  // 제품 레벨 매입처 (통합 매입)
             items: (p.items || []).map((item) => ({
               partNumber: item.partNumber || '',
               description: item.description || '',
               quantity: item.quantity || 1,
               salesUnitPrice: 0, // 품목 레벨에는 매출 정보 없음
-              purchaseUnitPrice: item.purchaseUnitPrice || 0,
-              vendorCompany: item.vendorCompany || '',
+              purchaseUnitPrice: item.purchaseUnitPrice || item.purchasePrice || 0,
+              vendorCompany: item.vendorCompany || item.vendorName || '',
             })),
           }))
 

@@ -139,6 +139,31 @@ export default function SalesApprovalDetailPage() {
       const res = await fetch(`/api/sales-approvals/${id}`)
       if (res.ok) {
         const data = await res.json()
+        // products→items 구조를 상세페이지용 flat 구조로 변환
+        if (data.products && data.products.length > 0 && (!data.items || data.items.length === 0)) {
+          data.items = data.products.map((p: { name?: string; quantity?: number; unitPrice?: number | string; totalPrice?: number | string; items?: { partNumber?: string; description?: string; quantity?: number }[] }) => ({
+            productName: p.name || '',
+            quantity: p.quantity || 1,
+            unitPrice: Number(p.unitPrice) || 0,
+            totalPrice: Number(p.totalPrice) || 0,
+            details: (p.items || []).map((item: { partNumber?: string; description?: string; quantity?: number }) => ({
+              partNumber: item.partNumber || '',
+              description: item.description || '',
+              quantity: item.quantity || 1,
+            })),
+          }))
+          // 매입: products의 items를 flat하게 펼쳐서 개별 매입 항목으로
+          data.purchaseItems = data.products.flatMap((p: { name?: string; items?: { vendorName?: string; purchaseQty?: number; purchasePrice?: number | string; purchaseTotal?: number | string; purchaseDate?: string; partNumber?: string; description?: string }[] }) =>
+            (p.items || []).map((item: { vendorName?: string; purchaseQty?: number; purchasePrice?: number | string; purchaseTotal?: number | string; purchaseDate?: string; partNumber?: string; description?: string }) => ({
+              productName: item.partNumber || item.description || p.name || '',
+              quantity: item.purchaseQty || 1,
+              unitPrice: Number(item.purchasePrice) || 0,
+              totalPrice: Number(item.purchaseTotal) || 0,
+              vendorCompany: item.vendorName || '',
+              purchaseDate: item.purchaseDate || '',
+            }))
+          )
+        }
         setApproval(data)
       } else {
         router.push('/sales/approvals')
@@ -214,7 +239,8 @@ export default function SalesApprovalDetailPage() {
 
       if (res.ok) {
         const updated = await res.json()
-        setApproval(updated)
+        // sign 후에도 fetchApproval로 전체 데이터 다시 로드
+        await fetchApproval()
       } else {
         const data = await res.json()
         alert(data.error || '서명 실패')
@@ -244,8 +270,7 @@ export default function SalesApprovalDetailPage() {
       })
 
       if (res.ok) {
-        const updated = await res.json()
-        setApproval(updated)
+        await fetchApproval()
       } else {
         const data = await res.json()
         alert(data.error || '반려 실패')
@@ -254,6 +279,27 @@ export default function SalesApprovalDetailPage() {
       alert('반려에 실패했습니다')
     } finally {
       setUpdatingStatus(false)
+    }
+  }
+
+  const handleWithdraw = async () => {
+    if (!confirm('품의서를 회수하시겠습니까?\n기존본은 회수됨 처리되고, 새 버전이 작성중 상태로 생성됩니다.')) return
+
+    try {
+      const res = await fetch(`/api/sales-approvals/${id}/withdraw`, {
+        method: 'POST',
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        alert(data.message)
+        router.push(`/sales/approvals/${data.approval.id}`)
+      } else {
+        const data = await res.json()
+        alert(data.error || '회수에 실패했습니다')
+      }
+    } catch {
+      alert('회수에 실패했습니다')
     }
   }
 
@@ -429,6 +475,17 @@ export default function SalesApprovalDetailPage() {
               </svg>
               수정
             </Link>
+          )}
+          {['PENDING', 'PENDING_TEAM_LEAD', 'PENDING_CEO'].includes(approval.status) && isCreator && (
+            <button
+              onClick={handleWithdraw}
+              className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+              회수
+            </button>
           )}
           {approval.status !== 'DRAFT' && approval.isLatest !== false && (
             <button
@@ -839,20 +896,20 @@ export default function SalesApprovalDetailPage() {
                 <td className="px-2 py-3 w-28 text-right border-r-2 border-gray-300">
                   <div className="text-xs text-gray-500">VAT별도</div>
                   <div className="text-base font-bold text-blue-700">
-                    {Number(approval.totalAmount || 0).toLocaleString()}원
+                    {Number(approval.totalSalesAmount || approval.totalAmount || 0).toLocaleString()}원
                   </div>
                 </td>
                 <td className="px-2 py-3 w-28 text-right text-sm text-gray-500">매입합계</td>
                 <td className="px-2 py-3 w-24 text-right">
                   <div className="text-xs text-gray-500">VAT별도</div>
                   <div className="text-base font-bold text-purple-700">
-                    {Number(approval.purchaseTotal || 0).toLocaleString()}원
+                    {Number(approval.totalPurchaseAmount || approval.purchaseTotal || 0).toLocaleString()}원
                   </div>
                 </td>
                 <td className="px-2 py-3 w-28 text-right">
                   <div className="text-xs text-gray-500">VAT포함</div>
                   <div className="text-base font-bold text-purple-700">
-                    {Number(approval.purchaseTotalWithVat || 0).toLocaleString()}원
+                    {Math.round(Number(approval.totalPurchaseAmount || approval.purchaseTotal || 0) * 1.1).toLocaleString()}원
                   </div>
                 </td>
               </tr>

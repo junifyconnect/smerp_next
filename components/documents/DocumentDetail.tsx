@@ -16,6 +16,12 @@ interface DocumentItem {
   unitPrice?: number
   totalPrice?: number
   productId?: string | null
+  // v2 매입 필드
+  vendorName?: string
+  purchaseQty?: number
+  purchasePrice?: number | string
+  purchaseTotal?: number | string
+  purchaseDate?: string
 }
 
 interface ProductGroup {
@@ -100,6 +106,10 @@ interface Document {
   totalAmount?: number
   vatAmount?: number
   totalWithVat?: number
+  // v2 금액 필드
+  totalSalesAmount?: number
+  totalPurchaseAmount?: number
+  profitAmount?: number
   items: DocumentItem[]
   products?: ProductGroup[]
   purchaseItems?: PurchaseItem[]
@@ -635,26 +645,30 @@ export default function DocumentDetail({ documentId, basePath }: DocumentDetailP
         shippingDate: document.deliveryDate ? formatDate(document.deliveryDate) : '',
       }
 
-      const salesItems = (document.items || []).map(item => ({
-        partNumber: item.partNumber || '',
-        description: item.description || '',
-        quantity: item.quantity || 0,
-        unitPrice: item.unitPrice || 0,
-        totalPrice: item.totalPrice || 0,
+      // 새 2단계 구조 (products→items) → UI flat 리스트로 변환
+      const products = document.products || []
+      const salesItems = products.map((p: { name?: string; quantity?: number; unitPrice?: number | string; totalPrice?: number | string }) => ({
+        partNumber: p.name || '',
+        description: '',
+        quantity: p.quantity || 0,
+        unitPrice: Number(p.unitPrice) || 0,
+        totalPrice: Number(p.totalPrice) || 0,
       }))
 
-      const purchaseItems = (document.purchaseItems || []).map(item => ({
-        dateOrInvoice: item.purchaseDate ? formatDate(item.purchaseDate) : '',
-        vendor: item.vendorCompany || '',
-        quantity: item.quantity || 0,
-        unitPrice: item.unitPrice || 0,
-        totalPrice: item.totalPrice || 0,
-      }))
+      const purchaseItems = products.flatMap((p) =>
+        (p.items || []).map((item) => ({
+          dateOrInvoice: item.purchaseDate ? formatDate(item.purchaseDate) : '',
+          vendor: item.vendorName || '',
+          quantity: item.purchaseQty || 0,
+          unitPrice: Number(item.purchasePrice) || 0,
+          totalPrice: Number(item.purchaseTotal) || 0,
+        }))
+      )
 
-      const salesTotal = Number(document.totalAmount) || 0
+      const salesTotal = Number(document.totalSalesAmount) || 0
       const purchaseTotals = {
-        total: Number(document.purchaseTotal) || 0,
-        totalWithVat: Number(document.purchaseTotalWithVat) || 0,
+        total: Number(document.totalPurchaseAmount) || 0,
+        totalWithVat: Math.round((Number(document.totalPurchaseAmount) || 0) * 1.1),
       }
 
       return (

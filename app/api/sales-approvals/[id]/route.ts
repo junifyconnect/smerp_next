@@ -89,7 +89,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const currentApproval = await prisma.salesApproval.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, status: true },
     })
 
     if (!currentApproval) {
@@ -99,7 +99,33 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       )
     }
 
+    // 상태별 수정 규칙
+    if (currentApproval.status === 'APPROVED') {
+      return NextResponse.json(
+        { error: '승인 완료된 품의서는 수정할 수 없습니다. 수정발행(revise)을 이용해주세요.' },
+        { status: 400 }
+      )
+    }
+    if (currentApproval.status === 'REJECTED') {
+      return NextResponse.json(
+        { error: '반려된 품의서는 수정할 수 없습니다.' },
+        { status: 400 }
+      )
+    }
+
     const updateData: Record<string, unknown> = {}
+
+    // PENDING 계열 → 수정 시 자동 회수 (DRAFT로 + 서명 초기화)
+    const pendingStatuses = ['PENDING', 'PENDING_TEAM_LEAD', 'PENDING_CEO']
+    if (pendingStatuses.includes(currentApproval.status)) {
+      updateData.status = 'DRAFT'
+      updateData.salesManagerId = null
+      updateData.salesManagerSignedAt = null
+      updateData.teamLeaderId = null
+      updateData.teamLeaderSignedAt = null
+      updateData.ceoId = null
+      updateData.ceoSignedAt = null
+    }
 
     if (approvalCode !== undefined) updateData.approvalCode = approvalCode
     if (approvalDate !== undefined) updateData.approvalDate = approvalDate ? new Date(approvalDate) : null
@@ -202,6 +228,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       where: { id },
       select: {
         id: true,
+        status: true,
         version: true,
         originalId: true,
         isLatest: true,
@@ -212,6 +239,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         { error: '품의서를 찾을 수 없습니다' },
         { status: 404 }
+      )
+    }
+
+    // DRAFT만 삭제 가능
+    if (approval.status !== 'DRAFT') {
+      return NextResponse.json(
+        { error: '작성중인 품의서만 삭제할 수 있습니다' },
+        { status: 400 }
       )
     }
 
@@ -236,8 +271,16 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         }
       }
 
+      // ISSUED 상태 계산서가 있으면 삭제 거부
+      const issuedCount = await tx.invoiceRecord.count({
+        where: { approvalId: id, status: 'ISSUED' },
+      })
+      if (issuedCount > 0) {
+        throw new Error(`발행완료된 계산서가 ${issuedCount}건 있어 삭제할 수 없습니다.`)
+      }
+
       await tx.invoiceRecord.deleteMany({
-        where: { approvalId: id, status: 'PENDING' },
+        where: { approvalId: id, status: { in: ['PENDING', 'NOT_REQUIRED'] } },
       })
 
       await tx.salesApproval.delete({ where: { id } })
@@ -250,8 +293,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     })
   } catch (error) {
     console.error('품의서 삭제 오류:', error)
+    const message = error instanceof Error ? error.message : '품의서 삭제에 실패했습니다'
     return NextResponse.json(
-      { error: '품의서 삭제에 실패했습니다' },
+      { error: message },
       { status: 500 }
     )
   }

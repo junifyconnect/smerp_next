@@ -278,9 +278,11 @@ export default function MyPage() {
           <div className="flex-shrink-0">
             <div className="w-48 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
               {user.signatureUrl ? (
-                <span className="text-emerald-600 text-sm font-medium">
-                  서명 등록됨 ✓
-                </span>
+                <img
+                  src={user.signatureUrl}
+                  alt="서명"
+                  className="w-full h-full object-contain"
+                />
               ) : (
                 <span className="text-gray-400 text-sm">서명 없음</span>
               )}

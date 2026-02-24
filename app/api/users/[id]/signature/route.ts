@@ -105,7 +105,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       select: { id: true, name: true, signatureUrl: true },
     })
 
-    return NextResponse.json(updatedUser, { status: 200 })
+    const { getPresignedDownloadUrl } = await import('@/lib/s3')
+    return NextResponse.json({
+      ...updatedUser,
+      signatureUrl: updatedUser.signatureUrl
+        ? await getPresignedDownloadUrl(updatedUser.signatureUrl)
+        : null,
+    }, { status: 200 })
   } catch (error) {
     console.error('서명 업로드 오류:', error)
     return NextResponse.json(
