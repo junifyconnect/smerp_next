@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { notifyTeamLeadSigned, notifyApprovalApproved } from '@/lib/notifications/sender'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -43,7 +44,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       select: {
         id: true,
         status: true,
+        approvalNumber: true,
         clientCompany: true,
+        createdById: true,
         salesManagerId: true,
         teamLeaderId: true,
         ceoId: true,
@@ -102,6 +105,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         data: { teamLeaderId: userId, teamLeaderSignedAt: now, status: 'PENDING_CEO' },
         include: INCLUDE_FULL,
       })
+
+      // CEO에게 최종 결재 요청 알림
+      notifyTeamLeadSigned({
+        id: approval.id,
+        approvalNumber: approval.approvalNumber,
+        clientCompany: approval.clientCompany,
+      }).catch((err) => console.error('알림 발송 실패:', err))
+
       return NextResponse.json(updated)
     }
 
@@ -183,8 +194,60 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           }
         }
 
+        // 4. 매출장 자동 생성 (Product 단위)
+        for (const product of products) {
+          await tx.salesLedger.create({
+            data: {
+              approvalCode: result.approvalCode,
+              transactionDate: result.approvalDate || now,
+              clientCompany: approval.clientCompany || '',
+              endUser: result.endUser,
+              category: '상품',
+              description: product.name,
+              quantity: product.quantity,
+              unitPrice: product.unitPrice || 0,
+              supplyAmount: product.totalPrice || 0,
+              vatAmount: Number(product.totalPrice || 0) * 0.1,
+              totalAmount: Number(product.totalPrice || 0) * 1.1,
+              managerName: result.managerName,
+              salesApprovalId: result.id,
+            },
+          })
+        }
+
+        // 5. 매입장 자동 생성 (매입 Item 단위)
+        for (const product of products) {
+          for (const item of product.items) {
+            if (!item.vendorName || !item.purchaseTotal || Number(item.purchaseTotal) === 0) continue
+            await tx.purchaseLedger.create({
+              data: {
+                approvalCode: result.approvalCode,
+                invoiceDate: item.purchaseDate || now,
+                vendorCompany: item.vendorName,
+                clientCompany: approval.clientCompany,
+                category: '상품',
+                itemName: item.description || item.partNumber || product.name,
+                quantity: item.purchaseQty,
+                unitPrice: item.purchasePrice || 0,
+                supplyAmount: item.purchaseTotal,
+                vatAmount: Number(item.purchaseTotal) * 0.1,
+                totalAmount: Number(item.purchaseTotal) * 1.1,
+                salesApprovalId: result.id,
+              },
+            })
+          }
+        }
+
         return result
       })
+
+      // 작성자에게 승인 알림
+      notifyApprovalApproved({
+        id: approval.id,
+        approvalNumber: approval.approvalNumber,
+        clientCompany: approval.clientCompany,
+        createdById: approval.createdById,
+      }).catch((err) => console.error('알림 발송 실패:', err))
 
       return NextResponse.json(updated)
     }

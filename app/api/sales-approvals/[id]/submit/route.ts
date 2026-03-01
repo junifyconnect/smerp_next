@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { auth } from '@/lib/auth'
+import { notifyApprovalSubmitted } from '@/lib/notifications/sender'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -21,6 +22,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         status: true,
         createdById: true,
         approvalCode: true,
+        approvalNumber: true,
+        clientCompany: true,
       },
     })
 
@@ -60,6 +63,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         status: true,
       },
     })
+
+    // 알림 발송 (비동기 - 실패해도 기안은 성공)
+    notifyApprovalSubmitted({
+      id: approval.id,
+      approvalNumber: updatedApproval.approvalNumber,
+      clientCompany: approval.clientCompany,
+      createdById: approval.createdById,
+    }).catch((err) => console.error('알림 발송 실패:', err))
 
     return NextResponse.json({
       message: '기안이 완료되었습니다',

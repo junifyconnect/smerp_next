@@ -1,24 +1,24 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import prisma from '@/lib/db'
-import CustomerList from '@/components/admin/CustomerList'
+import VendorList from '@/components/admin/VendorList'
 
-export default async function CustomersPage() {
+export default async function VendorsPage() {
   const session = await auth()
   if (!session) redirect('/login')
 
   const [items, total] = await Promise.all([
-    prisma.customer.findMany({
+    prisma.vendor.findMany({
       where: { isActive: true },
-      orderBy: { companyName: 'asc' },
+      orderBy: [{ usageCount: 'desc' }, { name: 'asc' }],
       take: 20,
     }),
-    prisma.customer.count({ where: { isActive: true } }),
+    prisma.vendor.count({ where: { isActive: true } }),
   ])
 
   return (
     <div className="space-y-6">
-      <CustomerList initialItems={JSON.parse(JSON.stringify(items))} initialTotal={total} />
+      <VendorList initialItems={JSON.parse(JSON.stringify(items))} initialTotal={total} />
     </div>
   )
 }

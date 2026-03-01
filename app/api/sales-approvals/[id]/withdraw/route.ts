@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { auth } from '@/lib/auth'
+import { notifyApprovalWithdrawn } from '@/lib/notifications/sender'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -19,7 +20,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       select: {
         id: true,
         status: true,
+        approvalNumber: true,
+        clientCompany: true,
         createdById: true,
+        salesManagerId: true,
+        teamLeaderId: true,
+        ceoId: true,
       },
     })
 
@@ -88,6 +94,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         },
       })
     })
+
+    // 결재자들에게 회수 알림
+    notifyApprovalWithdrawn({
+      id: approval.id,
+      approvalNumber: approval.approvalNumber,
+      clientCompany: approval.clientCompany,
+      createdById: approval.createdById,
+      salesManagerId: approval.salesManagerId,
+      teamLeaderId: approval.teamLeaderId,
+      ceoId: approval.ceoId,
+    }).catch((err) => console.error('알림 발송 실패:', err))
 
     return NextResponse.json({
       message: '품의서가 회수되었습니다. 작성중 상태로 변경되었습니다.',

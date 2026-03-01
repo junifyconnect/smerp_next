@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { notifyApprovalRejected } from '@/lib/notifications/sender'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -25,6 +26,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       select: {
         id: true,
         status: true,
+        approvalNumber: true,
+        clientCompany: true,
+        createdById: true,
       },
     })
 
@@ -74,6 +78,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         rejectedBy: { select: { id: true, name: true } },
       },
     })
+
+    // 작성자에게 반려 알림
+    notifyApprovalRejected({
+      id: approval.id,
+      approvalNumber: approval.approvalNumber,
+      clientCompany: approval.clientCompany,
+      createdById: approval.createdById,
+      rejectionReason: reason,
+    }).catch((err) => console.error('알림 발송 실패:', err))
 
     return NextResponse.json(updated)
   } catch (error) {

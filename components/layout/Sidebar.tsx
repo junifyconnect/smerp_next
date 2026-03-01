@@ -52,7 +52,8 @@ const navigation = [
   {
     title: '관리',
     items: [
-      { name: '거래처 관리', href: '/admin/customers', icon: UilBuilding },
+      { name: '매출처 관리', href: '/admin/customers', icon: UilBuilding },
+      { name: '매입처 관리', href: '/admin/vendors', icon: UilBuilding },
       { name: '직원 관리', href: '/admin/users', icon: UilUsersAlt },
       { name: '휴가 관리', href: '/admin/leaves', icon: UilPlane },
       { name: '엑셀 일괄 업로드', href: '/admin/import', icon: UilUpload },
