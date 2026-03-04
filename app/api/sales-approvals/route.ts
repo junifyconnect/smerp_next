@@ -8,7 +8,9 @@ interface ItemInput {
   description?: string
   quantity?: number
   salesUnitPrice?: number
+  purchaseUnitPrice?: number  // 새 필드명
   vendorName?: string
+  vendorCompany?: string  // 새 필드명
   purchaseQty?: number
   purchasePrice?: number
   purchaseTotal?: number
@@ -21,6 +23,9 @@ interface ProductInput {
   name: string
   quantity?: number
   unitPrice?: number
+  salesUnitPrice?: number
+  purchaseUnitPrice?: number
+  vendorCompany?: string
   items?: ItemInput[]
   sortOrder?: number
 }

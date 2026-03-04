@@ -85,6 +85,8 @@ interface SalesApproval {
   receiverName?: string
   receiverPhone?: string
   totalAmount?: number
+  totalSalesAmount?: number
+  totalPurchaseAmount?: number
   vatAmount?: number
   totalWithVat?: number
   purchaseTotal?: number

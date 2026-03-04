@@ -1023,3 +1023,113 @@ export async function generateExcel(docType: DocType, data: DocumentData): Promi
 export const generateQuoteExcel = generateSalesQuote
 export const generateApprovalExcel = generateSalesApproval
 export const generateOrderExcel = generateSalesOrder
+
+// ==================== 범용 템플릿 기반 엑셀 생성 ====================
+// DB의 ExcelTemplate 매핑을 사용하는 범용 함수
+// 기존 문서별 함수와 병행 사용 가능
+export async function generateExcelFromTemplate({
+  templateId,
+  data,
+  items,
+}: {
+  templateId?: string
+  data: Record<string, unknown>
+  items: Record<string, unknown>[]
+}): Promise<Buffer> {
+  const prisma = (await import('@/lib/db')).default
+
+  let template: {
+    sampleFilePath?: string | null
+    fieldMappings: unknown
+    salesColumnMappings: unknown
+    purchaseColumnMappings: unknown
+    itemTableStartRow: number
+  } | null = null
+
+  if (templateId) {
+    template = await prisma.excelTemplate.findUnique({
+      where: { id: templateId },
+    })
+  }
+
+  const workbook = new ExcelJS.Workbook()
+
+  if (template?.sampleFilePath) {
+    try {
+      const s3Buffer = await getFromS3(template.sampleFilePath)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await workbook.xlsx.load(s3Buffer as any)
+      const worksheet = workbook.worksheets[0]
+
+      // 단일 필드 매핑
+      const fieldMappings = (template.fieldMappings || {}) as Record<string, string>
+      for (const [key, cellRef] of Object.entries(fieldMappings)) {
+        if (cellRef && data[key] !== undefined) {
+          worksheet.getCell(cellRef).value = data[key] as ExcelJS.CellValue
+        }
+      }
+
+      // 품목 테이블 매핑
+      const salesMappings = (template.salesColumnMappings || {}) as Record<string, string>
+      const purchaseMappings = (template.purchaseColumnMappings || {}) as Record<string, string>
+      const startRow = template.itemTableStartRow || 17
+
+      items.forEach((item, index) => {
+        const rowNum = startRow + index
+        const row = worksheet.getRow(rowNum)
+
+        for (const [key, col] of Object.entries(salesMappings)) {
+          if (col && item[key] !== undefined) {
+            row.getCell(col).value = item[key] as ExcelJS.CellValue
+          }
+        }
+
+        for (const [key, col] of Object.entries(purchaseMappings)) {
+          if (col && item[key] !== undefined) {
+            row.getCell(col).value = item[key] as ExcelJS.CellValue
+          }
+        }
+        row.commit()
+      })
+    } catch (e) {
+      console.error('Failed to load excel template from S3:', e)
+      return generateTemplateFallback(workbook, data, items)
+    }
+  } else {
+    return generateTemplateFallback(workbook, data, items)
+  }
+
+  const buf = await workbook.xlsx.writeBuffer()
+  return Buffer.from(buf)
+}
+
+// 범용 fallback (양식 없을 때 기본 테이블)
+async function generateTemplateFallback(
+  workbook: ExcelJS.Workbook,
+  data: Record<string, unknown>,
+  items: Record<string, unknown>[]
+): Promise<Buffer> {
+  const worksheet = workbook.addWorksheet('Sheet1')
+  let rowIdx = 1
+
+  for (const [key, value] of Object.entries(data)) {
+    if (typeof value !== 'object') {
+      worksheet.getRow(rowIdx).values = [key, String(value)]
+      rowIdx++
+    }
+  }
+
+  rowIdx += 1
+  if (items.length > 0) {
+    const keys = Object.keys(items[0]).filter((k) => typeof items[0][k] !== 'object')
+    worksheet.getRow(rowIdx).values = keys
+    rowIdx++
+    items.forEach((item) => {
+      worksheet.getRow(rowIdx).values = keys.map((k) => item[k] as ExcelJS.CellValue)
+      rowIdx++
+    })
+  }
+
+  const buf = await workbook.xlsx.writeBuffer()
+  return Buffer.from(buf)
+}

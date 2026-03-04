@@ -381,14 +381,18 @@ function NewSalesApprovalForm() {
             name: string
             quantity: number
             salesUnitPrice: number
+            unitPrice?: number  // 레거시 호환
             purchaseUnitPrice?: number  // 제품 레벨 매입 단가 (통합 매입용)
             vendorCompany?: string  // 제품 레벨 매입처 (통합 매입용)
+            vendorName?: string  // 레거시 호환
             items: {
               partNumber: string
               description: string
               quantity: number
               purchaseUnitPrice: number
+              purchasePrice?: number  // 레거시 호환
               vendorCompany: string
+              vendorName?: string  // 레거시 호환
             }[]
           }
 
