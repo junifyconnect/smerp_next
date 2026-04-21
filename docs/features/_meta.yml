@@ -1,12 +1,12 @@
-version: 4
-last_generated: 2026-04-20
-last_commit: b113fe9
-last_commit_note: "b113fe9 + uncommitted redesign (InvoiceRecord 단일 진실 소스 전환)"
+version: 6
+last_generated: 2026-04-21
+last_commit: 4453dba
+last_commit_note: "4453dba feat: InvoiceRecord 단일 진실 소스 전환 (B안 재설계) + S3 브라우저 UI B안 확정"
 project: smerp_next
 feature_count: 22
 status_breakdown:
-  완료: 17
-  진행중: 4
+  완료: 18
+  진행중: 3
   미착수: 1
   계획: 0
 domains_snapshot:
@@ -16,4 +16,4 @@ domains_snapshot:
   - 관리자
   - 공통
   - 시스템
-pending_decisions: 1
+pending_decisions: 0
