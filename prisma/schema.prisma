@@ -414,7 +414,7 @@ model SalesApproval {
   @@map("sales_approvals")
 }
 
-// ★ 품의서 제품 (매출 단위 = 매출 계산서 단위)
+// ★ 품의서 제품 (매출 단위)
 model SalesApprovalProduct {
   id         String @id @default(uuid())
   approvalId String @map("approval_id")
@@ -425,10 +425,14 @@ model SalesApprovalProduct {
   unitPrice  Decimal? @map("unit_price") @db.Decimal(15, 2) // 매출 단가
   totalPrice Decimal? @map("total_price") @db.Decimal(15, 2) // 매출 합계
 
-  // 매출 계산서
-  salesInvoiceStatus  String    @default("PENDING") @map("sales_invoice_status") // PENDING, ISSUED, NOT_REQUIRED, NEEDS_AMENDMENT, CANCELLED
-  salesInvoiceDate    DateTime? @map("sales_invoice_date") @db.Date
-  salesInvoiceRemarks String?   @map("sales_invoice_remarks") @db.Text // 기타사항
+  // 분류 (원장 연동용)
+  category    String  @default("상품") // 상품, MA, 건물임대, 장비임대, 일반경비
+  subCategory String? @map("sub_category") // 세부분류 (월간-IBM 등)
+  taxType     String  @default("TAX") @map("tax_type") // TAX(과세10%), ZERO(영세), EXEMPT(면세)
+
+  // 매출 계산서 발행 단위 (PRODUCT: 제품당 1건 / ITEM: 품목별 n건)
+  // 매입 계산서는 항상 매입처(vendorName)별로 자동 그룹핑되므로 별도 설정 없음.
+  salesInvoiceUnit String @default("PRODUCT") @map("sales_invoice_unit")
 
   // 버전 추적 (revise 시 원본 Product ID)
   sourceProductId String? @map("source_product_id")
@@ -462,10 +466,11 @@ model SalesApprovalItem {
   purchasePrice Decimal?  @map("purchase_price") @db.Decimal(15, 2) // 매입 단가
   purchaseTotal Decimal?  @map("purchase_total") @db.Decimal(15, 2) // 매입 합계
   purchaseDate  DateTime? @map("purchase_date") @db.Date // 매입일
+  taxType       String    @default("TAX") @map("tax_type") // TAX, ZERO, EXEMPT (매입 세금 유형)
 
-  // 매입 계산서
-  purchaseInvoiceStatus String    @default("PENDING") @map("purchase_invoice_status")
-  purchaseInvoiceDate   DateTime? @map("purchase_invoice_date") @db.Date
+  // 계산서 발행 대상 여부 (체크 해제 시 InvoiceRecord 미생성)
+  salesInvoiceRequired    Boolean @default(true) @map("sales_invoice_required")
+  purchaseInvoiceRequired Boolean @default(true) @map("purchase_invoice_required")
 
   // 버전 추적
   sourceItemId String? @map("source_item_id")
@@ -862,6 +867,15 @@ model SalesLedger {
   salesApprovalId String? @map("sales_approval_id")
   maApprovalId    String? @map("ma_approval_id")
 
+  // 출처 추적 (원장 ↔ 품의서 역참조)
+  sourceProductId String? @map("source_product_id") // 원본 Product ID
+  approvalVersion Int?    @map("approval_version") // 품의서 버전
+
+  // 활성 상태 (revise 시 이전 원장 비활성화)
+  isActive    Boolean   @default(true) @map("is_active")
+  cancelledAt DateTime? @map("cancelled_at")
+  cancelReason String?  @map("cancel_reason")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -872,6 +886,7 @@ model SalesLedger {
   @@index([paymentDueDate])
   @@index([managerName])
   @@index([approvalCode])
+  @@index([isActive])
   @@map("sales_ledger")
 }
 
@@ -921,6 +936,16 @@ model PurchaseLedger {
   salesApprovalId String? @map("sales_approval_id")
   maApprovalId    String? @map("ma_approval_id")
 
+  // 출처 추적 (원장 ↔ 품의서 역참조)
+  sourceItemId    String? @map("source_item_id") // 원본 Item ID
+  sourceProductId String? @map("source_product_id") // 상위 Product ID
+  approvalVersion Int?    @map("approval_version")
+
+  // 활성 상태 (revise 시 이전 원장 비활성화)
+  isActive    Boolean   @default(true) @map("is_active")
+  cancelledAt DateTime? @map("cancelled_at")
+  cancelReason String?  @map("cancel_reason")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -932,6 +957,7 @@ model PurchaseLedger {
   @@index([paymentDueDate])
   @@index([ledgerType])
   @@index([approvalCode])
+  @@index([isActive])
   @@map("purchase_ledger")
 }
 
@@ -1069,7 +1095,6 @@ enum InvoiceStatus {
   PENDING // 미발행
   ISSUED // 발행 완료
   NEEDS_AMENDMENT // 수정 필요 (revise로 변경 감지)
-  NOT_REQUIRED // 발행 불필요
   CANCELLED // 취소
 }
 
@@ -1078,53 +1103,59 @@ enum InvoiceType {
   PURCHASE // 매입 계산서
 }
 
-// 계산서 발행 기록 (아이템 삭제와 무관하게 유지)
+// 계산서 발행 기록
+//
+// 식별 규칙 (amendedFromId=null인 체인 루트 기준):
+//   - 매출 제품 단위: (approvalId, productId, salesItemId=null)
+//   - 매출 품목 단위: (approvalId, productId, salesItemId)
+//   - 매입:          (approvalId, vendorCompany)   — 매입처가 자연 키
 model InvoiceRecord {
   id String @id @default(uuid())
 
   // 연결 정보
-  approvalId String  @map("approval_id") // 품의서 ID (체인 루트)
-  itemId     String? @map("item_id") // 원본 아이템 ID (삭제되어도 기록 유지)
-
-  // 계산서 유형
+  approvalId  String      @map("approval_id")
   invoiceType InvoiceType @map("invoice_type") // SALES or PURCHASE
 
-  // 아이템 스냅샷 (발행 시점 정보)
-  productName   String  @map("product_name")
-  partNumber    String? @map("part_number")
-  quantity      Int     @default(1)
-  unitPrice     Decimal @map("unit_price") @db.Decimal(15, 2)
-  totalPrice    Decimal @map("total_price") @db.Decimal(15, 2)
-  vendorCompany String? @map("vendor_company") // 매입 계산서인 경우
-  clientCompany String? @map("client_company") // 매출처 (품의서에서 복사)
+  // 매출 식별 (SALES일 때 채움)
+  productId   String? @map("product_id")
+  salesItemId String? @map("sales_item_id") // salesInvoiceUnit='ITEM'일 때만
 
-  // 발행 정보
+  // 매입 식별 (PURCHASE일 때 채움, 매입처가 자연 키)
+  vendorCompany String? @map("vendor_company")
+
+  // 공통 메타
+  clientCompany String? @map("client_company")
+
+  // 스냅샷 (발행 시점 내용)
+  productName String  @map("product_name")
+  partNumber  String? @map("part_number")
+  quantity    Int     @default(1)
+  unitPrice   Decimal @map("unit_price") @db.Decimal(15, 2)
+  totalPrice  Decimal @map("total_price") @db.Decimal(15, 2)
+
+  // 상태/발행 정보
   status        InvoiceStatus @default(PENDING)
   invoiceDate   DateTime?     @map("invoice_date") @db.Date
-  invoiceNumber String?       @map("invoice_number") // 세금계산서 번호
+  invoiceNumber String?       @map("invoice_number")
   remarks       String?       @db.Text
 
-  // 수정/취소 이력
-  amendedFromId String?   @map("amended_from_id") // 수정 전 기록 ID
+  // 체인/취소
+  amendedFromId String?   @map("amended_from_id")
   cancelledAt   DateTime? @map("cancelled_at")
   cancelReason  String?   @map("cancel_reason") @db.Text
 
-  // 메타
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  // 관계
   approval    SalesApproval   @relation(fields: [approvalId], references: [id], onDelete: Cascade)
   amendedFrom InvoiceRecord?  @relation("InvoiceAmendments", fields: [amendedFromId], references: [id])
   amendments  InvoiceRecord[] @relation("InvoiceAmendments")
 
-  @@index([approvalId])
-  @@index([itemId])
-  @@index([invoiceType])
+  @@index([approvalId, invoiceType])
+  @@index([approvalId, productId])
+  @@index([approvalId, vendorCompany])
+  @@index([amendedFromId])
   @@index([status])
-  @@index([invoiceDate])
-  @@index([clientCompany])
-  @@index([vendorCompany])
   @@map("invoice_records")
 }
 

@@ -90,6 +90,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       })
 
       // 제품 + 품목 복사 (sourceProductId / sourceItemId 설정)
+      // 계산서 상태는 복사하지 않음 — InvoiceRecord가 source of truth이고,
+      // sign 시점에 이전 버전 InvoiceRecord를 CANCELLED(REVISED) 또는 NEEDS_AMENDMENT로 전이.
       for (const product of originalApproval.products) {
         const createdProduct = await tx.salesApprovalProduct.create({
           data: {
@@ -99,9 +101,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             quantity: product.quantity,
             unitPrice: product.unitPrice,
             totalPrice: product.totalPrice,
+            category: product.category,
+            subCategory: product.subCategory,
+            taxType: product.taxType,
+            salesInvoiceUnit: product.salesInvoiceUnit,
             sourceProductId: product.id,
-            salesInvoiceStatus: product.salesInvoiceStatus,
-            salesInvoiceDate: product.salesInvoiceStatus === 'ISSUED' ? product.salesInvoiceDate : null,
           },
         })
 
@@ -119,8 +123,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
               purchasePrice: item.purchasePrice,
               purchaseTotal: item.purchaseTotal,
               purchaseDate: item.purchaseDate,
-              purchaseInvoiceStatus: item.purchaseInvoiceStatus,
-              purchaseInvoiceDate: item.purchaseInvoiceStatus === 'ISSUED' ? item.purchaseInvoiceDate : null,
+              taxType: item.taxType,
+              salesInvoiceRequired: item.salesInvoiceRequired,
+              purchaseInvoiceRequired: item.purchaseInvoiceRequired,
               sourceItemId: item.id,
             })),
           })

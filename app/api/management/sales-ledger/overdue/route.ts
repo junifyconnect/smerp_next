@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
 
     // 결제예정일이 지났고, 결제가 완료되지 않은 건들
     const where: Prisma.SalesLedgerWhereInput = {
+      isActive: true,
       paymentDueDate: { lt: today },
       paymentStatus: { in: [PaymentStatus.PENDING, PaymentStatus.PARTIAL] },
     }

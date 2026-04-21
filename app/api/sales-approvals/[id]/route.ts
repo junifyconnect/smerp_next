@@ -280,7 +280,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       }
 
       await tx.invoiceRecord.deleteMany({
-        where: { approvalId: id, status: { in: ['PENDING', 'NOT_REQUIRED'] } },
+        where: { approvalId: id, status: 'PENDING' },
       })
 
       await tx.salesApproval.delete({ where: { id } })

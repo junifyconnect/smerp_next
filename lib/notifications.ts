@@ -185,8 +185,8 @@ export async function notifyPaymentDue({
     message: `${companyName} ${typeLabel} ${amountStr}원 결제 예정일: ${dateStr}`,
     linkUrl:
       invoiceType === 'SALES'
-        ? `/management/sales-invoice-status`
-        : `/management/purchase-invoice-status`,
+        ? `/management/invoice-status?invoiceType=SALES`
+        : `/management/invoice-status?invoiceType=PURCHASE`,
     linkType: invoiceType === 'SALES' ? 'SALES_INVOICE' : 'PURCHASE_INVOICE',
     relatedId: invoiceId,
     relatedType:

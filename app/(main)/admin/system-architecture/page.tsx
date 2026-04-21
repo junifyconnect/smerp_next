@@ -547,28 +547,42 @@ export default function SystemArchitecturePage() {
           </div>
         </div>
 
-        {/* 데이터 구조 */}
+        {/* 데이터 구조 — 재설계(2026-04) 이후 */}
         <div className="bg-white rounded-lg p-4 border border-emerald-200">
-          <h3 className="font-medium text-gray-900 mb-3">계산서 발행현황 구조 (InvoiceStatus)</h3>
+          <h3 className="font-medium text-gray-900 mb-3">
+            계산서 발행현황 구조 (InvoiceRecord 기반)
+          </h3>
+          <p className="text-xs text-gray-500 mb-3">
+            재설계 이후 계산서 상태/발행 정보는 Product/SalesItem이 아닌 별도 테이블
+            <code className="mx-1 px-1 bg-gray-100 rounded">InvoiceRecord</code>가
+            단일 Source of Truth. 매출/매입 모두 한 레코드 = 한 계산서.
+          </p>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="bg-blue-50 rounded p-3">
-              <div className="font-medium text-blue-900 mb-2">매출 계산서 정보</div>
+              <div className="font-medium text-blue-900 mb-2">매출 InvoiceRecord</div>
               <div className="font-mono text-xs space-y-1 text-gray-600">
-                <div>salesApprovalId → 품의서 연결</div>
-                <div>salesInvoiceDate → 매출 계산서 발행일</div>
-                <div>salesInvoiceStatus → 미발행/발행완료</div>
-                <div className="text-emerald-600">→ 발행 시 SalesLedger 생성</div>
+                <div>invoiceType = &apos;SALES&apos;</div>
+                <div>approvalId + productId + salesItemId</div>
+                <div>status = PENDING / ISSUED / NEEDS_AMENDMENT / CANCELLED</div>
+                <div>invoiceDate, invoiceNumber, remarks</div>
+                <div>amendedFromId → 수정발행 체인</div>
+                <div className="text-emerald-600 mt-1">→ 발행(issue) 시 SalesLedger 생성</div>
               </div>
             </div>
             <div className="bg-purple-50 rounded p-3">
-              <div className="font-medium text-purple-900 mb-2">매입 계산서 정보</div>
+              <div className="font-medium text-purple-900 mb-2">매입 InvoiceRecord</div>
               <div className="font-mono text-xs space-y-1 text-gray-600">
-                <div>salesApprovalId → 품의서 연결</div>
-                <div>purchaseInvoiceDate → 매입 계산서 수신일</div>
-                <div>purchaseInvoiceStatus → 미수신/수신완료</div>
-                <div className="text-orange-600">→ 수신 시 PurchaseLedger 생성</div>
+                <div>invoiceType = &apos;PURCHASE&apos;</div>
+                <div>approvalId + vendorCompany (제품 경계 초월)</div>
+                <div>같은 품의서 내 동일 매입처는 1건으로 집계</div>
+                <div>status/invoiceDate/invoiceNumber/remarks 동일 구조</div>
+                <div className="text-orange-600 mt-1">→ 수신 시 PurchaseLedger 생성</div>
               </div>
             </div>
+          </div>
+          <div className="mt-3 text-xs text-gray-500">
+            상태 전이는 전용 API(<code>/api/management/invoices/issue|amend|cancel</code>)로만
+            처리. PATCH endpoint는 invoiceDate/invoiceNumber/remarks 메타만 수정.
           </div>
         </div>
       </div>

@@ -39,3 +39,25 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# IDE / 개인 환경
+.idea/
+.claude/
+.vscode/
+
+# 엑셀 락파일 (Excel이 편집 중일 때 만드는 ~$ 접두 파일)
+~$*.xlsx
+~$*.xls
+
+# 루트 레벨 업무 엑셀 테스트 데이터 (planning/ 하위는 영향 없음)
+/*.xlsx
+/*.xls
+
+# Prisma 백업/임시 스키마
+prisma/schema.prisma.bak
+prisma/_schema_tmp.prisma
+
+# 구 기능 명세 (docs/features/로 대체됨, 로컬 보존용)
+docs/features.bak/
+docs/FEATURES.md
+

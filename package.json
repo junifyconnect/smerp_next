@@ -11,7 +11,8 @@
     "db:push": "prisma db push --config prisma/prisma.config.ts",
     "db:studio": "prisma studio --config prisma/prisma.config.ts",
     "db:migrate": "prisma migrate dev --config prisma/prisma.config.ts",
-    "db:seed": "prisma db seed",
+    "db:reset": "prisma migrate reset --config prisma/prisma.config.ts",
+    "db:seed": "prisma db seed --config prisma/prisma.config.ts",
     "db:query": "npx tsx scripts/db-query.ts"
   },
   "dependencies": {

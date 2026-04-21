@@ -1,19 +1,119 @@
 import { NextRequest, NextResponse } from 'next/server'
+import type { InvoiceRecord } from '@prisma/client'
 import prisma from '@/lib/db'
 
-// GET /api/management/invoice-status - 통합 계산서 발행현황 (매출+매입)
+/**
+ * GET /api/management/invoice-status
+ *
+ * 계산서 발행 현황 (재설계 후 구조).
+ * - source of truth: InvoiceRecord
+ * - 행 단위: InvoiceRecord 하나 = 한 행 (매출/매입 모두)
+ * - 매출 식별: (approvalId, productId, salesItemId)
+ * - 매입 식별: (approvalId, vendorCompany)   — 제품 경계 초월
+ *
+ * 필터:
+ *   - month=YYYY-MM       approvalDate 기준
+ *   - approvalCode=...    품의번호 부분일치
+ *   - clientCompany=...   매출처 부분일치
+ *   - vendorCompany=...   매입처 부분일치 (PURCHASE만)
+ *   - invoiceStatus=...   상태 필터 (PENDING | ISSUED | NEEDS_AMENDMENT | CANCELLED)
+ *   - invoiceType=SALES|PURCHASE  특정 타입만
+ *
+ * 기본 정책: 취소된 레코드(CANCELLED)도 응답에 포함 (체인 시각화용).
+ *            필요 시 UI에서 필터링.
+ */
+
+type InvoiceStatus = 'PENDING' | 'ISSUED' | 'NEEDS_AMENDMENT' | 'CANCELLED'
+type InvoiceType = 'SALES' | 'PURCHASE'
+
+interface InvoiceRecordRow {
+  id: string
+  invoiceType: InvoiceType
+  productId: string | null
+  salesItemId: string | null
+  vendorCompany: string | null
+  clientCompany: string | null
+  productName: string
+  partNumber: string | null
+  quantity: number
+  unitPrice: number
+  totalPrice: number
+  status: InvoiceStatus
+  invoiceDate: string | null
+  invoiceNumber: string | null
+  remarks: string | null
+  amendedFromId: string | null
+  cancelledAt: string | null
+  cancelReason: string | null
+  createdAt: string
+}
+
+interface InvoiceGroup {
+  approvalId: string
+  approvalCode: string | null
+  approvalDate: string | null
+  clientCompany: string | null
+  version: number
+  managerName: string | null
+  salesTotalPrice: number
+  purchaseTotalPrice: number
+  records: InvoiceRecordRow[]
+}
+
+interface InvoiceSummary {
+  totalSales: number
+  totalPurchase: number
+  salesCount: number
+  purchaseCount: number
+  salesByStatus: Record<string, number>
+  purchaseByStatus: Record<string, number>
+}
+
+function toIso(d: Date | null | undefined): string | null {
+  return d ? d.toISOString() : null
+}
+
+function toNum(d: unknown): number {
+  if (d === null || d === undefined) return 0
+  const n = Number(d)
+  return Number.isFinite(n) ? n : 0
+}
+
+function toRow(r: InvoiceRecord): InvoiceRecordRow {
+  return {
+    id: r.id,
+    invoiceType: r.invoiceType as InvoiceType,
+    productId: r.productId,
+    salesItemId: r.salesItemId,
+    vendorCompany: r.vendorCompany,
+    clientCompany: r.clientCompany,
+    productName: r.productName,
+    partNumber: r.partNumber,
+    quantity: r.quantity,
+    unitPrice: toNum(r.unitPrice),
+    totalPrice: toNum(r.totalPrice),
+    status: r.status as InvoiceStatus,
+    invoiceDate: toIso(r.invoiceDate),
+    invoiceNumber: r.invoiceNumber,
+    remarks: r.remarks,
+    amendedFromId: r.amendedFromId,
+    cancelledAt: toIso(r.cancelledAt),
+    cancelReason: r.cancelReason,
+    createdAt: r.createdAt.toISOString(),
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const month = searchParams.get('month') // YYYY-MM
+    const month = searchParams.get('month')
     const approvalCode = searchParams.get('approvalCode')
     const clientCompany = searchParams.get('clientCompany')
-    const vendorName = searchParams.get('vendorName')
-    const invoiceStatus = searchParams.get('invoiceStatus') // PENDING, ISSUED, etc
-    const limit = parseInt(searchParams.get('limit') || '100')
-    const page = parseInt(searchParams.get('page') || '1')
+    const vendorCompany = searchParams.get('vendorCompany')
+    const invoiceStatusParam = searchParams.get('invoiceStatus') as InvoiceStatus | null
+    const invoiceTypeParam = searchParams.get('invoiceType') as InvoiceType | null
 
-    // 품의서 필터
+    // 1. 대상 품의서 (APPROVED + isLatest)
     const approvalWhere: Record<string, unknown> = {
       status: 'APPROVED',
       isLatest: true,
@@ -25,227 +125,190 @@ export async function GET(request: NextRequest) {
       const endDate = new Date(year, mon, 1)
       approvalWhere.approvalDate = { gte: startDate, lt: endDate }
     }
-
     if (approvalCode) {
       approvalWhere.approvalCode = { contains: approvalCode, mode: 'insensitive' }
     }
-
     if (clientCompany) {
       approvalWhere.clientCompany = { contains: clientCompany, mode: 'insensitive' }
     }
 
-    // Product(매출) 조회 + 하위 Item(매입) 포함
-    const productWhere: Record<string, unknown> = {
-      approval: approvalWhere,
+    const approvals = await prisma.salesApproval.findMany({
+      where: approvalWhere,
+      select: {
+        id: true,
+        approvalCode: true,
+        approvalDate: true,
+        version: true,
+        clientCompany: true,
+        managerName: true,
+      },
+      orderBy: { approvalCode: 'asc' },
+    })
+
+    const approvalIds = approvals.map((a) => a.id)
+    if (approvalIds.length === 0) {
+      return NextResponse.json({
+        groups: [],
+        summary: emptySummary(),
+      })
     }
 
-    if (invoiceStatus) {
-      // 매출 또는 매입 중 하나라도 해당 상태면 포함
-      productWhere.OR = [
-        { salesInvoiceStatus: invoiceStatus },
-        { items: { some: { purchaseInvoiceStatus: invoiceStatus } } },
+    // 2. 관련 InvoiceRecord 조회 (필터 적용)
+    const recordWhere: Record<string, unknown> = {
+      approvalId: { in: approvalIds },
+    }
+    if (invoiceTypeParam) recordWhere.invoiceType = invoiceTypeParam
+    if (invoiceStatusParam) recordWhere.status = invoiceStatusParam
+    if (vendorCompany) {
+      recordWhere.AND = [
+        { invoiceType: 'PURCHASE' },
+        { vendorCompany: { contains: vendorCompany, mode: 'insensitive' } },
       ]
     }
 
-    const [products, total] = await Promise.all([
-      prisma.salesApprovalProduct.findMany({
-        where: productWhere,
-        include: {
-          approval: {
-            select: {
-              id: true,
-              approvalCode: true,
-              approvalDate: true,
-              version: true,
-              clientCompany: true,
-              managerName: true,
-            },
-          },
-          items: {
-            where: vendorName
-              ? { vendorName: { contains: vendorName, mode: 'insensitive' } }
-              : { vendorName: { not: null } },
-            orderBy: { sortOrder: 'asc' },
-          },
-        },
-        orderBy: [
-          { approval: { approvalCode: 'asc' } },
-          { sortOrder: 'asc' },
-        ],
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      prisma.salesApprovalProduct.count({ where: productWhere }),
-    ])
-
-    // 품의코드별 그룹핑 + 건별합계 계산
-    const approvalGroups = new Map<string, {
-      salesTotalSum: number
-      purchaseTotalSum: number
-    }>()
-
-    for (const product of products) {
-      const code = product.approval.approvalCode || 'UNKNOWN'
-      if (!approvalGroups.has(code)) {
-        approvalGroups.set(code, { salesTotalSum: 0, purchaseTotalSum: 0 })
-      }
-      const group = approvalGroups.get(code)!
-      group.salesTotalSum += Number(product.totalPrice || 0)
-      for (const item of product.items) {
-        group.purchaseTotalSum += Number(item.purchaseTotal || 0)
-      }
-    }
-
-    // 통합 행 데이터 생성
-    const rows: Record<string, unknown>[] = []
-    for (const product of products) {
-      const code = product.approval.approvalCode || 'UNKNOWN'
-      const groupTotals = approvalGroups.get(code)!
-      const items = product.items
-
-      if (items.length === 0) {
-        // 매입 없는 매출만 있는 건
-        rows.push({
-          productId: product.id,
-          itemId: null as string | null,
-          approvalId: product.approvalId,
-          approvalCode: product.approval.approvalCode,
-          approvalVersion: product.approval.version,
-          approvalDate: product.approval.approvalDate,
-          clientCompany: product.approval.clientCompany,
-          // 매출
-          productName: product.name,
-          partNumber: null as string | null,
-          description: null as string | null,
-          salesQty: product.quantity,
-          salesUnitPrice: product.unitPrice,
-          salesTotalPrice: product.totalPrice,
-          salesGroupTotal: groupTotals.salesTotalSum,
-          salesInvoiceStatus: product.salesInvoiceStatus,
-          salesInvoiceDate: product.salesInvoiceDate,
-          salesInvoiceRemarks: product.salesInvoiceRemarks,
-          // 매입 (없음)
-          purchaseDate: null as Date | null,
-          vendorName: null as string | null,
-          purchaseQty: null as number | null,
-          purchasePrice: null,
-          purchaseTotal: null,
-          purchaseGroupTotal: groupTotals.purchaseTotalSum,
-          purchaseInvoiceStatus: null as string | null,
-          purchaseInvoiceDate: null as Date | null,
-          // 메타
-          isFirstInProduct: true,
-          productRowSpan: 1,
-        })
-        continue;
-      }
-
-      for (let idx = 0; idx < items.length; idx++) {
-        const item = items[idx]
-        rows.push({
-        productId: product.id,
-        itemId: item.id,
-        approvalId: product.approvalId,
-        approvalCode: product.approval.approvalCode,
-        approvalVersion: product.approval.version,
-        approvalDate: product.approval.approvalDate,
-        clientCompany: product.approval.clientCompany,
-        // 매출 (첫 행만)
-        productName: product.name,
-        partNumber: item.partNumber,
-        description: item.description,
-        salesQty: product.quantity,
-        salesUnitPrice: product.unitPrice,
-        salesTotalPrice: product.totalPrice,
-        salesGroupTotal: groupTotals.salesTotalSum,
-        salesInvoiceStatus: product.salesInvoiceStatus,
-        salesInvoiceDate: product.salesInvoiceDate,
-        salesInvoiceRemarks: product.salesInvoiceRemarks,
-        // 매입
-        purchaseDate: item.purchaseDate,
-        vendorName: item.vendorName,
-        purchaseQty: item.purchaseQty,
-        purchasePrice: item.purchasePrice,
-        purchaseTotal: item.purchaseTotal,
-        purchaseGroupTotal: groupTotals.purchaseTotalSum,
-        purchaseInvoiceStatus: item.purchaseInvoiceStatus,
-        purchaseInvoiceDate: item.purchaseInvoiceDate,
-        // 메타
-        isFirstInProduct: idx === 0,
-        productRowSpan: items.length,
-        })
-      }
-    }
-
-    // 요약
-    const allSalesTotal = [...approvalGroups.values()].reduce((s, g) => s + g.salesTotalSum, 0)
-    const allPurchaseTotal = [...approvalGroups.values()].reduce((s, g) => s + g.purchaseTotalSum, 0)
-
-    return NextResponse.json({
-      rows,
-      total,
-      page,
-      limit,
-      summary: {
-        salesTotal: allSalesTotal,
-        purchaseTotal: allPurchaseTotal,
-        rowCount: rows.length,
-      },
+    const records = await prisma.invoiceRecord.findMany({
+      where: recordWhere,
+      orderBy: [{ invoiceType: 'asc' }, { createdAt: 'asc' }],
     })
+
+    // 3. 품의서별 groupBy + summary 집계
+    const byApproval = new Map<string, InvoiceRecord[]>()
+    for (const r of records) {
+      const arr = byApproval.get(r.approvalId) ?? []
+      arr.push(r)
+      byApproval.set(r.approvalId, arr)
+    }
+
+    const summary: InvoiceSummary = emptySummary()
+    const groups: InvoiceGroup[] = []
+
+    for (const approval of approvals) {
+      const rs = byApproval.get(approval.id) ?? []
+      if (rs.length === 0 && (invoiceStatusParam || invoiceTypeParam || vendorCompany)) {
+        // 필터 적용 시 관련 레코드 없는 품의서는 제외
+        continue
+      }
+
+      let groupSalesTotal = 0
+      let groupPurchaseTotal = 0
+      const rows: InvoiceRecordRow[] = []
+
+      for (const r of rs) {
+        const row = toRow(r)
+        rows.push(row)
+
+        // 합계: CANCELLED 제외한 활성 레코드만 집계
+        if (row.status !== 'CANCELLED') {
+          if (row.invoiceType === 'SALES') {
+            groupSalesTotal += row.totalPrice
+            summary.totalSales += row.totalPrice
+            summary.salesCount += 1
+            summary.salesByStatus[row.status] =
+              (summary.salesByStatus[row.status] || 0) + 1
+          } else {
+            groupPurchaseTotal += row.totalPrice
+            summary.totalPurchase += row.totalPrice
+            summary.purchaseCount += 1
+            summary.purchaseByStatus[row.status] =
+              (summary.purchaseByStatus[row.status] || 0) + 1
+          }
+        }
+      }
+
+      groups.push({
+        approvalId: approval.id,
+        approvalCode: approval.approvalCode,
+        approvalDate: toIso(approval.approvalDate),
+        clientCompany: approval.clientCompany,
+        version: approval.version,
+        managerName: approval.managerName,
+        salesTotalPrice: groupSalesTotal,
+        purchaseTotalPrice: groupPurchaseTotal,
+        records: rows,
+      })
+    }
+
+    return NextResponse.json({ groups, summary })
   } catch (error) {
     console.error('통합 계산서 발행현황 조회 오류:', error)
     return NextResponse.json({ error: '목록을 불러오는데 실패했습니다' }, { status: 500 })
   }
 }
 
-// PATCH /api/management/invoice-status - 개별 인라인 수정
+function emptySummary(): InvoiceSummary {
+  return {
+    totalSales: 0,
+    totalPurchase: 0,
+    salesCount: 0,
+    purchaseCount: 0,
+    salesByStatus: {},
+    purchaseByStatus: {},
+  }
+}
+
+/**
+ * PATCH /api/management/invoice-status
+ *
+ * ⚠ 상태 전이는 이 엔드포인트에서 처리하지 않는다. 전용 API 사용:
+ *   - POST /api/management/invoices/issue   (PENDING → ISSUED)
+ *   - POST /api/management/invoices/amend   (ISSUED/NEEDS_AMENDMENT → CANCELLED + 신규 PENDING)
+ *   - POST /api/management/invoices/cancel  (→ CANCELLED)
+ *
+ * 이 PATCH는 InvoiceRecord의 메타데이터(invoiceNumber/invoiceDate/remarks)만 수정.
+ *
+ * Body:
+ *   - id:    InvoiceRecord.id (필수)
+ *   - field: 'invoiceNumber' | 'invoiceDate' | 'remarks'
+ *   - value: string | null
+ */
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json()
-    const { type, id, field, value } = body
-
-    // type: 'sales' | 'purchase'
-    // field: 'invoiceStatus' | 'invoiceDate' | 'remarks'
-
-    if (!type || !id || !field) {
-      return NextResponse.json({ error: '필수 파라미터가 없습니다' }, { status: 400 })
+    const { id, field, value } = body as {
+      id?: string
+      field?: string
+      value?: string | null
     }
 
-    if (type === 'sales') {
-      const updateData: Record<string, unknown> = {}
-      if (field === 'invoiceStatus') updateData.salesInvoiceStatus = value
-      if (field === 'invoiceDate') updateData.salesInvoiceDate = value ? new Date(value) : null
-      if (field === 'remarks') updateData.salesInvoiceRemarks = value || null
-
-      // 발행완료로 변경 시 발행일 자동 설정
-      if (field === 'invoiceStatus' && value === 'ISSUED' && !body.invoiceDate) {
-        updateData.salesInvoiceDate = new Date()
-      }
-
-      await prisma.salesApprovalProduct.update({
-        where: { id },
-        data: updateData,
-      })
-    } else if (type === 'purchase') {
-      const updateData: Record<string, unknown> = {}
-      if (field === 'invoiceStatus') updateData.purchaseInvoiceStatus = value
-      if (field === 'invoiceDate') updateData.purchaseInvoiceDate = value ? new Date(value) : null
-
-      if (field === 'invoiceStatus' && value === 'ISSUED' && !body.invoiceDate) {
-        updateData.purchaseInvoiceDate = new Date()
-      }
-
-      await prisma.salesApprovalItem.update({
-        where: { id },
-        data: updateData,
-      })
-    } else {
-      return NextResponse.json({ error: '잘못된 type입니다' }, { status: 400 })
+    if (!id || !field) {
+      return NextResponse.json(
+        { error: 'id, field가 필요합니다' },
+        { status: 400 }
+      )
     }
 
-    return NextResponse.json({ success: true })
+    const allowedFields = new Set(['invoiceNumber', 'invoiceDate', 'remarks'])
+    if (!allowedFields.has(field)) {
+      return NextResponse.json(
+        {
+          error:
+            '상태 전이는 /api/management/invoices/issue|amend|cancel을 사용하세요. 이 엔드포인트는 invoiceNumber/invoiceDate/remarks만 수정 가능합니다.',
+        },
+        { status: 400 }
+      )
+    }
+
+    const target = await prisma.invoiceRecord.findUnique({ where: { id } })
+    if (!target) {
+      return NextResponse.json(
+        { error: '수정 대상 InvoiceRecord가 존재하지 않습니다' },
+        { status: 404 }
+      )
+    }
+
+    const data: Record<string, unknown> = {}
+    if (field === 'invoiceNumber') data.invoiceNumber = value || null
+    if (field === 'remarks') data.remarks = value || null
+    if (field === 'invoiceDate') data.invoiceDate = value ? new Date(value) : null
+
+    const updated = await prisma.invoiceRecord.update({
+      where: { id: target.id },
+      data,
+    })
+
+    return NextResponse.json({ success: true, record: updated })
   } catch (error) {
-    console.error('계산서 인라인 수정 오류:', error)
+    console.error('계산서 메타 수정 오류:', error)
     return NextResponse.json({ error: '수정에 실패했습니다' }, { status: 500 })
   }
 }

@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     // 1. 총매출 / 총매입 / GP
     const [totalSales, totalPurchase] = await Promise.all([
       prisma.salesLedger.aggregate({
-        where: { transactionDate: dateFilter },
+        where: { isActive: true, transactionDate: dateFilter },
         _sum: {
           supplyAmount: true,
           vatAmount: true,
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         _count: true,
       }),
       prisma.purchaseLedger.aggregate({
-        where: { invoiceDate: dateFilter },
+        where: { isActive: true, invoiceDate: dateFilter },
         _sum: {
           supplyAmount: true,
           vatAmount: true,
@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
       const [monthlySales, monthlyPurchase] = await Promise.all([
         prisma.salesLedger.aggregate({
           where: {
+            isActive: true,
             transactionDate: { gte: monthStart, lte: monthEnd },
           },
           _sum: {
@@ -58,6 +59,7 @@ export async function GET(request: NextRequest) {
         }),
         prisma.purchaseLedger.aggregate({
           where: {
+            isActive: true,
             invoiceDate: { gte: monthStart, lte: monthEnd },
           },
           _sum: {
@@ -87,7 +89,7 @@ export async function GET(request: NextRequest) {
     // 3. 품목별(카테고리별) 매출/GP
     const salesByCategory = await prisma.salesLedger.groupBy({
       by: ['category'],
-      where: { transactionDate: dateFilter },
+      where: { isActive: true, transactionDate: dateFilter },
       _sum: {
         supplyAmount: true,
         totalAmount: true,
@@ -103,7 +105,7 @@ export async function GET(request: NextRequest) {
 
     const purchaseByCategory = await prisma.purchaseLedger.groupBy({
       by: ['category'],
-      where: { invoiceDate: dateFilter },
+      where: { isActive: true, invoiceDate: dateFilter },
       _sum: {
         supplyAmount: true,
         totalAmount: true,
@@ -120,6 +122,7 @@ export async function GET(request: NextRequest) {
     const salesByManager = await prisma.salesLedger.groupBy({
       by: ['managerName'],
       where: {
+        isActive: true,
         transactionDate: dateFilter,
         managerName: { not: null },
       },

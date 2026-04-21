@@ -14,6 +14,9 @@ interface Item {
   salesUnitPrice: number  // 매출 단가
   purchaseUnitPrice: number  // 매입 단가
   vendorCompany: string  // 매입처
+  taxType: string  // TAX, ZERO, EXEMPT
+  salesInvoiceRequired: boolean
+  purchaseInvoiceRequired: boolean
 }
 
 // 제품 그룹 (품목들을 묶어서 통합)
@@ -24,8 +27,19 @@ interface ProductGroup {
   salesUnitPrice: number  // 매출 단가
   purchaseUnitPrice: number  // 매입 단가
   vendorCompany: string  // 매입처
+  category: string  // 상품, MA, 건물임대, 장비임대, 일반경비
+  taxType: string  // TAX, ZERO, EXEMPT
+  salesInvoiceUnit: string  // PRODUCT, ITEM
+  // 매입 계산서는 재설계(2026-04) 이후 매입처(vendorCompany)별 자동 그룹핑으로 통합. purchaseInvoiceUnit 필드 제거됨.
   items: Item[]  // 참고용 상세 내역
 }
+
+const CATEGORIES = ['상품', 'MA', '건물임대', '장비임대', '일반경비']
+const TAX_TYPES = [
+  { value: 'TAX', label: '과세' },
+  { value: 'ZERO', label: '영세' },
+  { value: 'EXEMPT', label: '면세' },
+]
 
 interface SalesQuote {
   id: string
@@ -85,7 +99,7 @@ function NewSalesApprovalForm() {
 
   // === 제품 그룹 (제품 + 하위 품목) ===
   const [products, setProducts] = useState<ProductGroup[]>([
-    { id: `product-init-${Date.now()}`, name: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '', items: [] },
+    { id: `product-init-${Date.now()}`, name: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '', category: '상품', taxType: 'TAX', salesInvoiceUnit: 'PRODUCT', items: [] },
   ])
 
   // === 독립 품목 (제품에 소속되지 않는 품목) ===
@@ -93,7 +107,7 @@ function NewSalesApprovalForm() {
 
   // 레거시: 기존 flat items (하위 호환용)
   const [items, setItems] = useState<Item[]>([
-    { partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '' },
+    { partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '', taxType: 'TAX', salesInvoiceRequired: true, purchaseInvoiceRequired: true },
   ])
 
   // 숫자 포맷팅 (천 단위 쉼표)
@@ -172,6 +186,9 @@ function NewSalesApprovalForm() {
           salesUnitPrice: 0,
           purchaseUnitPrice: 0,
           vendorCompany: '',
+          taxType: 'TAX',
+          salesInvoiceRequired: true,
+          purchaseInvoiceRequired: true,
         }))
       )
     } else {
@@ -184,6 +201,9 @@ function NewSalesApprovalForm() {
           salesUnitPrice: Number(item.unitPrice) || 0,
           purchaseUnitPrice: 0,
           vendorCompany: '',
+          taxType: 'TAX',
+          salesInvoiceRequired: true,
+          purchaseInvoiceRequired: true,
         }))
       )
     }
@@ -213,7 +233,7 @@ function NewSalesApprovalForm() {
   }
 
   // === 품목 관리 ===
-  const handleItemChange = (index: number, field: keyof Item, value: string | number) => {
+  const handleItemChange = (index: number, field: keyof Item, value: string | number | boolean) => {
     setItems((prev) => {
       const next = [...prev]
       next[index] = { ...next[index], [field]: value }
@@ -222,7 +242,7 @@ function NewSalesApprovalForm() {
   }
 
   const addItem = () => {
-    setItems((prev) => [...prev, { partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '' }])
+    setItems((prev) => [...prev, { partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '', taxType: 'TAX', salesInvoiceRequired: true, purchaseInvoiceRequired: true }])
   }
 
   const removeItem = (index: number) => {
@@ -240,6 +260,9 @@ function NewSalesApprovalForm() {
       salesUnitPrice: 0,
       purchaseUnitPrice: 0,
       vendorCompany: '',
+      category: '상품',
+      taxType: 'TAX',
+      salesInvoiceUnit: 'PRODUCT',
       items: [],
     }
     setProducts([...products, newProduct])
@@ -249,7 +272,7 @@ function NewSalesApprovalForm() {
     setProducts(products.filter((_, i) => i !== productIndex))
   }
 
-  const handleProductChange = (productIndex: number, field: keyof ProductGroup, value: string | number) => {
+  const handleProductChange = (productIndex: number, field: keyof ProductGroup, value: string | number | boolean) => {
     setProducts(prev => {
       const newProducts = [...prev]
       newProducts[productIndex] = { ...newProducts[productIndex], [field]: value }
@@ -263,7 +286,7 @@ function NewSalesApprovalForm() {
       const newProducts = [...prev]
       newProducts[productIndex] = {
         ...newProducts[productIndex],
-        items: [...newProducts[productIndex].items, { partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '' }],
+        items: [...newProducts[productIndex].items, { partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '', taxType: 'TAX', salesInvoiceRequired: true, purchaseInvoiceRequired: true }],
       }
       return newProducts
     })
@@ -280,7 +303,7 @@ function NewSalesApprovalForm() {
     })
   }
 
-  const handleProductItemChange = (productIndex: number, itemIndex: number, field: keyof Item, value: string | number) => {
+  const handleProductItemChange = (productIndex: number, itemIndex: number, field: keyof Item, value: string | number | boolean) => {
     setProducts(prev => {
       const newProducts = [...prev]
       const newItems = [...newProducts[productIndex].items]
@@ -292,14 +315,14 @@ function NewSalesApprovalForm() {
 
   // === 독립 품목 관리 ===
   const addStandaloneItem = () => {
-    setStandaloneItems([...standaloneItems, { partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '' }])
+    setStandaloneItems([...standaloneItems, { partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '', taxType: 'TAX', salesInvoiceRequired: true, purchaseInvoiceRequired: true }])
   }
 
   const removeStandaloneItem = (index: number) => {
     setStandaloneItems(standaloneItems.filter((_, i) => i !== index))
   }
 
-  const handleStandaloneItemChange = (index: number, field: keyof Item, value: string | number) => {
+  const handleStandaloneItemChange = (index: number, field: keyof Item, value: string | number | boolean) => {
     setStandaloneItems(prev => {
       const newItems = [...prev]
       newItems[index] = { ...newItems[index], [field]: value }
@@ -403,6 +426,9 @@ function NewSalesApprovalForm() {
             salesUnitPrice: p.salesUnitPrice || p.unitPrice || 0,
             purchaseUnitPrice: p.purchaseUnitPrice || 0,  // 제품 레벨 매입 (통합 매입)
             vendorCompany: p.vendorCompany || p.vendorName || '',  // 제품 레벨 매입처 (통합 매입)
+            category: '상품',
+            taxType: 'TAX',
+            salesInvoiceUnit: 'PRODUCT',
             items: (p.items || []).map((item) => ({
               partNumber: item.partNumber || '',
               description: item.description || '',
@@ -410,11 +436,14 @@ function NewSalesApprovalForm() {
               salesUnitPrice: 0, // 품목 레벨에는 매출 정보 없음
               purchaseUnitPrice: item.purchaseUnitPrice || item.purchasePrice || 0,
               vendorCompany: item.vendorCompany || item.vendorName || '',
+              taxType: 'TAX',
+              salesInvoiceRequired: true,
+              purchaseInvoiceRequired: true,
             })),
           }))
 
           setProducts(newProducts.length > 0 ? newProducts : [
-            { id: `product-${Date.now()}`, name: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '', items: [] }
+            { id: `product-${Date.now()}`, name: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '', category: '상품', taxType: 'TAX', salesInvoiceUnit: 'PRODUCT', items: [] }
           ])
           setStandaloneItems(data.standaloneItems || [])
 
@@ -454,9 +483,12 @@ function NewSalesApprovalForm() {
               salesUnitPrice: salesItem.unitPrice || 0,
               purchaseUnitPrice: purchaseItem?.unitPrice || 0,
               vendorCompany: purchaseItem?.vendorCompany || '',
+              taxType: 'TAX',
+              salesInvoiceRequired: true,
+              purchaseInvoiceRequired: true,
             }
           })
-          setItems(newItems.length > 0 ? newItems : [{ partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '' }])
+          setItems(newItems.length > 0 ? newItems : [{ partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '', taxType: 'TAX', salesInvoiceRequired: true, purchaseInvoiceRequired: true }])
         }
 
       } else {
@@ -483,15 +515,21 @@ function NewSalesApprovalForm() {
         name: product.name,
         quantity: product.quantity,
         salesUnitPrice: product.salesUnitPrice || 0,
-        purchaseUnitPrice: product.purchaseUnitPrice || 0,  // 제품 레벨 매입 단가 (일괄 매입)
-        vendorCompany: product.vendorCompany || '',  // 제품 레벨 매입처
+        purchaseUnitPrice: product.purchaseUnitPrice || 0,
+        vendorCompany: product.vendorCompany || '',
+        category: product.category,
+        taxType: product.taxType,
+        salesInvoiceUnit: product.salesInvoiceUnit,
         sortOrder: pIdx,
         items: product.items.map((item, iIdx) => ({
           partNumber: item.partNumber || undefined,
           description: item.description || undefined,
           quantity: item.quantity,
-          purchaseUnitPrice: item.purchaseUnitPrice || 0,  // 품목 레벨 매입 단가
-          vendorCompany: item.vendorCompany || '',  // 품목 레벨 매입처
+          purchaseUnitPrice: item.purchaseUnitPrice || 0,
+          vendorCompany: item.vendorCompany || '',
+          taxType: item.taxType,
+          salesInvoiceRequired: item.salesInvoiceRequired,
+          purchaseInvoiceRequired: item.purchaseInvoiceRequired,
           sortOrder: iIdx,
         })),
       }))
@@ -780,6 +818,53 @@ function NewSalesApprovalForm() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
                         </button>
+                      </td>
+                    </tr>
+
+                    {/* 제품 설정 행: 분류/세금/계산서 단위 */}
+                    <tr className="bg-emerald-50/60 border-b border-emerald-100">
+                      <td colSpan={9} className="px-4 py-1.5">
+                        <div className="flex items-center gap-4 text-[11px]">
+                          {/* 분류 */}
+                          <label className="flex items-center gap-1 text-gray-600">
+                            <span className="font-medium">분류:</span>
+                            <select
+                              value={product.category}
+                              onChange={(e) => handleProductChange(pIdx, 'category', e.target.value)}
+                              className="px-1.5 py-0.5 border border-gray-300 rounded text-[11px] bg-white"
+                            >
+                              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                          </label>
+                          {/* 세금 */}
+                          <label className="flex items-center gap-1 text-gray-600">
+                            <span className="font-medium">세금:</span>
+                            <select
+                              value={product.taxType}
+                              onChange={(e) => handleProductChange(pIdx, 'taxType', e.target.value)}
+                              className="px-1.5 py-0.5 border border-gray-300 rounded text-[11px] bg-white"
+                            >
+                              {TAX_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                            </select>
+                          </label>
+                          <span className="text-gray-300">|</span>
+                          {/* 매출 계산서 단위 */}
+                          <span className="flex items-center gap-1.5 text-blue-600">
+                            <span className="font-medium">매출계산서:</span>
+                            <label className="flex items-center gap-0.5 cursor-pointer">
+                              <input type="radio" name={`sales-inv-unit-${pIdx}`} value="PRODUCT" checked={product.salesInvoiceUnit === 'PRODUCT'} onChange={() => handleProductChange(pIdx, 'salesInvoiceUnit', 'PRODUCT')} className="w-3 h-3" />
+                              제품단위
+                            </label>
+                            <label className="flex items-center gap-0.5 cursor-pointer">
+                              <input type="radio" name={`sales-inv-unit-${pIdx}`} value="ITEM" checked={product.salesInvoiceUnit === 'ITEM'} onChange={() => handleProductChange(pIdx, 'salesInvoiceUnit', 'ITEM')} className="w-3 h-3" />
+                              품목별
+                            </label>
+                          </span>
+                          {/* 매입 계산서: 재설계 후 매입처(vendorCompany)별 자동 그룹핑 — 선택 UI 불필요 */}
+                          <span className="text-[11px] text-purple-600">
+                            <span className="font-medium">매입계산서:</span> 매입처별 자동 그룹
+                          </span>
+                        </div>
                       </td>
                     </tr>
 

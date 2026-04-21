@@ -18,7 +18,9 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate')
     const search = searchParams.get('search')
 
-    const where: Record<string, unknown> = {}
+    const where: Record<string, unknown> = {
+      isActive: true, // revise로 비활성화된 원장 제외
+    }
 
     if (category) {
       where.category = category

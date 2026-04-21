@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { notifyTeamLeadSigned, notifyApprovalApproved } from '@/lib/notifications/sender'
 
+// VAT 계산 유틸
+function calculateVat(supplyAmount: number | unknown, taxType: string): number {
+  const amount = Number(supplyAmount || 0)
+  switch (taxType) {
+    case 'TAX': return Math.round(amount * 0.1)
+    case 'ZERO': return 0
+    case 'EXEMPT': return 0
+    default: return Math.round(amount * 0.1)
+  }
+}
+
+function calculateTotal(supplyAmount: number | unknown, taxType: string): number {
+  const amount = Number(supplyAmount || 0)
+  return amount + calculateVat(supplyAmount, taxType)
+}
+
 interface RouteParams {
   params: Promise<{ id: string }>
 }
@@ -50,6 +66,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         salesManagerId: true,
         teamLeaderId: true,
         ceoId: true,
+        version: true,
+        originalId: true,
       },
     })
 
@@ -131,6 +149,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         orderBy: { sortOrder: 'asc' },
       })
 
+      // 현재 품의서의 원본 ID (revise 체인의 루트)
+      const rootApprovalId = approval.originalId || approval.id
+
       const updated = await prisma.$transaction(async (tx) => {
         // 1. 품의서 승인
         const result = await tx.salesApproval.update({
@@ -144,95 +165,273 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           include: INCLUDE_FULL,
         })
 
-        // 2. 매출 계산서 자동생성 (Product 단위)
-        for (const product of products) {
-          const existing = await tx.invoiceRecord.findFirst({
-            where: { approvalId: id, itemId: product.id, invoiceType: 'SALES' },
+        const currentVersion = result.version
+
+        // 2. Revise인 경우 이전 버전의 원장 비활성화
+        if (currentVersion > 1) {
+          const cancelReason = `REVISED_v${currentVersion}`
+          await tx.salesLedger.updateMany({
+            where: {
+              salesApprovalId: rootApprovalId,
+              isActive: true,
+            },
+            data: {
+              isActive: false,
+              cancelledAt: now,
+              cancelReason,
+            },
           })
-          if (!existing) {
-            await tx.invoiceRecord.create({
-              data: {
-                approvalId: id,
-                itemId: product.id,
-                invoiceType: 'SALES',
-                productName: product.name,
-                quantity: product.quantity,
-                unitPrice: product.unitPrice || 0,
-                totalPrice: product.totalPrice || 0,
-                clientCompany: approval.clientCompany,
+          await tx.purchaseLedger.updateMany({
+            where: {
+              salesApprovalId: rootApprovalId,
+              isActive: true,
+            },
+            data: {
+              isActive: false,
+              cancelledAt: now,
+              cancelReason,
+            },
+          })
+
+          // 2b. 이전 버전 InvoiceRecord 처리
+          //   - PENDING  → CANCELLED(REVISED_v{n})   (아직 미발행이므로 폐기)
+          //   - ISSUED   → NEEDS_AMENDMENT          (경영팀이 수정세금계산서 발행 유도)
+          //   - NEEDS_AMENDMENT / CANCELLED → 유지
+          //
+          // amendedFromId 연결은 여기서 하지 않는다. 경영팀이 /api/management/invoices/amend 호출 시 명시적으로 연결.
+          const previousApprovals = await tx.salesApproval.findMany({
+            where: {
+              OR: [{ id: rootApprovalId }, { originalId: rootApprovalId }],
+              NOT: { id },
+            },
+            select: { id: true },
+          })
+          const previousApprovalIds = previousApprovals.map((p) => p.id)
+
+          if (previousApprovalIds.length > 0) {
+            // PENDING → CANCELLED
+            await tx.invoiceRecord.updateMany({
+              where: {
+                approvalId: { in: previousApprovalIds },
                 status: 'PENDING',
+              },
+              data: {
+                status: 'CANCELLED',
+                cancelledAt: now,
+                cancelReason,
+              },
+            })
+            // ISSUED → NEEDS_AMENDMENT
+            await tx.invoiceRecord.updateMany({
+              where: {
+                approvalId: { in: previousApprovalIds },
+                status: 'ISSUED',
+              },
+              data: {
+                status: 'NEEDS_AMENDMENT',
               },
             })
           }
         }
 
-        // 3. 매입 계산서 자동생성 (Item 1개 = InvoiceRecord 1개)
+        // 3. 매출 계산서 자동생성 (salesInvoiceUnit = PRODUCT | ITEM)
+        //    식별 규칙:
+        //      PRODUCT 단위: (approvalId, productId, salesItemId=null)
+        //      ITEM    단위: (approvalId, productId, salesItemId)
         for (const product of products) {
-          for (const item of product.items) {
-            if (!item.vendorName || !item.purchaseTotal || Number(item.purchaseTotal) === 0) continue
-
+          if (product.salesInvoiceUnit === 'PRODUCT') {
             const existing = await tx.invoiceRecord.findFirst({
-              where: { approvalId: id, itemId: item.id, invoiceType: 'PURCHASE' },
+              where: {
+                approvalId: id,
+                productId: product.id,
+                salesItemId: null,
+                invoiceType: 'SALES',
+                amendedFromId: null,
+              },
             })
             if (!existing) {
               await tx.invoiceRecord.create({
                 data: {
                   approvalId: id,
-                  itemId: item.id,
-                  invoiceType: 'PURCHASE',
-                  productName: item.partNumber || item.description || product.name,
-                  partNumber: item.partNumber,
-                  quantity: item.purchaseQty,
-                  unitPrice: item.purchasePrice || 0,
-                  totalPrice: item.purchaseTotal,
-                  vendorCompany: item.vendorName,
+                  invoiceType: 'SALES',
+                  productId: product.id,
+                  salesItemId: null,
+                  productName: product.name,
+                  quantity: product.quantity,
+                  unitPrice: product.unitPrice || 0,
+                  totalPrice: product.totalPrice || 0,
                   clientCompany: approval.clientCompany,
                   status: 'PENDING',
                 },
               })
             }
+          } else {
+            // ITEM 단위: salesInvoiceRequired=true + salesUnitPrice>0 품목만
+            for (const item of product.items) {
+              if (!item.salesInvoiceRequired) continue
+              const unitPrice = Number(item.salesUnitPrice || 0)
+              if (unitPrice === 0) continue
+              const totalPrice = unitPrice * item.quantity
+
+              const existing = await tx.invoiceRecord.findFirst({
+                where: {
+                  approvalId: id,
+                  productId: product.id,
+                  salesItemId: item.id,
+                  invoiceType: 'SALES',
+                  amendedFromId: null,
+                },
+              })
+              if (!existing) {
+                await tx.invoiceRecord.create({
+                  data: {
+                    approvalId: id,
+                    invoiceType: 'SALES',
+                    productId: product.id,
+                    salesItemId: item.id,
+                    productName: item.description || item.partNumber || product.name,
+                    partNumber: item.partNumber,
+                    quantity: item.quantity,
+                    unitPrice: item.salesUnitPrice || 0,
+                    totalPrice,
+                    clientCompany: approval.clientCompany,
+                    status: 'PENDING',
+                  },
+                })
+              }
+            }
           }
         }
 
-        // 4. 매출장 자동 생성 (Product 단위)
+        // 4. 매입 계산서 자동생성 — 매입처별 groupBy (제품 경계 넘음)
+        //    식별 규칙: (approvalId, vendorCompany)
+        //    대상 품목: purchaseInvoiceRequired=true + vendorName + purchaseTotal>0
+        const vendorGroups = new Map<
+          string,
+          {
+            vendor: string
+            items: Array<{
+              partNumber: string | null
+              description: string | null
+              productName: string
+              qty: number
+              total: number
+            }>
+          }
+        >()
         for (const product of products) {
+          for (const item of product.items) {
+            if (!item.purchaseInvoiceRequired) continue
+            if (!item.vendorName) continue
+            const total = Number(item.purchaseTotal || 0)
+            if (total === 0) continue
+
+            const key = item.vendorName
+            if (!vendorGroups.has(key)) {
+              vendorGroups.set(key, { vendor: key, items: [] })
+            }
+            vendorGroups.get(key)!.items.push({
+              partNumber: item.partNumber,
+              description: item.description,
+              productName: product.name,
+              qty: item.purchaseQty,
+              total,
+            })
+          }
+        }
+
+        for (const { vendor, items } of vendorGroups.values()) {
+          const existing = await tx.invoiceRecord.findFirst({
+            where: {
+              approvalId: id,
+              vendorCompany: vendor,
+              invoiceType: 'PURCHASE',
+              amendedFromId: null,
+            },
+          })
+          if (existing) continue
+
+          const totalAmount = items.reduce((s, i) => s + i.total, 0)
+          const totalQty = items.reduce((s, i) => s + i.qty, 0)
+          // 스냅샷 표기: 품목 1건이면 그 품목명, 여러 건이면 대표 + 합산 표기
+          const productName =
+            items.length === 1
+              ? items[0].partNumber || items[0].description || items[0].productName
+              : `${items[0].partNumber || items[0].description || items[0].productName} 외 ${items.length - 1}건`
+
+          await tx.invoiceRecord.create({
+            data: {
+              approvalId: id,
+              invoiceType: 'PURCHASE',
+              vendorCompany: vendor,
+              productName,
+              partNumber: items.length === 1 ? items[0].partNumber : null,
+              quantity: totalQty,
+              unitPrice: items.length === 1 && totalQty > 0 ? totalAmount / totalQty : 0,
+              totalPrice: totalAmount,
+              clientCompany: approval.clientCompany,
+              status: 'PENDING',
+            },
+          })
+        }
+
+        // 5. 매출장 자동 생성 (Product 단위, category/taxType 반영)
+        for (const product of products) {
+          const supplyAmount = Number(product.totalPrice || 0)
+          const vatAmount = calculateVat(supplyAmount, product.taxType)
+          const totalAmount = supplyAmount + vatAmount
+
           await tx.salesLedger.create({
             data: {
               approvalCode: result.approvalCode,
               transactionDate: result.approvalDate || now,
               clientCompany: approval.clientCompany || '',
               endUser: result.endUser,
-              category: '상품',
+              category: product.category,
+              subCategory: product.subCategory,
               description: product.name,
               quantity: product.quantity,
               unitPrice: product.unitPrice || 0,
-              supplyAmount: product.totalPrice || 0,
-              vatAmount: Number(product.totalPrice || 0) * 0.1,
-              totalAmount: Number(product.totalPrice || 0) * 1.1,
+              supplyAmount,
+              vatAmount,
+              totalAmount,
               managerName: result.managerName,
-              salesApprovalId: result.id,
+              salesApprovalId: rootApprovalId,
+              sourceProductId: product.id,
+              approvalVersion: currentVersion,
+              isActive: true,
             },
           })
         }
 
-        // 5. 매입장 자동 생성 (매입 Item 단위)
+        // 6. 매입장 자동 생성 (매입 Item 단위, category/taxType 반영)
         for (const product of products) {
           for (const item of product.items) {
             if (!item.vendorName || !item.purchaseTotal || Number(item.purchaseTotal) === 0) continue
+
+            const supplyAmount = Number(item.purchaseTotal)
+            const vatAmount = calculateVat(supplyAmount, item.taxType)
+            const totalAmount = supplyAmount + vatAmount
+
             await tx.purchaseLedger.create({
               data: {
                 approvalCode: result.approvalCode,
                 invoiceDate: item.purchaseDate || now,
                 vendorCompany: item.vendorName,
                 clientCompany: approval.clientCompany,
-                category: '상품',
+                category: product.category,
+                subCategory: product.subCategory,
                 itemName: item.description || item.partNumber || product.name,
                 quantity: item.purchaseQty,
                 unitPrice: item.purchasePrice || 0,
-                supplyAmount: item.purchaseTotal,
-                vatAmount: Number(item.purchaseTotal) * 0.1,
-                totalAmount: Number(item.purchaseTotal) * 1.1,
-                salesApprovalId: result.id,
+                supplyAmount,
+                vatAmount,
+                totalAmount,
+                salesApprovalId: rootApprovalId,
+                sourceItemId: item.id,
+                sourceProductId: product.id,
+                approvalVersion: currentVersion,
+                isActive: true,
               },
             })
           }

@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
       const salesRank = await prisma.salesLedger.groupBy({
         by: ['clientCompany'],
         where: {
+          isActive: true,
           transactionDate: dateFilter,
         },
         _sum: {
@@ -44,6 +45,7 @@ export async function GET(request: NextRequest) {
       // 총 매출 계산
       const totalSales = await prisma.salesLedger.aggregate({
         where: {
+          isActive: true,
           transactionDate: dateFilter,
         },
         _sum: {
@@ -83,6 +85,7 @@ export async function GET(request: NextRequest) {
       const purchaseRank = await prisma.purchaseLedger.groupBy({
         by: ['vendorCompany'],
         where: {
+          isActive: true,
           invoiceDate: dateFilter,
         },
         _sum: {
@@ -101,6 +104,7 @@ export async function GET(request: NextRequest) {
       // 총 매입 계산
       const totalPurchase = await prisma.purchaseLedger.aggregate({
         where: {
+          isActive: true,
           invoiceDate: dateFilter,
         },
         _sum: {

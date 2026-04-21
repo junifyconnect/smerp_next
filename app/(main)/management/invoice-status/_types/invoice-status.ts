@@ -1,40 +1,50 @@
-// 계산서 상태
+// 계산서 상태 (재설계 후)
+// NOT_REQUIRED는 더 이상 존재하지 않는다 — 발행 대상이 아니면 InvoiceRecord 자체를 만들지 않음.
 export type InvoiceStatusType =
   | 'PENDING'
   | 'ISSUED'
   | 'NEEDS_AMENDMENT'
-  | 'NOT_REQUIRED'
   | 'CANCELLED'
 
-// API 응답: Item (매입 정보)
-export interface InvoiceItemRow {
+export type InvoiceTypeKind = 'SALES' | 'PURCHASE'
+
+// API 응답: 한 행 = 한 InvoiceRecord
+export interface InvoiceRecordRow {
   id: string
+  invoiceType: InvoiceTypeKind
+
+  // 매출 식별 (SALES일 때 채워짐)
+  productId: string | null
+  salesItemId: string | null
+
+  // 매입 식별 (PURCHASE일 때 채워짐)
+  vendorCompany: string | null
+
+  // 공통 메타
+  clientCompany: string | null
+
+  // 스냅샷
+  productName: string
   partNumber: string | null
-  description: string | null
   quantity: number
-  vendorName: string | null
-  purchaseQty: number
-  purchasePrice: number | null
-  purchaseTotal: number | null
-  purchaseDate: string | null
-  purchaseInvoiceStatus: InvoiceStatusType
-  purchaseInvoiceDate: string | null
+  unitPrice: number
+  totalPrice: number
+
+  // 상태/발행
+  status: InvoiceStatusType
+  invoiceDate: string | null
+  invoiceNumber: string | null
+  remarks: string | null
+
+  // 체인/취소
+  amendedFromId: string | null
+  cancelledAt: string | null
+  cancelReason: string | null
+
+  createdAt: string
 }
 
-// API 응답: Product (매출 정보 + 하위 Items)
-export interface InvoiceProductRow {
-  id: string
-  name: string
-  quantity: number
-  unitPrice: number | null
-  totalPrice: number | null
-  salesInvoiceStatus: InvoiceStatusType
-  salesInvoiceDate: string | null
-  salesInvoiceRemarks: string | null
-  items: InvoiceItemRow[]
-}
-
-// API 응답: 품의코드별 그룹
+// API 응답: 품의서 그룹
 export interface InvoiceGroup {
   approvalId: string
   approvalCode: string | null
@@ -44,7 +54,7 @@ export interface InvoiceGroup {
   managerName: string | null
   salesTotalPrice: number
   purchaseTotalPrice: number
-  products: InvoiceProductRow[]
+  records: InvoiceRecordRow[]
 }
 
 // API 응답: 요약
@@ -68,48 +78,9 @@ export interface InvoiceStatusFilters {
   month: string | null
   approvalCode: string | null
   clientCompany: string | null
-  vendorName: string | null
-  invoiceStatus: string | null
-}
-
-// 테이블 렌더링용 flat row
-export interface FlatInvoiceRow {
-  // 품의 레벨
-  approvalId: string
-  approvalCode: string | null
-  approvalDate: string | null
-  clientCompany: string | null
-  version: number
-
-  // Product 레벨 (매출)
-  productId: string
-  productName: string
-  productQuantity: number
-  productUnitPrice: number | null
-  productTotalPrice: number | null
-  salesInvoiceStatus: InvoiceStatusType
-  salesInvoiceDate: string | null
-  salesInvoiceRemarks: string | null
-  salesTotalByApproval: number
-
-  // Item 레벨 (매입)
-  itemId: string | null
-  partNumber: string | null
-  description: string | null
-  vendorName: string | null
-  purchaseQty: number | null
-  purchasePrice: number | null
-  purchaseTotal: number | null
-  purchaseDate: string | null
-  purchaseInvoiceStatus: InvoiceStatusType | null
-  purchaseInvoiceDate: string | null
-  purchaseTotalByApproval: number
-
-  // rowSpan 정보
-  isFirstRowOfApproval: boolean
-  approvalRowSpan: number
-  isFirstRowOfProduct: boolean
-  productRowSpan: number
+  vendorCompany: string | null
+  invoiceStatus: InvoiceStatusType | null
+  invoiceType: InvoiceTypeKind | null
 }
 
 // 상태 라벨 + 색상
@@ -131,11 +102,6 @@ export const INVOICE_STATUS_CONFIG: Record<
     label: '수정필요',
     color: 'text-yellow-800',
     bgColor: 'bg-yellow-100',
-  },
-  NOT_REQUIRED: {
-    label: '발행불필요',
-    color: 'text-gray-600',
-    bgColor: 'bg-gray-50',
   },
   CANCELLED: {
     label: '취소',

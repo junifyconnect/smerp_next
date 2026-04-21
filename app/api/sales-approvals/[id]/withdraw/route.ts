@@ -67,11 +67,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // DRAFT로 되돌리기 + 서명 초기화 + 삭제 가능한 InvoiceRecord 삭제
     const updated = await prisma.$transaction(async (tx) => {
-      // PENDING/NOT_REQUIRED 상태 InvoiceRecord 삭제
+      // 재설계 후: PENDING 레코드만 삭제. NOT_REQUIRED 상태는 제거됨 (발행 대상이 아니면 InvoiceRecord 자체를 만들지 않음).
       await tx.invoiceRecord.deleteMany({
         where: {
           approvalId: id,
-          status: { in: ['PENDING', 'NOT_REQUIRED'] },
+          status: 'PENDING',
         },
       })
 

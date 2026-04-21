@@ -17,11 +17,11 @@ const adapter = new PrismaPg(pool)
 const prisma = new PrismaClient({ adapter })
 
 async function main() {
-  const passwordHash = await bcrypt.hash('admin123', 10)
+  const passwordHash = await bcrypt.hash('superadmin', 10)
 
   const admin = await prisma.user.upsert({
     where: { email: 'superadmin@servermate.net' },
-    update: {},
+    update: { passwordHash },
     create: {
       email: 'superadmin@servermate.net',
       employeeId: 'superadmin',

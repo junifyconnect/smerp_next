@@ -8,14 +8,17 @@ interface ItemInput {
   description?: string
   quantity?: number
   salesUnitPrice?: number
-  purchaseUnitPrice?: number  // 새 필드명
+  purchaseUnitPrice?: number
   vendorName?: string
-  vendorCompany?: string  // 새 필드명
+  vendorCompany?: string
   purchaseQty?: number
   purchasePrice?: number
   purchaseTotal?: number
   purchaseDate?: string
   sortOrder?: number
+  taxType?: string
+  salesInvoiceRequired?: boolean
+  purchaseInvoiceRequired?: boolean
 }
 
 // 제품 타입
@@ -28,6 +31,9 @@ interface ProductInput {
   vendorCompany?: string
   items?: ItemInput[]
   sortOrder?: number
+  category?: string
+  taxType?: string
+  salesInvoiceUnit?: string
 }
 
 // GET /api/sales-approvals - 목록 조회
@@ -239,6 +245,9 @@ export async function POST(request: NextRequest) {
           purchasePrice: pPrice,
           purchaseTotal: purchaseTotal || item.purchaseTotal,
           purchaseDate: item.purchaseDate ? new Date(item.purchaseDate) : null,
+          taxType: item.taxType || 'TAX',
+          salesInvoiceRequired: item.salesInvoiceRequired ?? true,
+          purchaseInvoiceRequired: item.purchaseInvoiceRequired ?? true,
         }
       })
 
@@ -248,6 +257,9 @@ export async function POST(request: NextRequest) {
         quantity: qty,
         unitPrice: price,
         totalPrice: productTotal,
+        category: product.category || '상품',
+        taxType: product.taxType || 'TAX',
+        salesInvoiceUnit: product.salesInvoiceUnit || 'PRODUCT',
         items,
       }
     })
@@ -307,6 +319,9 @@ export async function POST(request: NextRequest) {
           quantity: p.quantity,
           unitPrice: p.unitPrice,
           totalPrice: p.totalPrice,
+          category: p.category,
+          taxType: p.taxType,
+          salesInvoiceUnit: p.salesInvoiceUnit,
         },
       })
 
@@ -323,6 +338,9 @@ export async function POST(request: NextRequest) {
             purchasePrice?: number
             purchaseTotal?: number
             purchaseDate: Date | null
+            taxType?: string
+            salesInvoiceRequired?: boolean
+            purchaseInvoiceRequired?: boolean
           }) => ({
             productId: createdProduct.id,
             sortOrder: item.sortOrder,
@@ -335,6 +353,9 @@ export async function POST(request: NextRequest) {
             purchasePrice: item.purchasePrice,
             purchaseTotal: item.purchaseTotal,
             purchaseDate: item.purchaseDate,
+            taxType: item.taxType || 'TAX',
+            salesInvoiceRequired: item.salesInvoiceRequired ?? true,
+            purchaseInvoiceRequired: item.purchaseInvoiceRequired ?? true,
           })),
         })
       }

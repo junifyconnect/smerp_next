@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     // 외상매출금 입금예정 (매출장에서 결제예정일이 해당 월인 미결제 건)
     const receivables = await prisma.salesLedger.findMany({
       where: {
+        isActive: true,
         paymentDueDate: {
           gte: startOfMonth,
           lte: endOfMonth,
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
     const receivablesByCompany = await prisma.salesLedger.groupBy({
       by: ['clientCompany'],
       where: {
+        isActive: true,
         paymentDueDate: {
           gte: startOfMonth,
           lte: endOfMonth,
@@ -47,6 +49,7 @@ export async function GET(request: NextRequest) {
     // 외상매입금 출금예정 (매입장에서 결제예정일이 해당 월인 미결제 건)
     const payables = await prisma.purchaseLedger.findMany({
       where: {
+        isActive: true,
         paymentDueDate: {
           gte: startOfMonth,
           lte: endOfMonth,
@@ -59,6 +62,7 @@ export async function GET(request: NextRequest) {
     const payablesByCompany = await prisma.purchaseLedger.groupBy({
       by: ['vendorCompany'],
       where: {
+        isActive: true,
         paymentDueDate: {
           gte: startOfMonth,
           lte: endOfMonth,
