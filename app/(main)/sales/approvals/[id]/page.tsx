@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
+import ApprovalLineModal from '@/components/documents/ApprovalLineModal'
 
 interface ItemDetail {
   id?: string
@@ -213,22 +214,12 @@ export default function SalesApprovalDetailPage() {
     }
   }, [approval?.status, fetchFiles])
 
-  const handleSign = async (role: 'SALES_MANAGER' | 'TEAM_LEADER' | 'CEO') => {
+  // 팀장/CEO 결재 서명 (SALES_MANAGER는 submit API에서 처리, BUSINESS_RULES §5)
+  const handleSign = async (role: 'TEAM_LEADER' | 'CEO') => {
     const userId = session?.user?.id
     if (!userId) {
       alert('로그인이 필요합니다')
       return
-    }
-
-    // 영업담당 서명은 작성자만 가능
-    if (role === 'SALES_MANAGER' && !isCreator) {
-      alert('본인이 작성한 품의서만 기안할 수 있습니다')
-      return
-    }
-
-    // DRAFT 상태에서 영업담당 기안 시 확인
-    if (role === 'SALES_MANAGER' && approval?.status === 'DRAFT') {
-      if (!confirm('품의서를 기안하시겠습니까?\n(기안 후 팀장 결재 대기 상태가 됩니다)')) return
     }
 
     setUpdatingStatus(true)
@@ -240,8 +231,6 @@ export default function SalesApprovalDetailPage() {
       })
 
       if (res.ok) {
-        const updated = await res.json()
-        // sign 후에도 fetchApproval로 전체 데이터 다시 로드
         await fetchApproval()
       } else {
         const data = await res.json()
@@ -249,6 +238,39 @@ export default function SalesApprovalDetailPage() {
       }
     } catch {
       alert('서명에 실패했습니다')
+    } finally {
+      setUpdatingStatus(false)
+    }
+  }
+
+  // 기안(상신): 결재선 지정 모달 → submit API
+  const [approvalLineOpen, setApprovalLineOpen] = useState(false)
+
+  const handleSubmitApproval = async (line: {
+    salesManagerId: string
+    teamLeaderId: string
+    ceoId: string
+  }) => {
+    if (!isCreator) {
+      alert('본인이 작성한 품의서만 기안할 수 있습니다')
+      return
+    }
+    setUpdatingStatus(true)
+    try {
+      const res = await fetch(`/api/sales-approvals/${id}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(line),
+      })
+      if (res.ok) {
+        setApprovalLineOpen(false)
+        await fetchApproval()
+      } else {
+        const data = await res.json()
+        alert(data.error || '기안에 실패했습니다')
+      }
+    } catch {
+      alert('기안에 실패했습니다')
     } finally {
       setUpdatingStatus(false)
     }
@@ -611,7 +633,7 @@ export default function SalesApprovalDetailPage() {
                   )}
                   {(approval.status === 'DRAFT' || approval.status === 'PENDING') && isCreator && !approval.salesManager && (
                     <button
-                      onClick={() => handleSign('SALES_MANAGER')}
+                      onClick={() => setApprovalLineOpen(true)}
                       disabled={updatingStatus}
                       className="mt-1 px-2 py-1 bg-blue-600 text-white text-[10px] rounded hover:bg-blue-700 disabled:opacity-50"
                     >
@@ -1127,6 +1149,15 @@ export default function SalesApprovalDetailPage() {
           )}
         </div>
       </div>
+
+      {/* 결재선 지정 모달 (기안 시) */}
+      <ApprovalLineModal
+        open={approvalLineOpen}
+        onClose={() => setApprovalLineOpen(false)}
+        onSubmit={handleSubmitApproval}
+        currentUserId={session?.user?.id}
+        title="품의서 기안 - 결재선 지정"
+      />
     </div>
   )
 }

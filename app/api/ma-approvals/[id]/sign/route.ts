@@ -12,7 +12,9 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
-type SignRole = 'SALES_MANAGER' | 'TEAM_LEADER' | 'CEO'
+// SALES_MANAGER 서명은 submit API(기안)에서 처리한다 (BUSINESS_RULES §5).
+// sign API는 TEAM_LEADER / CEO 결재만 담당.
+type SignRole = 'TEAM_LEADER' | 'CEO'
 
 const INCLUDE_FULL = {
   salesManager: { select: { id: true, name: true, signatureUrl: true } },
@@ -36,9 +38,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    if (!['SALES_MANAGER', 'TEAM_LEADER', 'CEO'].includes(role)) {
+    if (!['TEAM_LEADER', 'CEO'].includes(role)) {
       return NextResponse.json(
-        { error: '유효하지 않은 역할입니다' },
+        { error: '유효하지 않은 역할입니다 (SALES_MANAGER는 submit API에서 처리)' },
         { status: 400 }
       )
     }
@@ -83,25 +85,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const now = new Date()
-
-    if (role === 'SALES_MANAGER') {
-      if (approval.status !== 'DRAFT' && approval.status !== 'PENDING') {
-        return NextResponse.json(
-          { error: '작성중이거나 기안된 품의서만 서명할 수 있습니다' },
-          { status: 400 }
-        )
-      }
-      const updated = await prisma.mAApproval.update({
-        where: { id },
-        data: {
-          salesManagerId: userId,
-          salesManagerSignedAt: now,
-          status: 'PENDING_TEAM_LEAD',
-        },
-        include: INCLUDE_FULL,
-      })
-      return NextResponse.json(updated)
-    }
 
     if (role === 'TEAM_LEADER') {
       if (approval.status !== 'PENDING_TEAM_LEAD') {

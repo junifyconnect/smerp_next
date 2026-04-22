@@ -6,14 +6,28 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
-// POST /api/ma-approvals/[id]/submit — 기안하기 (DRAFT → PENDING)
-// 영업과 동일 플로우: submit 후 SALES_MANAGER가 서명하면 PENDING_TEAM_LEAD로 전환.
-// 결재자 3명 지정은 PR #11(ApprovalLineModal)에서 영업/MA 동시 개정 예정.
+// POST /api/ma-approvals/[id]/submit — 기안하기
+// BUSINESS_RULES §5: 상신 시점에 결재자 3명(salesManagerId/teamLeaderId/ceoId)을 body로 받아 저장.
+// 상신 = 작성자 본인의 "영업담당 서명" 역할도 함께 수행 (salesManagerSignedAt 기록, status → PENDING_TEAM_LEAD)
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await auth()
     const { id } = await params
     const currentUserId = session?.user?.id
+
+    const body = (await request.json().catch(() => ({}))) as {
+      salesManagerId?: string
+      teamLeaderId?: string
+      ceoId?: string
+    }
+    const { salesManagerId, teamLeaderId, ceoId } = body
+
+    if (!salesManagerId || !teamLeaderId || !ceoId) {
+      return NextResponse.json(
+        { error: '결재자 3명(영업담당/팀장/대표)을 모두 지정해야 합니다' },
+        { status: 400 }
+      )
+    }
 
     const approval = await prisma.mAApproval.findUnique({
       where: { id },
@@ -51,14 +65,52 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       )
     }
 
+    // 결재자 유효성 확인 (isActive=true)
+    const signers = await prisma.user.findMany({
+      where: {
+        id: { in: [salesManagerId, teamLeaderId, ceoId] },
+        isActive: true,
+      },
+      select: { id: true, signatureUrl: true },
+    })
+    const foundIds = new Set(signers.map((s) => s.id))
+    const missing = [salesManagerId, teamLeaderId, ceoId].filter(
+      (uid) => !foundIds.has(uid)
+    )
+    if (missing.length > 0) {
+      return NextResponse.json(
+        { error: `결재자 중 유효하지 않은 사용자가 있습니다: ${missing.join(', ')}` },
+        { status: 400 }
+      )
+    }
+
+    const salesManager = signers.find((s) => s.id === salesManagerId)
+    if (!salesManager?.signatureUrl) {
+      return NextResponse.json(
+        { error: '영업담당의 서명 이미지가 등록되지 않았습니다. 마이페이지에서 먼저 등록해주세요.' },
+        { status: 400 }
+      )
+    }
+
+    const now = new Date()
+
     const updated = await prisma.mAApproval.update({
       where: { id },
-      data: { status: 'PENDING' },
+      data: {
+        status: 'PENDING_TEAM_LEAD',
+        salesManagerId,
+        salesManagerSignedAt: now,
+        teamLeaderId,
+        ceoId,
+      },
       select: {
         id: true,
         approvalNumber: true,
         approvalCode: true,
         status: true,
+        salesManagerId: true,
+        teamLeaderId: true,
+        ceoId: true,
       },
     })
 
