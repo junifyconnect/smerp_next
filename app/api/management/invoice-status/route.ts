@@ -186,6 +186,8 @@ export async function GET(request: NextRequest) {
     // 3. 품의서별 groupBy + summary 집계
     const byApproval = new Map<string, InvoiceRecord[]>()
     for (const r of records) {
+      // InvoiceRecord.approvalId는 nullable (MA_BILLING 소스일 때 null) — 이 API는 SALES_APPROVAL 소스만 다룸
+      if (!r.approvalId) continue
       const arr = byApproval.get(r.approvalId) ?? []
       arr.push(r)
       byApproval.set(r.approvalId, arr)

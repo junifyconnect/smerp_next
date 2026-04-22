@@ -136,34 +136,53 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       const currentVersion = result.version
 
-      // 2. revise인 경우 이전 버전의 MAContract/MABilling 비활성화
-      //    이전 버전 InvoiceRecord 처리는 별도 PR(#13)에서 InvoiceRecord 파생 로직과 함께 구현.
+      // 2. revise인 경우 이전 버전의 MAContract/MABilling + 파생 InvoiceRecord 처리
+      //    영업과 동일한 규칙 (BUSINESS_RULES §10.4):
+      //    - v1 MAContract/MABilling → isActive=false
+      //    - v1 MABilling에서 파생된 PENDING InvoiceRecord → CANCELLED(REVISED_v{n})
+      //    - v1 MABilling에서 파생된 ISSUED InvoiceRecord → NEEDS_AMENDMENT (수정세금계산서 유도)
+      //    - NEEDS_AMENDMENT / CANCELLED는 유지
       if (currentVersion > 1) {
         const cancelReason = `REVISED_v${currentVersion}`
-        await tx.mAContract.updateMany({
+
+        // 2a. 이전 MABilling 조회 (InvoiceRecord 전이 전에 id 목록 확보)
+        const previousBillings = await tx.mABilling.findMany({
           where: {
-            rootApprovalId,
+            maContract: { rootApprovalId },
             isActive: true,
           },
-          data: {
-            isActive: false,
-            cancelledAt: now,
-            cancelReason,
-          },
+          select: { id: true },
+        })
+        const previousBillingIds = previousBillings.map((b) => b.id)
+
+        await tx.mAContract.updateMany({
+          where: { rootApprovalId, isActive: true },
+          data: { isActive: false, cancelledAt: now, cancelReason },
         })
         await tx.mABilling.updateMany({
-          where: {
-            maContract: {
-              rootApprovalId,
-            },
-            isActive: true,
-          },
-          data: {
-            isActive: false,
-            cancelledAt: now,
-            cancelReason,
-          },
+          where: { maContract: { rootApprovalId }, isActive: true },
+          data: { isActive: false, cancelledAt: now, cancelReason },
         })
+
+        // 2b. 이전 버전에서 파생된 InvoiceRecord 전이
+        if (previousBillingIds.length > 0) {
+          // PENDING → CANCELLED
+          await tx.invoiceRecord.updateMany({
+            where: {
+              maBillingId: { in: previousBillingIds },
+              status: 'PENDING',
+            },
+            data: { status: 'CANCELLED', cancelledAt: now, cancelReason },
+          })
+          // ISSUED → NEEDS_AMENDMENT (경영팀이 amend 호출 유도)
+          await tx.invoiceRecord.updateMany({
+            where: {
+              maBillingId: { in: previousBillingIds },
+              status: 'ISSUED',
+            },
+            data: { status: 'NEEDS_AMENDMENT' },
+          })
+        }
       }
 
       // 3. MAContract 생성 (계약 1건 = 품의서 1건, 품목별로 기간이 다를 수 있지만
