@@ -12,12 +12,12 @@ interface MAApprovalItem {
   salesCompany?: string     // 매출처
   salesPrice?: number       // 매출가
   quantity?: number         // 수량
-  salesBillingType?: string // 청구구분(매출)
+  salesBillingCycle?: string // 청구구분(매출)
   startDate?: string        // 계약기간 시작
   endDate?: string          // 계약기간 종료
   purchaseCompany?: string  // 매입처
   purchasePrice?: number    // 매입가
-  purchaseBillingType?: string // 청구구분(매입)
+  purchaseBillingCycle?: string // 청구구분(매입)
 }
 
 export default function EditMAApprovalPage() {
@@ -47,12 +47,12 @@ export default function EditMAApprovalPage() {
       salesCompany: '',
       salesPrice: 0,
       quantity: 1,
-      salesBillingType: '일시불',
+      salesBillingCycle: '',
       startDate: '',
       endDate: '',
       purchaseCompany: '',
       purchasePrice: 0,
-      purchaseBillingType: '총(월간)',
+      purchaseBillingCycle: '',
     },
   ])
 
@@ -78,12 +78,12 @@ export default function EditMAApprovalPage() {
             salesCompany: item.salesCompany || '',
             salesPrice: item.salesPrice || 0,
             quantity: item.quantity || 1,
-            salesBillingType: item.salesBillingType || '일시불',
+            salesBillingCycle: item.salesBillingCycle || '',
             startDate: item.startDate ? new Date(item.startDate).toISOString().split('T')[0] : '',
             endDate: item.endDate ? new Date(item.endDate).toISOString().split('T')[0] : '',
             purchaseCompany: item.purchaseCompany || '',
             purchasePrice: item.purchasePrice || 0,
-            purchaseBillingType: item.purchaseBillingType || '총(월간)',
+            purchaseBillingCycle: item.purchaseBillingCycle || '',
           })))
         }
 
@@ -126,12 +126,12 @@ export default function EditMAApprovalPage() {
       salesCompany: '',
       salesPrice: 0,
       quantity: 1,
-      salesBillingType: '일시불',
+      salesBillingCycle: '',
       startDate: '',
       endDate: '',
       purchaseCompany: '',
       purchasePrice: 0,
-      purchaseBillingType: '총(월간)',
+      purchaseBillingCycle: '',
     }])
   }
 
@@ -321,8 +321,8 @@ export default function EditMAApprovalPage() {
                     <td className="px-1 py-1">
                       <input
                         type="text"
-                        value={item.salesBillingType || ''}
-                        onChange={(e) => handleItemChange(index, 'salesBillingType', e.target.value)}
+                        value={item.salesBillingCycle || ''}
+                        onChange={(e) => handleItemChange(index, 'salesBillingCycle', e.target.value)}
                         className="w-full px-2 py-1 text-xs text-center border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-teal-500"
                         placeholder="일시불"
                       />
@@ -363,8 +363,8 @@ export default function EditMAApprovalPage() {
                     <td className="px-1 py-1">
                       <input
                         type="text"
-                        value={item.purchaseBillingType || ''}
-                        onChange={(e) => handleItemChange(index, 'purchaseBillingType', e.target.value)}
+                        value={item.purchaseBillingCycle || ''}
+                        onChange={(e) => handleItemChange(index, 'purchaseBillingCycle', e.target.value)}
                         className="w-full px-2 py-1 text-xs text-center border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-teal-500"
                         placeholder="총(월간)"
                       />
