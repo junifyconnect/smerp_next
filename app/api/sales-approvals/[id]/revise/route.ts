@@ -103,8 +103,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             totalPrice: product.totalPrice,
             category: product.category,
             subCategory: product.subCategory,
-            taxType: product.taxType,
-            salesInvoiceUnit: product.salesInvoiceUnit,
             sourceProductId: product.id,
           },
         })
@@ -123,7 +121,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
               purchasePrice: item.purchasePrice,
               purchaseTotal: item.purchaseTotal,
               purchaseDate: item.purchaseDate,
-              taxType: item.taxType,
               salesInvoiceRequired: item.salesInvoiceRequired,
               purchaseInvoiceRequired: item.purchaseInvoiceRequired,
               sourceItemId: item.id,

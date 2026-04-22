@@ -16,7 +16,6 @@ interface Item {
   salesUnitPrice: number
   purchaseUnitPrice: number
   vendorCompany: string
-  taxType: string
   salesInvoiceRequired: boolean
   purchaseInvoiceRequired: boolean
 }
@@ -32,9 +31,7 @@ interface ProductGroup {
   purchaseUnitPrice: number
   vendorCompany: string
   category: string
-  taxType: string
-  salesInvoiceUnit: string
-  // 매입 계산서는 재설계(2026-04) 이후 매입처별 자동 그룹핑. purchaseInvoiceUnit 필드 제거됨.
+  // 세금: VAT 10% 고정, 매출계산서: 제품 단위 고정, 매입계산서: 매입처별 자동 그룹핑
   items: Item[]
 }
 
@@ -100,7 +97,7 @@ function EditSalesApprovalForm() {
 
   // === 제품 그룹 (제품 + 하위 품목) ===
   const [products, setProducts] = useState<ProductGroup[]>([
-    { id: `product-init-${Date.now()}`, name: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '', category: '상품', taxType: 'TAX', salesInvoiceUnit: 'PRODUCT', items: [] },
+    { id: `product-init-${Date.now()}`, name: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '', category: '상품', items: [] },
   ])
 
   // === 독립 품목 (제품에 소속되지 않는 품목) ===
@@ -217,8 +214,7 @@ function EditSalesApprovalForm() {
                 salesUnitPrice: 0,
                 purchaseUnitPrice,
                 vendorCompany: purchaseVendor,
-                taxType: 'TAX',
-                salesInvoiceRequired: true,
+                  salesInvoiceRequired: true,
                 purchaseInvoiceRequired: true,
               }
             })
@@ -233,14 +229,12 @@ function EditSalesApprovalForm() {
               purchaseUnitPrice: Number(productPurchase?.unitPrice) || 0,
               vendorCompany: productPurchase?.vendorCompany || '',
               category: '상품',
-              taxType: 'TAX',
-              salesInvoiceUnit: 'PRODUCT',
               items: itemDetails,
             }
           })
 
           setProducts(loadedProducts.length > 0 ? loadedProducts : [
-            { id: `product-${Date.now()}`, name: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '', category: '상품', taxType: 'TAX', salesInvoiceUnit: 'PRODUCT', items: [] }
+            { id: `product-${Date.now()}`, name: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '', category: '상품', items: [] }
           ])
         }
         setStandaloneItems([])
@@ -285,8 +279,6 @@ function EditSalesApprovalForm() {
       purchaseUnitPrice: 0,
       vendorCompany: '',
       category: '상품',
-      taxType: 'TAX',
-      salesInvoiceUnit: 'PRODUCT',
       items: [],
     }])
   }
@@ -309,7 +301,7 @@ function EditSalesApprovalForm() {
       const newProducts = [...prev]
       newProducts[pIdx] = {
         ...newProducts[pIdx],
-        items: [...newProducts[pIdx].items, { partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '', taxType: 'TAX', salesInvoiceRequired: true, purchaseInvoiceRequired: true }],
+        items: [...newProducts[pIdx].items, { partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '', salesInvoiceRequired: true, purchaseInvoiceRequired: true }],
       }
       return newProducts
     })
@@ -338,7 +330,7 @@ function EditSalesApprovalForm() {
 
   // === 독립 품목 관리 ===
   const addStandaloneItem = () => {
-    setStandaloneItems([...standaloneItems, { partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '', taxType: 'TAX', salesInvoiceRequired: true, purchaseInvoiceRequired: true }])
+    setStandaloneItems([...standaloneItems, { partNumber: '', description: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '', salesInvoiceRequired: true, purchaseInvoiceRequired: true }])
   }
 
   const removeStandaloneItem = (index: number) => {
@@ -437,8 +429,6 @@ function EditSalesApprovalForm() {
             purchaseUnitPrice: p.purchaseUnitPrice || 0,
             vendorCompany: p.vendorCompany || '',
             category: '상품',
-            taxType: 'TAX',
-            salesInvoiceUnit: 'PRODUCT',
             items: (p.items || []).map((item) => ({
               partNumber: item.partNumber || '',
               description: item.description || '',
@@ -446,14 +436,13 @@ function EditSalesApprovalForm() {
               salesUnitPrice: 0,
               purchaseUnitPrice: item.purchaseUnitPrice || 0,
               vendorCompany: item.vendorCompany || '',
-              taxType: 'TAX',
               salesInvoiceRequired: true,
               purchaseInvoiceRequired: true,
             })),
           }))
 
           setProducts(newProducts.length > 0 ? newProducts : [
-            { id: `product-${Date.now()}`, name: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '', category: '상품', taxType: 'TAX', salesInvoiceUnit: 'PRODUCT', items: [] }
+            { id: `product-${Date.now()}`, name: '', quantity: 1, salesUnitPrice: 0, purchaseUnitPrice: 0, vendorCompany: '', category: '상품', items: [] }
           ])
           setStandaloneItems(data.standaloneItems || [])
         }

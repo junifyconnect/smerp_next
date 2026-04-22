@@ -2,20 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { notifyTeamLeadSigned, notifyApprovalApproved } from '@/lib/notifications/sender'
 
-// VAT 계산 유틸
-function calculateVat(supplyAmount: number | unknown, taxType: string): number {
+// VAT 계산 유틸 (10% 고정)
+function calculateVat(supplyAmount: number | unknown): number {
   const amount = Number(supplyAmount || 0)
-  switch (taxType) {
-    case 'TAX': return Math.round(amount * 0.1)
-    case 'ZERO': return 0
-    case 'EXEMPT': return 0
-    default: return Math.round(amount * 0.1)
-  }
-}
-
-function calculateTotal(supplyAmount: number | unknown, taxType: string): number {
-  const amount = Number(supplyAmount || 0)
-  return amount + calculateVat(supplyAmount, taxType)
+  return Math.round(amount * 0.1)
 }
 
 interface RouteParams {
@@ -234,72 +224,31 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           }
         }
 
-        // 3. 매출 계산서 자동생성 (salesInvoiceUnit = PRODUCT | ITEM)
-        //    식별 규칙:
-        //      PRODUCT 단위: (approvalId, productId, salesItemId=null)
-        //      ITEM    단위: (approvalId, productId, salesItemId)
+        // 3. 매출 계산서 자동생성 (제품 단위 고정)
+        //    식별 규칙: (approvalId, productId)
         for (const product of products) {
-          if (product.salesInvoiceUnit === 'PRODUCT') {
-            const existing = await tx.invoiceRecord.findFirst({
-              where: {
+          const existing = await tx.invoiceRecord.findFirst({
+            where: {
+              approvalId: id,
+              productId: product.id,
+              invoiceType: 'SALES',
+              amendedFromId: null,
+            },
+          })
+          if (!existing) {
+            await tx.invoiceRecord.create({
+              data: {
                 approvalId: id,
-                productId: product.id,
-                salesItemId: null,
                 invoiceType: 'SALES',
-                amendedFromId: null,
+                productId: product.id,
+                productName: product.name,
+                quantity: product.quantity,
+                unitPrice: product.unitPrice || 0,
+                totalPrice: product.totalPrice || 0,
+                clientCompany: approval.clientCompany,
+                status: 'PENDING',
               },
             })
-            if (!existing) {
-              await tx.invoiceRecord.create({
-                data: {
-                  approvalId: id,
-                  invoiceType: 'SALES',
-                  productId: product.id,
-                  salesItemId: null,
-                  productName: product.name,
-                  quantity: product.quantity,
-                  unitPrice: product.unitPrice || 0,
-                  totalPrice: product.totalPrice || 0,
-                  clientCompany: approval.clientCompany,
-                  status: 'PENDING',
-                },
-              })
-            }
-          } else {
-            // ITEM 단위: salesInvoiceRequired=true + salesUnitPrice>0 품목만
-            for (const item of product.items) {
-              if (!item.salesInvoiceRequired) continue
-              const unitPrice = Number(item.salesUnitPrice || 0)
-              if (unitPrice === 0) continue
-              const totalPrice = unitPrice * item.quantity
-
-              const existing = await tx.invoiceRecord.findFirst({
-                where: {
-                  approvalId: id,
-                  productId: product.id,
-                  salesItemId: item.id,
-                  invoiceType: 'SALES',
-                  amendedFromId: null,
-                },
-              })
-              if (!existing) {
-                await tx.invoiceRecord.create({
-                  data: {
-                    approvalId: id,
-                    invoiceType: 'SALES',
-                    productId: product.id,
-                    salesItemId: item.id,
-                    productName: item.description || item.partNumber || product.name,
-                    partNumber: item.partNumber,
-                    quantity: item.quantity,
-                    unitPrice: item.salesUnitPrice || 0,
-                    totalPrice,
-                    clientCompany: approval.clientCompany,
-                    status: 'PENDING',
-                  },
-                })
-              }
-            }
           }
         }
 
@@ -375,10 +324,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           })
         }
 
-        // 5. 매출장 자동 생성 (Product 단위, category/taxType 반영)
+        // 5. 매출장 자동 생성 (Product 단위, VAT 10% 고정)
         for (const product of products) {
           const supplyAmount = Number(product.totalPrice || 0)
-          const vatAmount = calculateVat(supplyAmount, product.taxType)
+          const vatAmount = calculateVat(supplyAmount)
           const totalAmount = supplyAmount + vatAmount
 
           await tx.salesLedger.create({
@@ -404,13 +353,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           })
         }
 
-        // 6. 매입장 자동 생성 (매입 Item 단위, category/taxType 반영)
+        // 6. 매입장 자동 생성 (매입 Item 단위, VAT 10% 고정)
         for (const product of products) {
           for (const item of product.items) {
             if (!item.vendorName || !item.purchaseTotal || Number(item.purchaseTotal) === 0) continue
 
             const supplyAmount = Number(item.purchaseTotal)
-            const vatAmount = calculateVat(supplyAmount, item.taxType)
+            const vatAmount = calculateVat(supplyAmount)
             const totalAmount = supplyAmount + vatAmount
 
             await tx.purchaseLedger.create({

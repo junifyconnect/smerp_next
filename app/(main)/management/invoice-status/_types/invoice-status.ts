@@ -13,9 +13,8 @@ export interface InvoiceRecordRow {
   id: string
   invoiceType: InvoiceTypeKind
 
-  // 매출 식별 (SALES일 때 채워짐)
+  // 매출 식별 (SALES일 때 채워짐, 제품 단위 고정)
   productId: string | null
-  salesItemId: string | null
 
   // 매입 식별 (PURCHASE일 때 채워짐)
   vendorCompany: string | null
