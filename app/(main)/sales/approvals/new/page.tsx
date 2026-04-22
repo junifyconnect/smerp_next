@@ -34,12 +34,7 @@ interface ProductGroup {
   items: Item[]  // 참고용 상세 내역
 }
 
-const CATEGORIES = ['상품', 'MA', '건물임대', '장비임대', '일반경비']
-const TAX_TYPES = [
-  { value: 'TAX', label: '과세' },
-  { value: 'ZERO', label: '영세' },
-  { value: 'EXEMPT', label: '면세' },
-]
+const CATEGORIES = ['상품', 'MA']
 
 interface SalesQuote {
   id: string
@@ -821,7 +816,7 @@ function NewSalesApprovalForm() {
                       </td>
                     </tr>
 
-                    {/* 제품 설정 행: 분류/세금/계산서 단위 */}
+                    {/* 제품 설정 행: 분류 (세금 VAT 고정, 매출계산서 제품단위 고정) */}
                     <tr className="bg-emerald-50/60 border-b border-emerald-100">
                       <td colSpan={9} className="px-4 py-1.5">
                         <div className="flex items-center gap-4 text-[11px]">
@@ -836,31 +831,7 @@ function NewSalesApprovalForm() {
                               {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                           </label>
-                          {/* 세금 */}
-                          <label className="flex items-center gap-1 text-gray-600">
-                            <span className="font-medium">세금:</span>
-                            <select
-                              value={product.taxType}
-                              onChange={(e) => handleProductChange(pIdx, 'taxType', e.target.value)}
-                              className="px-1.5 py-0.5 border border-gray-300 rounded text-[11px] bg-white"
-                            >
-                              {TAX_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                            </select>
-                          </label>
-                          <span className="text-gray-300">|</span>
-                          {/* 매출 계산서 단위 */}
-                          <span className="flex items-center gap-1.5 text-blue-600">
-                            <span className="font-medium">매출계산서:</span>
-                            <label className="flex items-center gap-0.5 cursor-pointer">
-                              <input type="radio" name={`sales-inv-unit-${pIdx}`} value="PRODUCT" checked={product.salesInvoiceUnit === 'PRODUCT'} onChange={() => handleProductChange(pIdx, 'salesInvoiceUnit', 'PRODUCT')} className="w-3 h-3" />
-                              제품단위
-                            </label>
-                            <label className="flex items-center gap-0.5 cursor-pointer">
-                              <input type="radio" name={`sales-inv-unit-${pIdx}`} value="ITEM" checked={product.salesInvoiceUnit === 'ITEM'} onChange={() => handleProductChange(pIdx, 'salesInvoiceUnit', 'ITEM')} className="w-3 h-3" />
-                              품목별
-                            </label>
-                          </span>
-                          {/* 매입 계산서: 재설계 후 매입처(vendorCompany)별 자동 그룹핑 — 선택 UI 불필요 */}
+                          {/* 매입 계산서: 재설계 후 매입처(vendorCompany)별 자동 그룹핑 */}
                           <span className="text-[11px] text-purple-600">
                             <span className="font-medium">매입계산서:</span> 매입처별 자동 그룹
                           </span>
