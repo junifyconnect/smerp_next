@@ -73,8 +73,11 @@ export async function POST(request: NextRequest) {
       })
 
       // 2. 신규 레코드 생성 (원본 데이터 + override, amendedFromId 연결)
+      //    source / maBillingId도 그대로 복제 (SALES_APPROVAL ↔ MA_BILLING 체인 유지)
       const createData: Prisma.InvoiceRecordUncheckedCreateInput = {
+        source: original.source,
         approvalId: original.approvalId,
+        maBillingId: original.maBillingId,
         invoiceType: original.invoiceType,
         productId: original.productId,
         productName: newData?.productName ?? original.productName,

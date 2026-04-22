@@ -864,7 +864,8 @@ model MABilling {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  maContract MAContract @relation(fields: [maContractId], references: [id], onDelete: Cascade)
+  maContract     MAContract      @relation(fields: [maContractId], references: [id], onDelete: Cascade)
+  invoiceRecords InvoiceRecord[] // 이 MABilling에서 파생된 계산서들
 
   @@index([maContractId])
   @@index([billingMonth])
@@ -1251,12 +1252,22 @@ enum ProductCategory {
 // 식별 규칙 (amendedFromId=null인 체인 루트 기준):
 //   - 매출: (approvalId, productId)           — 제품 단위 고정
 //   - 매입: (approvalId, vendorCompany)       — 매입처가 자연 키
+// source: 'SALES_APPROVAL' → approvalId 필수 / 'MA_BILLING' → maBillingId 필수
+enum InvoiceSource {
+  SALES_APPROVAL
+  MA_BILLING
+}
+
 model InvoiceRecord {
   id String @id @default(uuid())
 
-  // 연결 정보
-  approvalId  String      @map("approval_id")
-  invoiceType InvoiceType @map("invoice_type") // SALES or PURCHASE
+  // 소스 구분 (BUSINESS_RULES §10: MA 계산서는 MABilling에서 파생)
+  source InvoiceSource @default(SALES_APPROVAL)
+
+  // 연결 정보 (source에 따라 한 쪽만 채워짐)
+  approvalId  String?     @map("approval_id")   // SALES_APPROVAL인 경우
+  maBillingId String?     @map("ma_billing_id") // MA_BILLING인 경우
+  invoiceType InvoiceType @map("invoice_type")  // SALES or PURCHASE
 
   // 매출 식별 (SALES일 때 채움)
   productId String? @map("product_id")
@@ -1288,13 +1299,16 @@ model InvoiceRecord {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  approval    SalesApproval   @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+  approval    SalesApproval?  @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+  maBilling   MABilling?      @relation(fields: [maBillingId], references: [id], onDelete: Cascade)
   amendedFrom InvoiceRecord?  @relation("InvoiceAmendments", fields: [amendedFromId], references: [id])
   amendments  InvoiceRecord[] @relation("InvoiceAmendments")
 
+  @@index([source])
   @@index([approvalId, invoiceType])
   @@index([approvalId, productId])
   @@index([approvalId, vendorCompany])
+  @@index([maBillingId])
   @@index([amendedFromId])
   @@index([status])
   @@map("invoice_records")
