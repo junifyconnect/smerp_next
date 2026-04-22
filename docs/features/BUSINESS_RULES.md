@@ -112,11 +112,71 @@ PENDING → ISSUED ──(수정 필요)──> AMEND
 원장·InvoiceRecord는 모두 원본 품의서 행으로 역참조 가능해야 한다:
 - `SalesLedger.sourceProductId` → `SalesApprovalProduct.id`
 - `PurchaseLedger.sourceItemId` → `SalesApprovalItem.id`
+- `MABilling.maContractId` → `MAContract.id` → `MAApproval.id`
 - `approvalVersion`: 어느 버전에서 생성됐는지 기록
+
+---
+
+## 10. MA 품의서 (2026-04-22 설계 확정)
+
+MA는 영업과 **시간축이 다른 플로우**다. 일회성 거래가 아닌 **월별 반복 청구**를 전제로 한다.
+
+### 10.1 원장 구조 (이중 체계)
+
+| 플로우 | 원장 | 계산서 기록 |
+|---|---|---|
+| 영업 | `SalesLedger` / `PurchaseLedger` | `InvoiceRecord` (직접 생성) |
+| MA | `MABilling` (원장 대체) | `InvoiceRecord` (MABilling에서 파생) |
+
+**집계 API는 항상 양쪽을 UNION 처리**:
+- `경영 통계`, `매출장 매입장` 등에서 영업 원장 + MABilling 합산
+- `계산서 발행 현황`은 InvoiceRecord 단일 진실 소스로 그대로 유지
+
+### 10.2 MA 승인 시 자동 생성
+
+```
+MAApproval APPROVED (3단계 결재 완료) →
+  · MAContract 1건
+  · MABilling N건 (계약 시작 월 ~ 종료 월까지 월별 1건씩)
+```
+
+**InvoiceRecord는 이 시점에 생성하지 않는다.** 경영팀이 각 월별로 `/api/management/invoices/issue` 호출 시 **MABilling에서 파생 생성**.
+
+### 10.3 계약 기간 & 청구 기준일
+
+- `MAApprovalItem.startDate` / `endDate`: 필수
+- `MAApprovalItem.billingDayOfMonth`: 매월 청구일 (기본 31 = 말일)
+- **일할 계산 없음**: 시작 월/종료 월 모두 **통째로 1개월치** 청구
+  - 예: 4/15 시작 → 4월분 1개월치 (4/15~4/30 일할 아님)
+  - 예: 7/20 종료 → 7월분 1개월치 (7/1~7/20 일할 아님)
+- MABilling 각 행:
+  - `billingMonth`: 월 식별자 (2026-04-01 같은 1일 고정)
+  - `dueDate`: 실제 청구일 (`billingMonth` + `billingDayOfMonth - 1`, 해당 월 말일을 넘지 않음)
+
+### 10.4 MA revise 동작 (영업과 동일 원칙)
+
+v2 승인 시:
+- v1 MABilling 전체 `isActive=false`, `cancelReason='REVISED_v{n}'`
+- v1 MABilling에서 파생된 **ISSUED 상태 InvoiceRecord** → `NEEDS_AMENDMENT` (보존, 수정세금계산서 유도)
+- v1 MABilling에서 파생된 **PENDING 상태 InvoiceRecord** → `CANCELLED('REVISED_v{n}')` (버림)
+- v2 MAContract + MABilling 신규 생성
+
+### 10.5 세금/카테고리
+
+- 세금: VAT 10% 고정 (§2와 동일)
+- 카테고리: `ProductCategory.MA` (§1)
+- MA 품의서에는 카테고리 선택 UI 없음 (항상 MA 고정)
+
+---
+
+## 11. revise vs amend 의사결정 (TODO)
+
+_작성 예정 — `_결정대기.md` #5 참조._
 
 ---
 
 ## 변경 이력
 
-- **2026-04-22**: 최초 작성. PR #3 (UI 간소화) + PR #4 (스키마 정리) 기반.
+- **2026-04-22 (2)**: §10 MA 품의서 규칙 추가 (`_결정대기.md` #1 확정). MABilling이 원장 대체 엔티티, InvoiceRecord는 파생 생성, 계약 기간 유연 처리, 청구 기준일 계약마다 설정 가능, 일할 계산 없음.
+- **2026-04-22 (1)**: 최초 작성. PR #3 (UI 간소화) + PR #4 (스키마 정리) 기반.
 - 기존 `planning/*.md`의 과도한 옵션(세금 3종, PRODUCT/ITEM 선택, 카테고리 5종)은 모두 제거됨. 히스토리는 `planning/` 폴더에 보존.
