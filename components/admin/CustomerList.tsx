@@ -15,7 +15,7 @@ interface CustomerContact {
 
 interface Customer {
   id: string
-  companyName: string
+  name: string
   phone?: string
   fax?: string
   address?: string
@@ -30,7 +30,7 @@ interface CustomerListProps {
   initialTotal: number
 }
 
-const emptyForm = { companyName: '', phone: '', fax: '', address: '', notes: '' }
+const emptyForm = { name: '', phone: '', fax: '', address: '', notes: '' }
 
 export default function CustomerList({ initialItems, initialTotal }: CustomerListProps) {
   const [items, setItems] = useState<Customer[]>(initialItems)
@@ -73,7 +73,7 @@ export default function CustomerList({ initialItems, initialTotal }: CustomerLis
 
   const openEdit = (c: Customer) => {
     setEditTarget(c)
-    setForm({ companyName: c.companyName, phone: c.phone || '', fax: c.fax || '', address: c.address || '', notes: c.notes || '' })
+    setForm({ name: c.name, phone: c.phone || '', fax: c.fax || '', address: c.address || '', notes: c.notes || '' })
     setShowModal(true)
   }
 
@@ -101,7 +101,7 @@ export default function CustomerList({ initialItems, initialTotal }: CustomerLis
   }
 
   const handleDeactivate = async (c: Customer) => {
-    if (!confirm(`${c.companyName}을(를) 비활성화하시겠습니까?`)) return
+    if (!confirm(`${c.name}을(를) 비활성화하시겠습니까?`)) return
     const res = await fetch(`/api/customers/${c.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -167,7 +167,7 @@ export default function CustomerList({ initialItems, initialTotal }: CustomerLis
                   {items.map((c) => (
                     <tr key={c.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm font-medium text-blue-600 hover:underline">
-                        <Link href={`/admin/customers/${c.id}`}>{c.companyName}</Link>
+                        <Link href={`/admin/customers/${c.id}`}>{c.name}</Link>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">{c.phone || '-'}</td>
                       <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">{c.address || '-'}</td>
@@ -212,7 +212,7 @@ export default function CustomerList({ initialItems, initialTotal }: CustomerLis
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">회사명 <span className="text-red-500">*</span></label>
-                <input type="text" value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })} required
+                <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="(주)예시회사" />
               </div>
               <div className="grid grid-cols-2 gap-4">
