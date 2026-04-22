@@ -10,12 +10,22 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50')
     const department = searchParams.get('department')
     const search = searchParams.get('search')
+    const isActiveParam = searchParams.get('isActive')
+    const role = searchParams.get('role')
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {}
 
     if (department) {
       where.department = department
+    }
+
+    if (role) {
+      where.role = role
+    }
+
+    if (isActiveParam !== null) {
+      where.isActive = isActiveParam === 'true'
     }
 
     if (search) {
