@@ -1,7 +1,7 @@
-version: 8
+version: 9
 last_generated: 2026-04-22
-last_commit: 4e2f36d
-last_commit_note: "4e2f36d develop: 품의서 UI 간소화(#3) + 스키마 정리(#4) · BUSINESS_RULES.md 신설"
+last_commit: 0264948
+last_commit_note: "0264948 develop: 결정대기 #1(MA B+B-2) + #3(결재선 C) 확정"
 project: smerp_next
 feature_count: 22
 status_breakdown:
@@ -16,4 +16,4 @@ domains_snapshot:
   - 관리자
   - 공통
   - 시스템
-pending_decisions: 4
+pending_decisions: 3
