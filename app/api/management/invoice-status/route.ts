@@ -120,7 +120,21 @@ export async function GET(request: NextRequest) {
     }
 
     if (month) {
-      const [year, mon] = month.split('-').map(Number)
+      const match = /^(\d{4})-(\d{2})$/.exec(month)
+      if (!match) {
+        return NextResponse.json(
+          { error: 'month는 YYYY-MM 형식이어야 합니다' },
+          { status: 400 }
+        )
+      }
+      const year = Number(match[1])
+      const mon = Number(match[2])
+      if (mon < 1 || mon > 12) {
+        return NextResponse.json(
+          { error: 'month의 월은 1~12 범위여야 합니다' },
+          { status: 400 }
+        )
+      }
       const startDate = new Date(year, mon - 1, 1)
       const endDate = new Date(year, mon, 1)
       approvalWhere.approvalDate = { gte: startDate, lt: endDate }
