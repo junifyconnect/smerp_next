@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
       purchaseCompany: item.purchaseCompany || '',
       purchasePrice: item.purchasePrice || 0,
       purchaseBillingCycle: item.purchaseBillingCycle || '',
+      billingDayOfMonth: 31,
     }))
 
     return NextResponse.json({

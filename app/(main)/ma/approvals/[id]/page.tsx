@@ -21,6 +21,7 @@ interface MAApprovalItem {
   purchaseCompany?: string
   purchasePrice?: number
   purchaseBillingCycle?: string
+  billingDayOfMonth?: number
 }
 
 interface SignerInfo {
@@ -451,12 +452,13 @@ export default function MAApprovalDetailPage() {
                 <th className="px-2 py-2 text-left text-xs font-medium text-gray-600">매출처</th>
                 <th className="px-2 py-2 text-right text-xs font-medium text-gray-600 w-24">매출가</th>
                 <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-12">수량</th>
-                <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-16">청구구분</th>
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-20">매출주기</th>
                 <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-24">계약시작</th>
                 <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-24">계약종료</th>
                 <th className="px-2 py-2 text-left text-xs font-medium text-gray-600">매입처</th>
                 <th className="px-2 py-2 text-right text-xs font-medium text-gray-600 w-24">매입가</th>
-                <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-16">청구구분</th>
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-20">매입주기</th>
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-16" title="매월 청구일">청구일</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -474,6 +476,7 @@ export default function MAApprovalDetailPage() {
                   <td className="px-2 py-2 text-xs">{item.purchaseCompany || '-'}</td>
                   <td className="px-2 py-2 text-right text-xs text-red-600 font-medium">{(item.purchasePrice || 0).toLocaleString()}</td>
                   <td className="px-2 py-2 text-center text-xs">{item.purchaseBillingCycle || '-'}</td>
+                  <td className="px-2 py-2 text-center text-xs">{item.billingDayOfMonth ?? 31}일</td>
                 </tr>
               ))}
             </tbody>
