@@ -1,7 +1,7 @@
-version: 7
+version: 8
 last_generated: 2026-04-22
-last_commit: 59c8eef
-last_commit_note: "59c8eef develop: invoice-status month YYYY-MM 검증 + Customer.companyName→name 필드 통일"
+last_commit: 4e2f36d
+last_commit_note: "4e2f36d develop: 품의서 UI 간소화(#3) + 스키마 정리(#4) · BUSINESS_RULES.md 신설"
 project: smerp_next
 feature_count: 22
 status_breakdown:

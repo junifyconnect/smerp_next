@@ -1,6 +1,6 @@
 # smerp_next 기능 명세서
 
-**22개 기능 · 88% 완료** · 갱신 2026-04-22 (커밋 59c8eef, invoice-status month 검증 + Customer.name 통일)
+**22개 기능 · 88% 완료** · 갱신 2026-04-22 (커밋 4e2f36d, 품의서 UI/스키마 정리 + BUSINESS_RULES.md 신설)
 
 ██████████████████░░
 
@@ -56,4 +56,4 @@ _없음._
 
 ---
 
-> 📝 문서 편집 규칙은 [DRIFT.md](DRIFT.md) 참고. 도메인 분류 변경은 [DOMAINS.md](DOMAINS.md) 편집.
+> 📝 문서 편집 규칙은 [DRIFT.md](DRIFT.md) 참고. 도메인 분류 변경은 [DOMAINS.md](DOMAINS.md) 편집. 업무 규칙(카테고리/세금/발행단위 등)은 [BUSINESS_RULES.md](BUSINESS_RULES.md) 참조.
