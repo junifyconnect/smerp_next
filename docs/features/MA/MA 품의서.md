@@ -57,11 +57,12 @@ _files:
 ### API
 - ❌ `/api/ma-approvals/[id]/sign` — 3단계 결재 서명 (`app/api/sales-approvals/[id]/sign/route.ts` 구조 재사용)
 - ❌ CEO 승인 시 트랜잭션: MAContract + MABilling N건 자동 생성
-- ❌ 상신/반려/회수 API
+- ❌ 상신/반려/회수 API — 상신 시 body에서 `salesManagerId`/`teamLeaderId`/`ceoId` 받음 (BUSINESS_RULES §5)
 - ❌ `/api/management/invoices/issue` 개정 — MABilling 소스로 호출 시 InvoiceRecord 파생 생성 로직 추가
 - ❌ 집계 API 확장: `경영 통계`, `매출장 매입장` 등에서 MABilling UNION
 
 ### UI
+- ❌ **결재선 지정 모달** — `<ApprovalLineModal>` 공유 컴포넌트 (영업과 동일, BUSINESS_RULES §5)
 - ❌ 3단계 서명 UI (영업 품의서 UI 패턴 재사용)
 - ❌ 청구 기준일(`billingDayOfMonth`) 입력 필드 추가
 - ❌ 계산서 발행 현황 페이지에서 MA 행도 표시 (기존 InvoiceRecord 기반이므로 파생 생성 로직 완료 시 자동 반영)
