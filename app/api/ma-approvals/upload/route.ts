@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { parseExcel, ParsedMAApprovalItem } from '@/lib/excel/parser'
 import { parseWithDefaultTemplate } from '@/lib/excel/dynamic-parser'
+import { normalizeBillingCycle } from '@/lib/ma/billing-cycle'
 
 // POST /api/ma-approvals/upload - 엑셀 업로드
 export async function POST(request: NextRequest) {
@@ -70,12 +71,12 @@ export async function POST(request: NextRequest) {
         salesCompany: item.salesCompany,
         salesPrice: salesPrice,
         quantity: qty,
-        salesBillingType: item.salesBillingType,
+        salesBillingCycle: normalizeBillingCycle(item.salesBillingCycle),
         startDate: item.startDate || null,
         endDate: item.endDate || null,
         purchaseCompany: item.purchaseCompany,
         purchasePrice: purchasePrice,
-        purchaseBillingType: item.purchaseBillingType,
+        purchaseBillingCycle: normalizeBillingCycle(item.purchaseBillingCycle),
       }
     })
 

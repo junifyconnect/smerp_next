@@ -13,12 +13,12 @@ interface MAApprovalItem {
   salesCompany?: string     // 매출처
   salesPrice?: number       // 매출가
   quantity?: number         // 수량
-  salesBillingType?: string // 청구구분(매출)
+  salesBillingCycle?: string // 청구구분(매출)
   startDate?: string        // 계약기간 시작
   endDate?: string          // 계약기간 종료
   purchaseCompany?: string  // 매입처
   purchasePrice?: number    // 매입가
-  purchaseBillingType?: string // 청구구분(매입)
+  purchaseBillingCycle?: string // 청구구분(매입)
 }
 
 interface MAApproval {
@@ -268,12 +268,12 @@ export default function MAApprovalDetailPage() {
                   <td className="px-2 py-2 text-xs">{item.salesCompany || '-'}</td>
                   <td className="px-2 py-2 text-right text-xs text-blue-600 font-medium">{(item.salesPrice || 0).toLocaleString()}</td>
                   <td className="px-2 py-2 text-center text-xs">{item.quantity || 1}</td>
-                  <td className="px-2 py-2 text-center text-xs">{item.salesBillingType || '-'}</td>
+                  <td className="px-2 py-2 text-center text-xs">{item.salesBillingCycle || '-'}</td>
                   <td className="px-2 py-2 text-center text-xs">{formatDate(item.startDate)}</td>
                   <td className="px-2 py-2 text-center text-xs">{formatDate(item.endDate)}</td>
                   <td className="px-2 py-2 text-xs">{item.purchaseCompany || '-'}</td>
                   <td className="px-2 py-2 text-right text-xs text-red-600 font-medium">{(item.purchasePrice || 0).toLocaleString()}</td>
-                  <td className="px-2 py-2 text-center text-xs">{item.purchaseBillingType || '-'}</td>
+                  <td className="px-2 py-2 text-center text-xs">{item.purchaseBillingCycle || '-'}</td>
                 </tr>
               ))}
             </tbody>

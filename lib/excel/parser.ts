@@ -108,12 +108,12 @@ export interface ParsedMAApprovalItem {
   salesCompany?: string     // 매출처
   salesPrice?: number       // 매출가
   quantity?: number         // 수량
-  salesBillingType?: string // 청구구분(매출)
+  salesBillingCycle?: string // 청구구분(매출)
   startDate?: Date          // 계약기간 시작
   endDate?: Date            // 계약기간 종료
   purchaseCompany?: string  // 매입처
   purchasePrice?: number    // 매입가
-  purchaseBillingType?: string // 청구구분(매입)
+  purchaseBillingCycle?: string // 청구구분(매입)
 }
 
 // 셀 값 추출 헬퍼
@@ -1073,12 +1073,12 @@ function parseMAApproval(sheet: ExcelJS.Worksheet): ParsedDocument {
     const salesCompany = getCellValue(sheet, `G${row}`)
     const salesPrice = getNumericValue(sheet, `H${row}`)
     const quantity = getNumericValue(sheet, `I${row}`)
-    const salesBillingType = getCellValue(sheet, `J${row}`) // 일시불/월간
+    const salesBillingCycle = getCellValue(sheet, `J${row}`) // 일시불/월간
     const startDate = getDateValue(sheet, `K${row}`)
     const endDate = getDateValue(sheet, `L${row}`)
     const purchaseCompany = getCellValue(sheet, `M${row}`)
     const purchasePrice = getNumericValue(sheet, `N${row}`)
-    const purchaseBillingType = getCellValue(sheet, `O${row}`)
+    const purchaseBillingCycle = getCellValue(sheet, `O${row}`)
 
     // 빈 행 확인
     if (!clientCompany && !salesCompany && salesPrice === 0 && purchasePrice === 0) {
@@ -1094,12 +1094,12 @@ function parseMAApproval(sheet: ExcelJS.Worksheet): ParsedDocument {
         salesCompany: salesCompany?.replace(/^\[.*\]$/, '') || undefined,
         salesPrice: salesPrice || undefined,
         quantity: quantity || 1,
-        salesBillingType: salesBillingType?.replace(/^\[.*\]$/, '') || undefined,
+        salesBillingCycle: salesBillingCycle?.replace(/^\[.*\]$/, '') || undefined,
         startDate,
         endDate,
         purchaseCompany: purchaseCompany?.replace(/^\[.*\]$/, '') || undefined,
         purchasePrice: purchasePrice || undefined,
-        purchaseBillingType: purchaseBillingType?.replace(/^\[.*\]$/, '') || undefined,
+        purchaseBillingCycle: purchaseBillingCycle?.replace(/^\[.*\]$/, '') || undefined,
       })
     }
 

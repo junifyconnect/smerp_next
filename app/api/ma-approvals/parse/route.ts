@@ -48,12 +48,12 @@ export async function POST(request: NextRequest) {
       salesCompany: item.salesCompany || '',
       salesPrice: item.salesPrice || 0,
       quantity: item.quantity || 1,
-      salesBillingType: item.salesBillingType || '일시불',
+      salesBillingCycle: item.salesBillingCycle || '',
       startDate: formatDate(item.startDate),
       endDate: formatDate(item.endDate),
       purchaseCompany: item.purchaseCompany || '',
       purchasePrice: item.purchasePrice || 0,
-      purchaseBillingType: item.purchaseBillingType || '총(월간)',
+      purchaseBillingCycle: item.purchaseBillingCycle || '',
     }))
 
     return NextResponse.json({

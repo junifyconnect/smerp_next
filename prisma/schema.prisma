@@ -62,6 +62,12 @@ model User {
   ceoApprovals          SalesApproval[] @relation("CeoSigner")
   rejectedApprovals     SalesApproval[] @relation("ApprovalRejector")
 
+  // MAApproval signature relations
+  maSalesManagerApprovals MAApproval[] @relation("MASalesManagerSigner")
+  maTeamLeaderApprovals   MAApproval[] @relation("MATeamLeaderSigner")
+  maCeoApprovals          MAApproval[] @relation("MACeoSigner")
+  maRejectedApprovals     MAApproval[] @relation("MAApprovalRejector")
+
   // 알림
   notifications Notification[]
 
@@ -665,7 +671,8 @@ model MAQuoteItem {
 
 model MAApproval {
   id             String         @id @default(uuid())
-  approvalNumber String         @unique @map("approval_number") // MA-2025-0001
+  approvalNumber String         @unique @map("approval_number") // MA-2026-0001
+  approvalCode   String?        @map("approval_code") // 영업과 동일한 작성자 기반 코드 (예: H260422-01)
   status         ApprovalStatus @default(DRAFT)
 
   // 기본 정보
@@ -678,6 +685,36 @@ model MAApproval {
 
   notes String? @db.Text
 
+  // 버전 관리 (revise 지원)
+  version    Int     @default(1)
+  originalId String? @map("original_id") // 최초 버전 ID (v1은 null)
+  isLatest   Boolean @default(true) @map("is_latest")
+
+  original MAApproval?  @relation("MAApprovalVersions", fields: [originalId], references: [id])
+  versions MAApproval[] @relation("MAApprovalVersions")
+
+  // 결재/서명 정보 (BUSINESS_RULES §5 — 상신 시 명시적 지정)
+  // 영업담당자 서명 (1단계)
+  salesManagerId       String?   @map("sales_manager_id")
+  salesManager         User?     @relation("MASalesManagerSigner", fields: [salesManagerId], references: [id])
+  salesManagerSignedAt DateTime? @map("sales_manager_signed_at")
+
+  // 영업팀장 서명 (2단계)
+  teamLeaderId       String?   @map("team_leader_id")
+  teamLeader         User?     @relation("MATeamLeaderSigner", fields: [teamLeaderId], references: [id])
+  teamLeaderSignedAt DateTime? @map("team_leader_signed_at")
+
+  // 대표이사 서명 (3단계)
+  ceoId       String?   @map("ceo_id")
+  ceo         User?     @relation("MACeoSigner", fields: [ceoId], references: [id])
+  ceoSignedAt DateTime? @map("ceo_signed_at")
+
+  // 반려 정보
+  rejectedById    String?   @map("rejected_by_id")
+  rejectedBy      User?     @relation("MAApprovalRejector", fields: [rejectedById], references: [id])
+  rejectedAt      DateTime? @map("rejected_at")
+  rejectionReason String?   @map("rejection_reason") @db.Text
+
   // 메타
   createdById String   @map("created_by")
   createdAt   DateTime @default(now()) @map("created_at")
@@ -686,10 +723,18 @@ model MAApproval {
   // 관계
   items         MAApprovalItem[]
   purchaseItems MAApprovalPurchaseItem[] // deprecated: 기존 데이터 호환용
+  contracts     MAContract[] // APPROVED 시 생성되는 계약
 
+  @@unique([approvalCode, version]) // 같은 품의코드 내 버전은 고유 (nullable이라 NULL 끼리는 충돌 안 남)
   @@index([status])
   @@index([createdById])
+  @@index([salesManagerId])
+  @@index([teamLeaderId])
+  @@index([ceoId])
   @@index([createdAt(sort: Desc)])
+  @@index([approvalCode])
+  @@index([isLatest])
+  @@index([originalId])
   @@map("ma_approvals")
 }
 
@@ -697,19 +742,22 @@ model MAApprovalItem {
   id         String @id @default(uuid())
   approvalId String @map("approval_id")
 
-  sortOrder           Int       @default(0) @map("sort_order")
-  smCode              String?   @map("sm_code")
-  vendorCode          String?   @map("vendor_code")
-  clientCompany       String?   @map("client_company") // 고객사
-  salesCompany        String?   @map("sales_company") // 매출처
-  salesPrice          Decimal?  @map("sales_price") @db.Decimal(15, 2)
-  quantity            Int       @default(1)
-  salesBillingType    String?   @map("sales_billing_type") // 청구구분(매출)
-  startDate           DateTime? @map("start_date") @db.Date
-  endDate             DateTime? @map("end_date") @db.Date
-  purchaseCompany     String?   @map("purchase_company") // 매입처
-  purchasePrice       Decimal?  @map("purchase_price") @db.Decimal(15, 2)
-  purchaseBillingType String?   @map("purchase_billing_type") // 청구구분(매입)
+  sortOrder       Int       @default(0) @map("sort_order")
+  smCode          String?   @map("sm_code")
+  vendorCode      String?   @map("vendor_code")
+  clientCompany   String?   @map("client_company") // 고객사
+  salesCompany    String?   @map("sales_company") // 매출처
+  salesPrice      Decimal?  @map("sales_price") @db.Decimal(15, 2) // 1회 청구당 매출가
+  quantity        Int       @default(1)
+  salesBillingCycle BillingCycle? @map("sales_billing_cycle") // 매출 청구 주기
+  startDate       DateTime? @map("start_date") @db.Date
+  endDate         DateTime? @map("end_date") @db.Date
+  purchaseCompany String?   @map("purchase_company") // 매입처
+  purchasePrice   Decimal?  @map("purchase_price") @db.Decimal(15, 2) // 1회 청구당 매입가
+  purchaseBillingCycle BillingCycle? @map("purchase_billing_cycle") // 매입 청구 주기
+
+  // 청구 기준일 (매월 몇일에 청구할지, BUSINESS_RULES §10.3)
+  billingDayOfMonth Int @default(31) @map("billing_day_of_month")
 
   approval  MAApproval @relation(fields: [approvalId], references: [id], onDelete: Cascade)
   createdAt DateTime   @default(now()) @map("created_at")
@@ -733,6 +781,99 @@ model MAApprovalPurchaseItem {
 
   @@index([approvalId])
   @@map("ma_approval_purchase_items")
+}
+
+// 청구 주기 (MA 품의서 전용, BUSINESS_RULES §10.3)
+enum BillingCycle {
+  매월
+  격월
+  분기
+  반기
+  연간
+  일시불
+}
+
+// ==================== MA 계약 (MAContract) ====================
+// MA 품의서 APPROVED 시 자동 생성. 계약 루트 엔티티.
+model MAContract {
+  id             String   @id @default(uuid())
+  maApprovalId   String   @map("ma_approval_id")
+
+  // 체인 루트 (revise 시 v1 계약의 id를 유지)
+  rootApprovalId String   @map("root_approval_id")
+  approvalVersion Int     @default(1) @map("approval_version")
+
+  // 스냅샷 (계약 체결 시점 내용)
+  clientCompany  String   @map("client_company")
+  contractStartDate DateTime @map("contract_start_date") @db.Date
+  contractEndDate   DateTime @map("contract_end_date") @db.Date
+
+  // 활성 상태 (revise 시 이전 계약 비활성화)
+  isActive     Boolean   @default(true) @map("is_active")
+  cancelledAt  DateTime? @map("cancelled_at")
+  cancelReason String?   @map("cancel_reason")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  maApproval MAApproval @relation(fields: [maApprovalId], references: [id], onDelete: Cascade)
+  billings   MABilling[]
+
+  @@index([maApprovalId])
+  @@index([rootApprovalId])
+  @@index([isActive])
+  @@map("ma_contracts")
+}
+
+// ==================== MA 청구 스케줄 (MABilling) ====================
+// MA 원장 역할. 영업의 SalesLedger/PurchaseLedger와 병렬 존재 (BUSINESS_RULES §10.1).
+// 계산서(InvoiceRecord)는 issue 시 MABilling에서 파생 생성됨 (B-2).
+model MABilling {
+  id           String   @id @default(uuid())
+  maContractId String   @map("ma_contract_id")
+
+  billingMonth DateTime @map("billing_month") @db.Date // 해당 월 1일 (2026-04-01)
+  dueDate      DateTime @map("due_date") @db.Date      // 실제 청구일 (billingMonth + billingDayOfMonth - 1)
+
+  // 금액 (한 행에 매출·매입 같이 — BUSINESS_RULES §10.1)
+  salesAmount    Decimal @default(0) @map("sales_amount") @db.Decimal(15, 2) // 1회 매출가 (주기에 따라 이 달 청구 없으면 0)
+  purchaseAmount Decimal @default(0) @map("purchase_amount") @db.Decimal(15, 2)
+  salesVatAmount Decimal @default(0) @map("sales_vat_amount") @db.Decimal(15, 2) // VAT 10% 고정
+  purchaseVatAmount Decimal @default(0) @map("purchase_vat_amount") @db.Decimal(15, 2)
+  salesTotalAmount Decimal @default(0) @map("sales_total_amount") @db.Decimal(15, 2) // 공급가액 + VAT
+  purchaseTotalAmount Decimal @default(0) @map("purchase_total_amount") @db.Decimal(15, 2)
+
+  // 스냅샷 (발행 시점 내용)
+  clientCompany String  @map("client_company")
+  vendorCompany String? @map("vendor_company")
+  itemName      String  @map("item_name")
+
+  // 활성 상태 (revise 시 이전 billing 비활성화, 영업 원장과 동일 패턴)
+  isActive     Boolean   @default(true) @map("is_active")
+  cancelledAt  DateTime? @map("cancelled_at")
+  cancelReason String?   @map("cancel_reason")
+
+  // 원본 역참조
+  sourceItemId    String? @map("source_item_id") // MAApprovalItem.id
+  approvalVersion Int?    @map("approval_version")
+
+  // 결제
+  paymentStatus PaymentStatus @default(PENDING) @map("payment_status")
+  paymentDate   DateTime?     @map("payment_date") @db.Date
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  maContract MAContract @relation(fields: [maContractId], references: [id], onDelete: Cascade)
+
+  @@index([maContractId])
+  @@index([billingMonth])
+  @@index([dueDate])
+  @@index([clientCompany])
+  @@index([vendorCompany])
+  @@index([paymentStatus])
+  @@index([isActive])
+  @@map("ma_billings")
 }
 
 // ==================== 엑셀 일괄 업로드 ====================

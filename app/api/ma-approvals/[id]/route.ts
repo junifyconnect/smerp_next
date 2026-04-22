@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { normalizeBillingCycle } from '@/lib/ma/billing-cycle'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -14,12 +15,12 @@ interface MAApprovalItemInput {
   salesCompany?: string
   salesPrice?: number
   quantity?: number
-  salesBillingType?: string
+  salesBillingCycle?: string
   startDate?: string
   endDate?: string
   purchaseCompany?: string
   purchasePrice?: number
-  purchaseBillingType?: string
+  purchaseBillingCycle?: string
   sortOrder?: number
 }
 
@@ -92,12 +93,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           salesCompany: item.salesCompany,
           salesPrice: salesPrice,
           quantity: qty,
-          salesBillingType: item.salesBillingType,
+          salesBillingCycle: normalizeBillingCycle(item.salesBillingCycle),
           startDate: item.startDate ? new Date(item.startDate) : null,
           endDate: item.endDate ? new Date(item.endDate) : null,
           purchaseCompany: item.purchaseCompany,
           purchasePrice: purchasePrice,
-          purchaseBillingType: item.purchaseBillingType,
+          purchaseBillingCycle: normalizeBillingCycle(item.purchaseBillingCycle),
           sortOrder: item.sortOrder ?? index,
         }
       })
