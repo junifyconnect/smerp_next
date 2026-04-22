@@ -33,6 +33,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       where: { id },
       include: {
         items: { orderBy: { sortOrder: 'asc' } },
+        salesManager: { select: { id: true, name: true, signatureUrl: true } },
+        teamLeader: { select: { id: true, name: true, signatureUrl: true } },
+        ceo: { select: { id: true, name: true, signatureUrl: true } },
+        rejectedBy: { select: { id: true, name: true } },
       },
     })
 
