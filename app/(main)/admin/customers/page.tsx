@@ -10,7 +10,7 @@ export default async function CustomersPage() {
   const [items, total] = await Promise.all([
     prisma.customer.findMany({
       where: { isActive: true },
-      orderBy: { companyName: 'asc' },
+      orderBy: { name: 'asc' },
       take: 20,
     }),
     prisma.customer.count({ where: { isActive: true } }),

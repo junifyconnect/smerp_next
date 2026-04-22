@@ -48,7 +48,7 @@ export async function PATCH(
     const customer = await prisma.customer.update({
       where: { id },
       data: {
-        companyName: body.companyName,
+        name: body.name,
         phone: body.phone,
         fax: body.fax,
         address: body.address,

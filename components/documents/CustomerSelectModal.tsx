@@ -16,7 +16,7 @@ interface CustomerContact {
 
 interface Customer {
   id: string
-  companyName: string
+  name: string
   phone?: string
   fax?: string
   contacts: CustomerContact[]
@@ -47,7 +47,7 @@ export function CustomerSelectModal({ isOpen, onClose, onSelect }: CustomerSelec
   // 신규 거래처 등록 폼
   const [showNewCustomerForm, setShowNewCustomerForm] = useState(false)
   const [newCustomer, setNewCustomer] = useState({
-    companyName: '',
+    name: '',
     phone: '',
     fax: '',
   })
@@ -104,7 +104,7 @@ export function CustomerSelectModal({ isOpen, onClose, onSelect }: CustomerSelec
     if (customer.contacts.length === 0) {
       // 담당자가 없으면 회사 정보만으로 선택
       onSelect({
-        companyName: customer.companyName,
+        companyName: customer.name,
         contactName: '',
         phone: customer.phone || '',
         fax: customer.fax || '',
@@ -116,7 +116,7 @@ export function CustomerSelectModal({ isOpen, onClose, onSelect }: CustomerSelec
       // 담당자가 1명이면 바로 선택
       const contact = customer.contacts[0]
       onSelect({
-        companyName: customer.companyName,
+        companyName: customer.name,
         contactName: contact.name,
         phone: contact.phone || customer.phone || '',
         fax: customer.fax || '',
@@ -135,7 +135,7 @@ export function CustomerSelectModal({ isOpen, onClose, onSelect }: CustomerSelec
     if (!selectedCustomer) return
 
     onSelect({
-      companyName: selectedCustomer.companyName,
+      companyName: selectedCustomer.name,
       contactName: contact.name,
       phone: contact.phone || selectedCustomer.phone || '',
       fax: selectedCustomer.fax || '',
@@ -147,7 +147,7 @@ export function CustomerSelectModal({ isOpen, onClose, onSelect }: CustomerSelec
 
   // 신규 거래처 저장
   const handleSaveNewCustomer = async () => {
-    if (!newCustomer.companyName || !newContact.name) {
+    if (!newCustomer.name || !newContact.name) {
       alert('회사명과 담당자명은 필수입니다')
       return
     }
@@ -166,7 +166,7 @@ export function CustomerSelectModal({ isOpen, onClose, onSelect }: CustomerSelec
       if (res.ok) {
         // 저장 성공 후 바로 선택
         onSelect({
-          companyName: newCustomer.companyName,
+          companyName: newCustomer.name,
           contactName: newContact.name,
           phone: newContact.phone || newCustomer.phone || '',
           fax: newCustomer.fax || '',
@@ -211,7 +211,7 @@ export function CustomerSelectModal({ isOpen, onClose, onSelect }: CustomerSelec
                 ? '신규 거래처 등록'
                 : step === 'company'
                   ? '거래처 선택'
-                  : `${selectedCustomer?.companyName} - 담당자 선택`}
+                  : `${selectedCustomer?.name} - 담당자 선택`}
             </h2>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
@@ -234,8 +234,8 @@ export function CustomerSelectModal({ isOpen, onClose, onSelect }: CustomerSelec
                     <label className="block text-sm text-gray-600 mb-1">회사명 *</label>
                     <input
                       type="text"
-                      value={newCustomer.companyName}
-                      onChange={(e) => setNewCustomer({ ...newCustomer, companyName: e.target.value })}
+                      value={newCustomer.name}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                       placeholder="회사명"
                     />
@@ -369,7 +369,7 @@ export function CustomerSelectModal({ isOpen, onClose, onSelect }: CustomerSelec
                         className="w-full px-6 py-4 text-left hover:bg-blue-50 flex items-center justify-between"
                       >
                         <div>
-                          <div className="font-medium text-gray-900">{customer.companyName}</div>
+                          <div className="font-medium text-gray-900">{customer.name}</div>
                           <div className="text-sm text-gray-500">
                             {customer.contacts.length > 0
                               ? `담당자 ${customer.contacts.length}명`
@@ -424,7 +424,7 @@ export function CustomerSelectModal({ isOpen, onClose, onSelect }: CustomerSelec
               <button
                 onClick={() => {
                   setShowNewCustomerForm(false)
-                  setNewCustomer({ companyName: '', phone: '', fax: '' })
+                  setNewCustomer({ name: '', phone: '', fax: '' })
                   setNewContact({ name: '', department: '', position: '', phone: '', mobile: '', email: '' })
                 }}
                 className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"

@@ -14,14 +14,14 @@ export async function GET(request: NextRequest) {
     const where = search
       ? {
           isActive: true,
-          companyName: { contains: search, mode: 'insensitive' as const },
+          name: { contains: search, mode: 'insensitive' as const },
         }
       : { isActive: true }
 
     const [customers, total] = await Promise.all([
       prisma.customer.findMany({
         where,
-        orderBy: { companyName: 'asc' },
+        orderBy: { name: 'asc' },
         skip,
         take: limit,
         include: includeContacts ? {
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     const customer = await prisma.customer.create({
       data: {
-        companyName: body.companyName,
+        name: body.name,
         phone: body.phone,
         fax: body.fax,
         address: body.address,

@@ -42,11 +42,11 @@ async function identifyTargets() {
   const customers = await prisma.customer.findMany({
     where: {
       OR: [
-        { companyName: { in: E2E_PATTERNS.customerName } },
-        { companyName: { contains: 'E2E' } },
+        { name: { in: E2E_PATTERNS.customerName } },
+        { name: { contains: 'E2E' } },
       ],
     },
-    select: { id: true, companyName: true, createdAt: true },
+    select: { id: true, name: true, createdAt: true },
   })
 
   const vendors = await prisma.vendor.findMany({
@@ -104,7 +104,7 @@ async function identifyTargets() {
 
 async function identifyAllTargets() {
   // --all: superadmin 제외 전부
-  const customers = await prisma.customer.findMany({ select: { id: true, companyName: true } })
+  const customers = await prisma.customer.findMany({ select: { id: true, name: true } })
   const vendors = await prisma.vendor.findMany({ select: { id: true, name: true } })
   const users = await prisma.user.findMany({
     where: { NOT: { email: SUPERADMIN_EMAIL } },
@@ -135,7 +135,7 @@ async function identifyAllTargets() {
 function printReport(t: Awaited<ReturnType<typeof identifyTargets>> | Awaited<ReturnType<typeof identifyAllTargets>>) {
   console.log('🗑️  삭제 예정:')
   console.log(`  - 매출처: ${t.customers.length}개`)
-  t.customers.slice(0, 5).forEach((c: { companyName: string }) => console.log(`      · ${c.companyName}`))
+  t.customers.slice(0, 5).forEach((c: { name: string }) => console.log(`      · ${c.name}`))
   console.log(`  - 매입처: ${t.vendors.length}개`)
   t.vendors.slice(0, 5).forEach((v: { name: string }) => console.log(`      · ${v.name}`))
   console.log(`  - 사용자: ${t.users.length}명`)

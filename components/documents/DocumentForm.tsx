@@ -646,7 +646,7 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
 
       const searchData = await searchRes.json()
       const existingCustomer = searchData.items?.find(
-        (c: { companyName: string }) => c.companyName === formData.clientCompany
+        (c: { name: string }) => c.name === formData.clientCompany
       )
 
       if (existingCustomer) {
@@ -674,7 +674,7 @@ export function DocumentForm({ docType, basePath, title, documentId }: DocumentF
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            companyName: formData.clientCompany,
+            name: formData.clientCompany,
             phone: formData.clientPhone,
             fax: formData.clientFax,
             contacts: formData.clientContact.trim() ? [{

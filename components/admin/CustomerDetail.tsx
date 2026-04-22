@@ -15,7 +15,7 @@ interface CustomerContact {
 
 interface Customer {
   id: string
-  companyName: string
+  name: string
   phone?: string
   fax?: string
   address?: string
@@ -33,7 +33,7 @@ const emptyContactForm = { name: '', department: '', position: '', phone: '', em
 export default function CustomerDetail({ customer }: CustomerDetailProps) {
   const router = useRouter()
   const [info, setInfo] = useState({
-    companyName: customer.companyName,
+    name: customer.name,
     phone: customer.phone || '',
     fax: customer.fax || '',
     address: customer.address || '',
@@ -125,7 +125,7 @@ export default function CustomerDetail({ customer }: CustomerDetailProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <h1 className="text-2xl font-bold text-gray-900">{customer.companyName}</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{customer.name}</h1>
       </div>
 
       {/* 기본정보 수정 */}
@@ -135,7 +135,7 @@ export default function CustomerDetail({ customer }: CustomerDetailProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">회사명 <span className="text-red-500">*</span></label>
-              <input type="text" value={info.companyName} onChange={(e) => setInfo({ ...info, companyName: e.target.value })} required
+              <input type="text" value={info.name} onChange={(e) => setInfo({ ...info, name: e.target.value })} required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
