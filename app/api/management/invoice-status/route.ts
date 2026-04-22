@@ -8,7 +8,7 @@ import prisma from '@/lib/db'
  * 계산서 발행 현황 (재설계 후 구조).
  * - source of truth: InvoiceRecord
  * - 행 단위: InvoiceRecord 하나 = 한 행 (매출/매입 모두)
- * - 매출 식별: (approvalId, productId, salesItemId)
+ * - 매출 식별: (approvalId, productId)             — 제품 단위 고정
  * - 매입 식별: (approvalId, vendorCompany)   — 제품 경계 초월
  *
  * 필터:
@@ -30,7 +30,6 @@ interface InvoiceRecordRow {
   id: string
   invoiceType: InvoiceType
   productId: string | null
-  salesItemId: string | null
   vendorCompany: string | null
   clientCompany: string | null
   productName: string
@@ -84,7 +83,6 @@ function toRow(r: InvoiceRecord): InvoiceRecordRow {
     id: r.id,
     invoiceType: r.invoiceType as InvoiceType,
     productId: r.productId,
-    salesItemId: r.salesItemId,
     vendorCompany: r.vendorCompany,
     clientCompany: r.clientCompany,
     productName: r.productName,

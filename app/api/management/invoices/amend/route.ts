@@ -77,7 +77,6 @@ export async function POST(request: NextRequest) {
         approvalId: original.approvalId,
         invoiceType: original.invoiceType,
         productId: original.productId,
-        salesItemId: original.salesItemId,
         productName: newData?.productName ?? original.productName,
         partNumber:
           newData?.partNumber !== undefined ? newData.partNumber : original.partNumber,

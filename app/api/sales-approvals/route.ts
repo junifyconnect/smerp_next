@@ -16,7 +16,6 @@ interface ItemInput {
   purchaseTotal?: number
   purchaseDate?: string
   sortOrder?: number
-  taxType?: string
   salesInvoiceRequired?: boolean
   purchaseInvoiceRequired?: boolean
 }
@@ -31,9 +30,7 @@ interface ProductInput {
   vendorCompany?: string
   items?: ItemInput[]
   sortOrder?: number
-  category?: string
-  taxType?: string
-  salesInvoiceUnit?: string
+  category?: string  // '상품' | 'MA' (ProductCategory enum)
 }
 
 // GET /api/sales-approvals - 목록 조회
@@ -245,7 +242,6 @@ export async function POST(request: NextRequest) {
           purchasePrice: pPrice,
           purchaseTotal: purchaseTotal || item.purchaseTotal,
           purchaseDate: item.purchaseDate ? new Date(item.purchaseDate) : null,
-          taxType: item.taxType || 'TAX',
           salesInvoiceRequired: item.salesInvoiceRequired ?? true,
           purchaseInvoiceRequired: item.purchaseInvoiceRequired ?? true,
         }
@@ -257,9 +253,7 @@ export async function POST(request: NextRequest) {
         quantity: qty,
         unitPrice: price,
         totalPrice: productTotal,
-        category: product.category || '상품',
-        taxType: product.taxType || 'TAX',
-        salesInvoiceUnit: product.salesInvoiceUnit || 'PRODUCT',
+        category: (product.category === 'MA' ? 'MA' : '상품') as '상품' | 'MA',
         items,
       }
     })
@@ -320,8 +314,6 @@ export async function POST(request: NextRequest) {
           unitPrice: p.unitPrice,
           totalPrice: p.totalPrice,
           category: p.category,
-          taxType: p.taxType,
-          salesInvoiceUnit: p.salesInvoiceUnit,
         },
       })
 
@@ -338,7 +330,6 @@ export async function POST(request: NextRequest) {
             purchasePrice?: number
             purchaseTotal?: number
             purchaseDate: Date | null
-            taxType?: string
             salesInvoiceRequired?: boolean
             purchaseInvoiceRequired?: boolean
           }) => ({
@@ -353,7 +344,6 @@ export async function POST(request: NextRequest) {
             purchasePrice: item.purchasePrice,
             purchaseTotal: item.purchaseTotal,
             purchaseDate: item.purchaseDate,
-            taxType: item.taxType || 'TAX',
             salesInvoiceRequired: item.salesInvoiceRequired ?? true,
             purchaseInvoiceRequired: item.purchaseInvoiceRequired ?? true,
           })),

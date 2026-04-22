@@ -5,7 +5,7 @@
  *
  *   - source of truth: InvoiceRecord
  *   - 행 단위: InvoiceRecord 하나 = 한 행 (매출/매입 모두)
- *   - 매출 식별: (approvalId, productId, salesItemId)
+ *   - 매출 식별: (approvalId, productId)             — 제품 단위 고정
  *   - 매입 식별: (approvalId, vendorCompany)
  *
  *   상태 전이는 전용 API 호출:

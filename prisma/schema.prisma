@@ -426,13 +426,10 @@ model SalesApprovalProduct {
   totalPrice Decimal? @map("total_price") @db.Decimal(15, 2) // 매출 합계
 
   // 분류 (원장 연동용)
-  category    String  @default("상품") // 상품, MA, 건물임대, 장비임대, 일반경비
-  subCategory String? @map("sub_category") // 세부분류 (월간-IBM 등)
-  taxType     String  @default("TAX") @map("tax_type") // TAX(과세10%), ZERO(영세), EXEMPT(면세)
-
-  // 매출 계산서 발행 단위 (PRODUCT: 제품당 1건 / ITEM: 품목별 n건)
-  // 매입 계산서는 항상 매입처(vendorName)별로 자동 그룹핑되므로 별도 설정 없음.
-  salesInvoiceUnit String @default("PRODUCT") @map("sales_invoice_unit")
+  // 실무 규칙: 상품(영업 품의서) / MA(MA 품의서) 2종만 사용
+  // 세금은 VAT 10% 고정, 매출 계산서는 항상 제품 단위(PRODUCT) 발행
+  category    ProductCategory @default(상품)
+  subCategory String?         @map("sub_category") // 세부분류 (월간-IBM 등)
 
   // 버전 추적 (revise 시 원본 Product ID)
   sourceProductId String? @map("source_product_id")
@@ -466,7 +463,6 @@ model SalesApprovalItem {
   purchasePrice Decimal?  @map("purchase_price") @db.Decimal(15, 2) // 매입 단가
   purchaseTotal Decimal?  @map("purchase_total") @db.Decimal(15, 2) // 매입 합계
   purchaseDate  DateTime? @map("purchase_date") @db.Date // 매입일
-  taxType       String    @default("TAX") @map("tax_type") // TAX, ZERO, EXEMPT (매입 세금 유형)
 
   // 계산서 발행 대상 여부 (체크 해제 시 InvoiceRecord 미생성)
   salesInvoiceRequired    Boolean @default(true) @map("sales_invoice_required")
@@ -839,9 +835,9 @@ model SalesLedger {
   clientCompany   String   @map("client_company") // 매출처
   endUser         String?  @map("end_user") // END-USER
 
-  // 분류
-  category    String // MA, 상품, 건물임대, 장비임대
-  subCategory String? @map("sub_category") // 월간-IBM, 월간-레노버, 스위치 등
+  // 분류 (상품 / MA)
+  category    ProductCategory
+  subCategory String?         @map("sub_category") // 월간-IBM, 월간-레노버, 스위치 등
 
   // 거래 내용
   description  String  @db.Text // 거래내용
@@ -872,9 +868,9 @@ model SalesLedger {
   approvalVersion Int?    @map("approval_version") // 품의서 버전
 
   // 활성 상태 (revise 시 이전 원장 비활성화)
-  isActive    Boolean   @default(true) @map("is_active")
-  cancelledAt DateTime? @map("cancelled_at")
-  cancelReason String?  @map("cancel_reason")
+  isActive     Boolean   @default(true) @map("is_active")
+  cancelledAt  DateTime? @map("cancelled_at")
+  cancelReason String?   @map("cancel_reason")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -904,9 +900,9 @@ model PurchaseLedger {
   vendorCompany String   @map("vendor_company") // 매입처
   clientCompany String?  @map("client_company") // 매출처 (연결된)
 
-  // 분류
-  category    String // MA, 상품, 일반경비
-  subCategory String? @map("sub_category") // 월간-IBM, 지급수수료 등
+  // 분류 (상품 / MA)
+  category    ProductCategory
+  subCategory String?         @map("sub_category") // 월간-IBM, 지급수수료 등
 
   // 품목 정보
   itemName     String  @map("item_name") // 품목명
@@ -942,9 +938,9 @@ model PurchaseLedger {
   approvalVersion Int?    @map("approval_version")
 
   // 활성 상태 (revise 시 이전 원장 비활성화)
-  isActive    Boolean   @default(true) @map("is_active")
-  cancelledAt DateTime? @map("cancelled_at")
-  cancelReason String?  @map("cancel_reason")
+  isActive     Boolean   @default(true) @map("is_active")
+  cancelledAt  DateTime? @map("cancelled_at")
+  cancelReason String?   @map("cancel_reason")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1103,12 +1099,17 @@ enum InvoiceType {
   PURCHASE // 매입 계산서
 }
 
+// 상품/MA 2종 (실무 규칙)
+enum ProductCategory {
+  상품
+  MA
+}
+
 // 계산서 발행 기록
 //
 // 식별 규칙 (amendedFromId=null인 체인 루트 기준):
-//   - 매출 제품 단위: (approvalId, productId, salesItemId=null)
-//   - 매출 품목 단위: (approvalId, productId, salesItemId)
-//   - 매입:          (approvalId, vendorCompany)   — 매입처가 자연 키
+//   - 매출: (approvalId, productId)           — 제품 단위 고정
+//   - 매입: (approvalId, vendorCompany)       — 매입처가 자연 키
 model InvoiceRecord {
   id String @id @default(uuid())
 
@@ -1117,8 +1118,7 @@ model InvoiceRecord {
   invoiceType InvoiceType @map("invoice_type") // SALES or PURCHASE
 
   // 매출 식별 (SALES일 때 채움)
-  productId   String? @map("product_id")
-  salesItemId String? @map("sales_item_id") // salesInvoiceUnit='ITEM'일 때만
+  productId String? @map("product_id")
 
   // 매입 식별 (PURCHASE일 때 채움, 매입처가 자연 키)
   vendorCompany String? @map("vendor_company")

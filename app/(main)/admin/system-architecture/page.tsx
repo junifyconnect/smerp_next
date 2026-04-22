@@ -562,7 +562,7 @@ export default function SystemArchitecturePage() {
               <div className="font-medium text-blue-900 mb-2">매출 InvoiceRecord</div>
               <div className="font-mono text-xs space-y-1 text-gray-600">
                 <div>invoiceType = &apos;SALES&apos;</div>
-                <div>approvalId + productId + salesItemId</div>
+                <div>approvalId + productId (제품 단위 고정)</div>
                 <div>status = PENDING / ISSUED / NEEDS_AMENDMENT / CANCELLED</div>
                 <div>invoiceDate, invoiceNumber, remarks</div>
                 <div>amendedFromId → 수정발행 체인</div>
