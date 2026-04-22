@@ -242,7 +242,160 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    return NextResponse.json({ groups, summary })
+    // ─────────────────────────────────────────
+    // 4. MA 섹션 — MAContract 단위로 그룹핑, MABilling 하위에 파생 InvoiceRecord 묶음
+    //    BUSINESS_RULES §10: MABilling이 매출장 역할, InvoiceRecord(source=MA_BILLING)가 계산서 기록
+    // ─────────────────────────────────────────
+    const maContractWhere: Record<string, unknown> = { isActive: true }
+    if (clientCompany) {
+      maContractWhere.clientCompany = { contains: clientCompany, mode: 'insensitive' }
+    }
+    if (month) {
+      const [y, m] = month.split('-').map(Number)
+      const mStart = new Date(y, m - 1, 1)
+      const mEnd = new Date(y, m, 1)
+      maContractWhere.billings = {
+        some: { isActive: true, billingMonth: { gte: mStart, lt: mEnd } },
+      }
+    }
+
+    const maContracts = await prisma.mAContract.findMany({
+      where: maContractWhere,
+      include: {
+        billings: {
+          where: {
+            isActive: true,
+            ...(month
+              ? (() => {
+                  const [y, m] = month.split('-').map(Number)
+                  return {
+                    billingMonth: { gte: new Date(y, m - 1, 1), lt: new Date(y, m, 1) },
+                  }
+                })()
+              : {}),
+            ...(vendorCompany
+              ? { vendorCompany: { contains: vendorCompany, mode: 'insensitive' as const } }
+              : {}),
+          },
+          orderBy: { billingMonth: 'asc' },
+          include: {
+            invoiceRecords: {
+              where: invoiceStatusParam ? { status: invoiceStatusParam } : {},
+              orderBy: [{ invoiceType: 'asc' }, { createdAt: 'asc' }],
+            },
+          },
+        },
+        maApproval: {
+          select: { approvalNumber: true, approvalCode: true, managerName: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    interface MABillingRow {
+      id: string
+      billingMonth: string | null
+      dueDate: string | null
+      clientCompany: string
+      vendorCompany: string | null
+      itemName: string
+      salesAmount: number
+      salesTotalAmount: number
+      purchaseAmount: number
+      purchaseTotalAmount: number
+      paymentStatus: string
+      // 파생 InvoiceRecord (발행된 계산서)
+      invoiceRecords: InvoiceRecordRow[]
+    }
+
+    interface MAGroup {
+      maContractId: string
+      approvalNumber: string
+      approvalCode: string | null
+      managerName: string | null
+      clientCompany: string
+      contractStartDate: string | null
+      contractEndDate: string | null
+      salesTotalPrice: number
+      purchaseTotalPrice: number
+      billings: MABillingRow[]
+    }
+
+    const maGroups: MAGroup[] = []
+
+    for (const contract of maContracts) {
+      if (contract.billings.length === 0) continue
+
+      let contractSalesTotal = 0
+      let contractPurchaseTotal = 0
+      const billingRows: MABillingRow[] = []
+
+      for (const billing of contract.billings) {
+        const invoiceRows: InvoiceRecordRow[] = []
+        for (const r of billing.invoiceRecords) {
+          // 타입 필터가 있으면 적용
+          if (invoiceTypeParam && r.invoiceType !== invoiceTypeParam) continue
+          invoiceRows.push(toRow(r))
+        }
+
+        const salesAmount = Number(billing.salesAmount)
+        const purchaseAmount = Number(billing.purchaseAmount)
+        contractSalesTotal += salesAmount
+        contractPurchaseTotal += purchaseAmount
+
+        // summary에 MA 금액 포함 (발행 여부와 무관하게 예정 매출/매입 반영)
+        if (!invoiceTypeParam || invoiceTypeParam === 'SALES') {
+          summary.totalSales += Number(billing.salesTotalAmount)
+        }
+        if (!invoiceTypeParam || invoiceTypeParam === 'PURCHASE') {
+          summary.totalPurchase += Number(billing.purchaseTotalAmount)
+        }
+
+        billingRows.push({
+          id: billing.id,
+          billingMonth: toIso(billing.billingMonth),
+          dueDate: toIso(billing.dueDate),
+          clientCompany: billing.clientCompany,
+          vendorCompany: billing.vendorCompany,
+          itemName: billing.itemName,
+          salesAmount,
+          salesTotalAmount: Number(billing.salesTotalAmount),
+          purchaseAmount,
+          purchaseTotalAmount: Number(billing.purchaseTotalAmount),
+          paymentStatus: billing.paymentStatus,
+          invoiceRecords: invoiceRows,
+        })
+
+        // 파생 InvoiceRecord 상태별 카운트도 summary에 반영
+        for (const r of billing.invoiceRecords) {
+          if (r.status === 'CANCELLED') continue
+          if (r.invoiceType === 'SALES') {
+            summary.salesByStatus[r.status] =
+              (summary.salesByStatus[r.status] || 0) + 1
+            summary.salesCount += 1
+          } else {
+            summary.purchaseByStatus[r.status] =
+              (summary.purchaseByStatus[r.status] || 0) + 1
+            summary.purchaseCount += 1
+          }
+        }
+      }
+
+      maGroups.push({
+        maContractId: contract.id,
+        approvalNumber: contract.maApproval.approvalNumber,
+        approvalCode: contract.maApproval.approvalCode,
+        managerName: contract.maApproval.managerName,
+        clientCompany: contract.clientCompany,
+        contractStartDate: toIso(contract.contractStartDate),
+        contractEndDate: toIso(contract.contractEndDate),
+        salesTotalPrice: contractSalesTotal,
+        purchaseTotalPrice: contractPurchaseTotal,
+        billings: billingRows,
+      })
+    }
+
+    return NextResponse.json({ groups, maGroups, summary })
   } catch (error) {
     console.error('통합 계산서 발행현황 조회 오류:', error)
     return NextResponse.json({ error: '목록을 불러오는데 실패했습니다' }, { status: 500 })
