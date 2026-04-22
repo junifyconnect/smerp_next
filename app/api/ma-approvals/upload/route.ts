@@ -77,6 +77,8 @@ export async function POST(request: NextRequest) {
         purchaseCompany: item.purchaseCompany,
         purchasePrice: purchasePrice,
         purchaseBillingCycle: normalizeBillingCycle(item.purchaseBillingCycle),
+        // 엑셀에는 billingDayOfMonth가 없으므로 기본값(말일). 사용자가 저장 전 UI에서 수정 가능.
+        billingDayOfMonth: 31,
       }
     })
 

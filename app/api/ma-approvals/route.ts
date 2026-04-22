@@ -66,7 +66,15 @@ interface MAApprovalItemInput {
   purchaseCompany?: string
   purchasePrice?: number
   purchaseBillingCycle?: string
+  billingDayOfMonth?: number
   sortOrder?: number
+}
+
+// billingDayOfMonth를 1~31 범위로 clamp, 없으면 기본 31 (말일)
+function normalizeBillingDay(raw: number | undefined): number {
+  if (raw === undefined || raw === null || Number.isNaN(raw)) return 31
+  const n = Math.floor(raw)
+  return Math.min(31, Math.max(1, n))
 }
 
 // POST /api/ma-approvals - 생성
@@ -123,6 +131,7 @@ export async function POST(request: NextRequest) {
         purchaseCompany: item.purchaseCompany,
         purchasePrice: purchasePrice,
         purchaseBillingCycle: normalizeBillingCycle(item.purchaseBillingCycle),
+        billingDayOfMonth: normalizeBillingDay(item.billingDayOfMonth),
       }
     })
 

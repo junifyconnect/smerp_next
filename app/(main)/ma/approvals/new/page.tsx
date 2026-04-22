@@ -3,21 +3,24 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
+import { BILLING_CYCLE_OPTIONS } from '@/lib/ma/billing-cycle'
 
 // 엑셀 구조: 매출/매입 통합
+// BUSINESS_RULES §10: 계약 시작/종료 + 청구 주기 + 월 청구일
 interface MAApprovalItem {
-  smCode?: string           // SM코드
-  vendorCode?: string       // 벤더코드
-  clientCompany?: string    // 고객사
-  salesCompany?: string     // 매출처
-  salesPrice?: number       // 매출가
-  quantity?: number         // 수량
-  salesBillingCycle?: string // 청구구분(매출)
-  startDate?: string        // 계약기간 시작
-  endDate?: string          // 계약기간 종료
-  purchaseCompany?: string  // 매입처
-  purchasePrice?: number    // 매입가
-  purchaseBillingCycle?: string // 청구구분(매입)
+  smCode?: string
+  vendorCode?: string
+  clientCompany?: string
+  salesCompany?: string
+  salesPrice?: number
+  quantity?: number
+  salesBillingCycle?: string
+  startDate?: string
+  endDate?: string
+  purchaseCompany?: string
+  purchasePrice?: number
+  purchaseBillingCycle?: string
+  billingDayOfMonth?: number // 매월 청구일 (기본 31 = 말일)
 }
 
 export default function NewMAApprovalPage() {
@@ -39,7 +42,7 @@ export default function NewMAApprovalPage() {
   })
 
   const [items, setItems] = useState<MAApprovalItem[]>([
-    { smCode: '', vendorCode: '', clientCompany: '', salesCompany: '', salesPrice: 0, quantity: 1, salesBillingCycle: '', startDate: '', endDate: '', purchaseCompany: '', purchasePrice: 0, purchaseBillingCycle: '' },
+    { smCode: '', vendorCode: '', clientCompany: '', salesCompany: '', salesPrice: 0, quantity: 1, salesBillingCycle: '', startDate: '', endDate: '', purchaseCompany: '', purchasePrice: 0, purchaseBillingCycle: '', billingDayOfMonth: 31 },
   ])
 
   useEffect(() => {
@@ -61,7 +64,7 @@ export default function NewMAApprovalPage() {
   }
 
   const addItem = () => {
-    setItems([...items, { smCode: '', vendorCode: '', clientCompany: '', salesCompany: '', salesPrice: 0, quantity: 1, salesBillingCycle: '', startDate: '', endDate: '', purchaseCompany: '', purchasePrice: 0, purchaseBillingCycle: '' }])
+    setItems([...items, { smCode: '', vendorCode: '', clientCompany: '', salesCompany: '', salesPrice: 0, quantity: 1, salesBillingCycle: '', startDate: '', endDate: '', purchaseCompany: '', purchasePrice: 0, purchaseBillingCycle: '', billingDayOfMonth: 31 }])
   }
 
   const removeItem = (index: number) => {
@@ -120,6 +123,7 @@ export default function NewMAApprovalPage() {
             purchaseCompany: item.purchaseCompany || '',
             purchasePrice: item.purchasePrice || 0,
             purchaseBillingCycle: item.purchaseBillingCycle || '',
+            billingDayOfMonth: item.billingDayOfMonth ?? 31,
           })))
         }
 
@@ -269,12 +273,13 @@ export default function NewMAApprovalPage() {
                   <th className="px-2 py-2 text-left text-xs font-medium text-gray-600">매출처</th>
                   <th className="px-2 py-2 text-right text-xs font-medium text-gray-600 w-24">매출가</th>
                   <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-12">수량</th>
-                  <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-16">청구구분</th>
+                  <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-20">매출주기</th>
                   <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-28">계약시작</th>
                   <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-28">계약종료</th>
                   <th className="px-2 py-2 text-left text-xs font-medium text-gray-600">매입처</th>
                   <th className="px-2 py-2 text-right text-xs font-medium text-gray-600 w-24">매입가</th>
-                  <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-16">청구구분</th>
+                  <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-20">매입주기</th>
+                  <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-16" title="매월 청구일 (1~31, 31은 말일)">청구일</th>
                   <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 w-10"></th>
                 </tr>
               </thead>
@@ -333,13 +338,16 @@ export default function NewMAApprovalPage() {
                       />
                     </td>
                     <td className="px-1 py-1">
-                      <input
-                        type="text"
+                      <select
                         value={item.salesBillingCycle || ''}
                         onChange={(e) => handleItemChange(index, 'salesBillingCycle', e.target.value)}
-                        className="w-full px-2 py-1 text-xs text-center border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-teal-500"
-                        placeholder="일시불"
-                      />
+                        className="w-full px-1 py-1 text-xs text-center border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-teal-500 bg-white"
+                      >
+                        <option value="">선택</option>
+                        {BILLING_CYCLE_OPTIONS.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
                     </td>
                     <td className="px-1 py-1">
                       <input
@@ -375,12 +383,26 @@ export default function NewMAApprovalPage() {
                       />
                     </td>
                     <td className="px-1 py-1">
-                      <input
-                        type="text"
+                      <select
                         value={item.purchaseBillingCycle || ''}
                         onChange={(e) => handleItemChange(index, 'purchaseBillingCycle', e.target.value)}
+                        className="w-full px-1 py-1 text-xs text-center border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-teal-500 bg-white"
+                      >
+                        <option value="">선택</option>
+                        {BILLING_CYCLE_OPTIONS.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-1 py-1">
+                      <input
+                        type="number"
+                        min={1}
+                        max={31}
+                        value={item.billingDayOfMonth ?? 31}
+                        onChange={(e) => handleItemChange(index, 'billingDayOfMonth', parseInt(e.target.value) || 31)}
                         className="w-full px-2 py-1 text-xs text-center border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-teal-500"
-                        placeholder="총(월간)"
+                        title="매월 청구일 (1~31, 31은 말일로 자동 조정)"
                       />
                     </td>
                     <td className="px-1 py-1 text-center">

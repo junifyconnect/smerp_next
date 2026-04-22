@@ -21,7 +21,14 @@ interface MAApprovalItemInput {
   purchaseCompany?: string
   purchasePrice?: number
   purchaseBillingCycle?: string
+  billingDayOfMonth?: number
   sortOrder?: number
+}
+
+function normalizeBillingDay(raw: number | undefined): number {
+  if (raw === undefined || raw === null || Number.isNaN(raw)) return 31
+  const n = Math.floor(raw)
+  return Math.min(31, Math.max(1, n))
 }
 
 // GET /api/ma-approvals/[id] - 상세 조회
@@ -103,6 +110,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           purchaseCompany: item.purchaseCompany,
           purchasePrice: purchasePrice,
           purchaseBillingCycle: normalizeBillingCycle(item.purchaseBillingCycle),
+          billingDayOfMonth: normalizeBillingDay(item.billingDayOfMonth),
           sortOrder: item.sortOrder ?? index,
         }
       })
