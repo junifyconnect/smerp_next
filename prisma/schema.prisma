@@ -459,9 +459,12 @@ model SalesApprovalItem {
   partNumber  String? @map("part_number") // P/N (예: CPU, BOARD)
   description String? @db.Text // 상세 스펙
 
-  // 매출 (선택 - 품목별 매출가 필요할 때)
+  // 매출 (품목별 매출가 - 견적서 참고값)
+  // ⚠️ 집계는 제품 단위 (`SalesApprovalProduct.unitPrice` / InvoiceRecord) 기준.
+  //    이 필드는 견적서에서 품목별 세부 단가를 표기하기 위한 참고값으로만 유지.
+  //    (결정대기 #2 B안, 2026-04-23 확정)
   quantity       Int      @default(1)
-  salesUnitPrice Decimal? @map("sales_unit_price") @db.Decimal(15, 2) // nullable 예비
+  salesUnitPrice Decimal? @map("sales_unit_price") @db.Decimal(15, 2)
 
   // 매입
   vendorName    String?   @map("vendor_name") // 매입처명
