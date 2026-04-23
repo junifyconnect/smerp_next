@@ -1,13 +1,13 @@
-version: 11
+version: 12
 last_generated: 2026-04-23
-last_commit: 0339b17
-last_commit_note: "0339b17 develop: spec 갱신 완료 (PR #16) + 결정대기 #2/#4 확정, #5 항목 제거"
+last_commit: e210a9d
+last_commit_note: "e210a9d develop: 결정대기 전체 확정 + 대시보드 역할별 분기 구현 (결정대기 #4 A안)"
 project: smerp_next
 feature_count: 22
 status_breakdown:
-  완료: 21
+  완료: 22
   진행중: 0
-  미착수: 1
+  미착수: 0
   계획: 0
 domains_snapshot:
   - 영업
