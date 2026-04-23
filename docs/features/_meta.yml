@@ -1,12 +1,12 @@
-version: 9
+version: 10
 last_generated: 2026-04-22
-last_commit: 0264948
-last_commit_note: "0264948 develop: 결정대기 #1(MA B+B-2) + #3(결재선 C) 확정"
+last_commit: 3b9aa4c
+last_commit_note: "3b9aa4c develop: PR #9~#15 MA 결재·원장·계산서 파생·집계 UNION·결재선 모달 구현 완료"
 project: smerp_next
 feature_count: 22
 status_breakdown:
-  완료: 18
-  진행중: 3
+  완료: 21
+  진행중: 0
   미착수: 1
   계획: 0
 domains_snapshot:
