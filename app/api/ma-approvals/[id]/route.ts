@@ -77,12 +77,76 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       items,
     } = body
 
+    const currentApproval = await prisma.mAApproval.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        status: true,
+        notes: true,
+        rejectedAt: true,
+        rejectionReason: true,
+        rejectedBy: { select: { name: true } },
+      },
+    })
+
+    if (!currentApproval) {
+      return NextResponse.json(
+        { error: 'MA 품의서를 찾을 수 없습니다' },
+        { status: 404 }
+      )
+    }
+
+    if (currentApproval.status === 'APPROVED') {
+      return NextResponse.json(
+        { error: '승인 완료된 MA 품의서는 수정할 수 없습니다. 수정발행(revise)을 이용해주세요.' },
+        { status: 400 }
+      )
+    }
+
     const updateData: Record<string, unknown> = {}
+
+    // REJECTED / PENDING 계열 → 수정 시 DRAFT 자동 전환 (영업과 동일 규칙, BUSINESS_RULES §5)
+    const pendingStatuses = ['PENDING', 'PENDING_TEAM_LEAD', 'PENDING_CEO']
+    const needsDraftReset =
+      currentApproval.status === 'REJECTED' ||
+      pendingStatuses.includes(currentApproval.status)
+
+    if (needsDraftReset) {
+      updateData.status = 'DRAFT'
+      updateData.salesManagerId = null
+      updateData.salesManagerSignedAt = null
+      updateData.teamLeaderId = null
+      updateData.teamLeaderSignedAt = null
+      updateData.ceoId = null
+      updateData.ceoSignedAt = null
+
+      if (currentApproval.status === 'REJECTED') {
+        const whenIso = currentApproval.rejectedAt
+          ? new Date(currentApproval.rejectedAt).toISOString().slice(0, 10)
+          : ''
+        const by = currentApproval.rejectedBy?.name
+          ? ` by ${currentApproval.rejectedBy.name}`
+          : ''
+        const reason = currentApproval.rejectionReason || '사유 미기재'
+        const header = `[반려 이력 ${whenIso}${by}] ${reason}`
+        const baseNotes =
+          typeof notes === 'string' ? notes : currentApproval.notes || ''
+        updateData.notes = baseNotes ? `${header}\n\n${baseNotes}` : header
+
+        updateData.rejectedById = null
+        updateData.rejectedAt = null
+        updateData.rejectionReason = null
+      }
+    }
 
     if (approvalDate !== undefined) updateData.approvalDate = approvalDate ? new Date(approvalDate) : null
     if (managerName !== undefined) updateData.managerName = managerName
-    if (notes !== undefined) updateData.notes = notes
-    if (status !== undefined) updateData.status = status
+    // notes는 REJECTED→DRAFT 블록에서 이미 처리했을 수 있음 → 미설정일 때만 대입
+    if (notes !== undefined && updateData.notes === undefined) {
+      updateData.notes = notes
+    }
+    // status 명시 지정은 REJECTED 전환 로직을 덮어쓰지 않도록 마지막에 (원래 없던 body는 아니지만 하위호환)
+    if (status !== undefined && !needsDraftReset) updateData.status = status
 
     // 통합 아이템이 제공된 경우
     if (items !== undefined) {
