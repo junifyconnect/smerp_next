@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { auth } from '@/lib/auth'
+import { notifyMAApprovalWithdrawn } from '@/lib/notifications/sender'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -21,6 +22,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         status: true,
         approvalNumber: true,
         createdById: true,
+        salesManagerId: true,
+        teamLeaderId: true,
+        ceoId: true,
       },
     })
 
@@ -70,6 +74,25 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         items: { orderBy: { sortOrder: 'asc' } },
       },
     })
+
+    // 결재자들에게 회수 알림 (비동기)
+    prisma.mAApprovalItem
+      .findFirst({
+        where: { approvalId: id },
+        select: { clientCompany: true, salesCompany: true },
+      })
+      .then((item) =>
+        notifyMAApprovalWithdrawn({
+          id: approval.id,
+          approvalNumber: approval.approvalNumber,
+          clientCompany: item?.clientCompany || item?.salesCompany || null,
+          createdById: approval.createdById,
+          salesManagerId: approval.salesManagerId,
+          teamLeaderId: approval.teamLeaderId,
+          ceoId: approval.ceoId,
+        })
+      )
+      .catch((err) => console.error('MA 회수 알림 실패:', err))
 
     return NextResponse.json({
       message: 'MA 품의서가 회수되었습니다. 작성중 상태로 변경되었습니다.',

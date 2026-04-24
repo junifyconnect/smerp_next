@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { auth } from '@/lib/auth'
+import { notifyMAApprovalSubmitted } from '@/lib/notifications/sender'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -113,6 +114,22 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         ceoId: true,
       },
     })
+
+    // 팀장에게 결재 요청 알림 (비동기, 실패해도 기안은 성공)
+    prisma.mAApprovalItem
+      .findFirst({
+        where: { approvalId: id },
+        select: { clientCompany: true, salesCompany: true },
+      })
+      .then((item) =>
+        notifyMAApprovalSubmitted({
+          id: approval.id,
+          approvalNumber: approval.approvalNumber,
+          clientCompany: item?.clientCompany || item?.salesCompany || null,
+          createdById: approval.createdById,
+        })
+      )
+      .catch((err) => console.error('MA 상신 알림 발송 실패:', err))
 
     return NextResponse.json({
       message: '기안이 완료되었습니다',
