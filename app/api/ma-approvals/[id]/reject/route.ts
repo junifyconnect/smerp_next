@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { notifyMAApprovalRejected } from '@/lib/notifications/sender'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -70,6 +71,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         rejectedBy: { select: { id: true, name: true } },
       },
     })
+
+    // 작성자에게 반려 알림 (비동기)
+    prisma.mAApprovalItem
+      .findFirst({
+        where: { approvalId: id },
+        select: { clientCompany: true, salesCompany: true },
+      })
+      .then((item) =>
+        notifyMAApprovalRejected({
+          id: approval.id,
+          approvalNumber: approval.approvalNumber,
+          clientCompany: item?.clientCompany || item?.salesCompany || null,
+          createdById: approval.createdById,
+          rejectionReason: reason,
+        })
+      )
+      .catch((err) => console.error('MA 반려 알림 실패:', err))
 
     return NextResponse.json(updated)
   } catch (error) {

@@ -159,3 +159,137 @@ export async function notifyApprovalWithdrawn(approval: {
     )
   )
 }
+
+// ═══════════════════════════════════════════════════════════
+// MA 품의서 알림 (영업 패턴 재사용, linkUrl/linkType/relatedType만 MA로)
+// BUSINESS_RULES §10 — MA도 동일한 3단계 결재 플로우
+// ═══════════════════════════════════════════════════════════
+
+export async function notifyMAApprovalSubmitted(approval: {
+  id: string
+  approvalNumber: string
+  clientCompany?: string | null
+  createdById: string
+}) {
+  const teamLeaders = await findTeamLeaders()
+  // TODO(auth): MA dummy 작성자일 때 creator 조회는 안전하게 null 허용
+  const creator =
+    approval.createdById === 'dummy-user-id'
+      ? null
+      : await prisma.user.findUnique({
+          where: { id: approval.createdById },
+          select: { name: true },
+        })
+  await Promise.all(
+    teamLeaders.map((tl) =>
+      sendNotification({
+        userId: tl.id,
+        type: 'APPROVAL_REQUEST',
+        title: 'MA 품의서 결재 요청',
+        message: `${creator?.name || ''}님이 MA 품의서 ${approval.approvalNumber}${approval.clientCompany ? ` (${approval.clientCompany})` : ''}의 결재를 요청했습니다.`,
+        linkUrl: `/ma/approvals/${approval.id}`,
+        linkType: 'MA_APPROVAL',
+        relatedId: approval.id,
+        relatedType: 'MAApproval',
+      })
+    )
+  )
+}
+
+export async function notifyMATeamLeadSigned(approval: {
+  id: string
+  approvalNumber: string
+  clientCompany?: string | null
+}) {
+  const ceos = await findCEOs()
+  await Promise.all(
+    ceos.map((ceo) =>
+      sendNotification({
+        userId: ceo.id,
+        type: 'APPROVAL_REQUEST',
+        title: 'MA 품의서 최종 결재 요청',
+        message: `MA 품의서 ${approval.approvalNumber}${approval.clientCompany ? ` (${approval.clientCompany})` : ''}이 팀장 승인 완료. 최종 결재를 기다리고 있습니다.`,
+        linkUrl: `/ma/approvals/${approval.id}`,
+        linkType: 'MA_APPROVAL',
+        relatedId: approval.id,
+        relatedType: 'MAApproval',
+      })
+    )
+  )
+}
+
+export async function notifyMAApprovalApproved(approval: {
+  id: string
+  approvalNumber: string
+  clientCompany?: string | null
+  createdById: string
+}) {
+  // TODO(auth): MA 인증 연동 전까지 'dummy-user-id' 알림 스킵 (FK 위반 방지)
+  if (approval.createdById === 'dummy-user-id') return
+  await sendNotification({
+    userId: approval.createdById,
+    type: 'APPROVAL_APPROVED',
+    title: 'MA 품의서 승인 완료',
+    message: `MA 품의서 ${approval.approvalNumber}${approval.clientCompany ? ` (${approval.clientCompany})` : ''}이 최종 승인되었습니다.`,
+    linkUrl: `/ma/approvals/${approval.id}`,
+    linkType: 'MA_APPROVAL',
+    relatedId: approval.id,
+    relatedType: 'MAApproval',
+  })
+}
+
+export async function notifyMAApprovalRejected(approval: {
+  id: string
+  approvalNumber: string
+  clientCompany?: string | null
+  createdById: string
+  rejectionReason?: string | null
+}) {
+  // TODO(auth): MA 인증 연동 전까지 'dummy-user-id' 알림 스킵
+  if (approval.createdById === 'dummy-user-id') return
+  await sendNotification({
+    userId: approval.createdById,
+    type: 'APPROVAL_REJECTED',
+    title: 'MA 품의서 반려',
+    message: `MA 품의서 ${approval.approvalNumber}${approval.clientCompany ? ` (${approval.clientCompany})` : ''}이 반려되었습니다.${approval.rejectionReason ? ` 사유: ${approval.rejectionReason}` : ''}`,
+    linkUrl: `/ma/approvals/${approval.id}`,
+    linkType: 'MA_APPROVAL',
+    relatedId: approval.id,
+    relatedType: 'MAApproval',
+  })
+}
+
+export async function notifyMAApprovalWithdrawn(approval: {
+  id: string
+  approvalNumber: string
+  clientCompany?: string | null
+  createdById: string
+  salesManagerId?: string | null
+  teamLeaderId?: string | null
+  ceoId?: string | null
+}) {
+  // TODO(auth): MA dummy 작성자일 때 creator 조회 안전하게 null 허용
+  const creator =
+    approval.createdById === 'dummy-user-id'
+      ? null
+      : await prisma.user.findUnique({
+          where: { id: approval.createdById },
+          select: { name: true },
+        })
+  const signerIds = [approval.salesManagerId, approval.teamLeaderId, approval.ceoId]
+  const unique = [...new Set(signerIds.filter((id): id is string => !!id && id !== approval.createdById))]
+  await Promise.all(
+    unique.map((userId) =>
+      sendNotification({
+        userId: userId!,
+        type: 'SYSTEM',
+        title: 'MA 품의서 회수',
+        message: `${creator?.name || ''}님이 MA 품의서 ${approval.approvalNumber}을 회수했습니다.`,
+        linkUrl: `/ma/approvals/${approval.id}`,
+        linkType: 'MA_APPROVAL',
+        relatedId: approval.id,
+        relatedType: 'MAApproval',
+      })
+    )
+  )
+}

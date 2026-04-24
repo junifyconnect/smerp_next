@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { buildBillingSchedule } from '@/lib/ma/billing-schedule'
+import {
+  notifyMATeamLeadSigned,
+  notifyMAApprovalApproved,
+} from '@/lib/notifications/sender'
+
+// MA 품의서의 대표 clientCompany — items[0]에서 파생 (MAApproval에는 clientCompany 컬럼 없음)
+async function fetchMAClientCompany(approvalId: string): Promise<string | null> {
+  const item = await prisma.mAApprovalItem.findFirst({
+    where: { approvalId },
+    select: { clientCompany: true, salesCompany: true },
+  })
+  return item?.clientCompany || item?.salesCompany || null
+}
 
 // VAT 계산 유틸 (10% 고정, BUSINESS_RULES §2)
 function calculateVat(supplyAmount: number | unknown): number {
@@ -102,6 +115,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         },
         include: INCLUDE_FULL,
       })
+
+      // CEO에게 최종 결재 요청 알림 (비동기)
+      fetchMAClientCompany(id)
+        .then((clientCompany) =>
+          notifyMATeamLeadSigned({
+            id: approval.id,
+            approvalNumber: approval.approvalNumber,
+            clientCompany,
+          })
+        )
+        .catch((err) => console.error('MA 팀장 서명 알림 실패:', err))
+
       return NextResponse.json(updated)
     }
 
@@ -331,6 +356,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       return result
     })
+
+    // 작성자에게 승인 완료 알림 (비동기)
+    fetchMAClientCompany(id)
+      .then((clientCompany) =>
+        notifyMAApprovalApproved({
+          id: approval.id,
+          approvalNumber: approval.approvalNumber,
+          clientCompany,
+          createdById: approval.createdById,
+        })
+      )
+      .catch((err) => console.error('MA 승인 알림 실패:', err))
 
     return NextResponse.json(updated)
   } catch (error) {
