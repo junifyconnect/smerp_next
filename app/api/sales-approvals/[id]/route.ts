@@ -89,7 +89,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const currentApproval = await prisma.salesApproval.findUnique({
       where: { id },
-      select: { id: true, status: true },
+      select: {
+        id: true,
+        status: true,
+        notes: true,
+        rejectedAt: true,
+        rejectionReason: true,
+        rejectedBy: { select: { name: true } },
+      },
     })
 
     if (!currentApproval) {
@@ -106,18 +113,17 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         { status: 400 }
       )
     }
-    if (currentApproval.status === 'REJECTED') {
-      return NextResponse.json(
-        { error: '반려된 품의서는 수정할 수 없습니다.' },
-        { status: 400 }
-      )
-    }
 
-    const updateData: Record<string, unknown> = {}
-
+    // REJECTED → 작성자가 재수정 하려면 DRAFT로 자동 전환 + 반려 이력은 notes에 prepend로 보존
+    // (결정대기 #4-보류2 A안 / BUSINESS_RULES §5)
     // PENDING 계열 → 수정 시 자동 회수 (DRAFT로 + 서명 초기화)
+    const updateData: Record<string, unknown> = {}
     const pendingStatuses = ['PENDING', 'PENDING_TEAM_LEAD', 'PENDING_CEO']
-    if (pendingStatuses.includes(currentApproval.status)) {
+    const needsDraftReset =
+      currentApproval.status === 'REJECTED' ||
+      pendingStatuses.includes(currentApproval.status)
+
+    if (needsDraftReset) {
       updateData.status = 'DRAFT'
       updateData.salesManagerId = null
       updateData.salesManagerSignedAt = null
@@ -125,6 +131,27 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       updateData.teamLeaderSignedAt = null
       updateData.ceoId = null
       updateData.ceoSignedAt = null
+
+      // REJECTED → DRAFT 전환 시 반려 이력을 notes 상단에 prepend (작성자가 이유를 계속 볼 수 있도록)
+      if (currentApproval.status === 'REJECTED') {
+        const whenIso = currentApproval.rejectedAt
+          ? new Date(currentApproval.rejectedAt).toISOString().slice(0, 10)
+          : ''
+        const by = currentApproval.rejectedBy?.name
+          ? ` by ${currentApproval.rejectedBy.name}`
+          : ''
+        const reason = currentApproval.rejectionReason || '사유 미기재'
+        const header = `[반려 이력 ${whenIso}${by}] ${reason}`
+        // 사용자가 이번 PATCH에서 notes를 덮어쓴다면 그 값 기준, 아니면 기존 값 기준
+        const baseNotes =
+          typeof notes === 'string' ? notes : currentApproval.notes || ''
+        updateData.notes = baseNotes ? `${header}\n\n${baseNotes}` : header
+
+        // 반려 필드 초기화
+        updateData.rejectedById = null
+        updateData.rejectedAt = null
+        updateData.rejectionReason = null
+      }
     }
 
     if (approvalCode !== undefined) updateData.approvalCode = approvalCode
@@ -140,7 +167,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (invoiceEmail !== undefined) updateData.invoiceEmail = invoiceEmail
     if (receiverName !== undefined) updateData.receiverName = receiverName
     if (receiverPhone !== undefined) updateData.receiverPhone = receiverPhone
-    if (notes !== undefined) updateData.notes = notes
+    // notes는 REJECTED→DRAFT 전환 블록에서 이미 처리했을 수 있음 (반려 이력 prepend 포함) → 미설정일 때만 대입
+    if (notes !== undefined && updateData.notes === undefined) {
+      updateData.notes = notes
+    }
     if (status !== undefined) updateData.status = status
 
     // 제품 + 품목 업데이트

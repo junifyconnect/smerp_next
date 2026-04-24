@@ -68,6 +68,7 @@ DRAFT → PENDING_TEAM_LEAD → PENDING_CEO → APPROVED
   - 매출장(SalesLedger) · 매입장(PurchaseLedger) — VAT 10% 반영
   - 매출/매입 InvoiceRecord (PENDING) — 계산서 미발행 상태
 - **회수(withdraw)** 시: DRAFT 복귀 + PENDING 상태 InvoiceRecord 삭제
+- **반려(reject) 후 재상신** 시: 작성자가 PATCH(수정)를 하면 **자동으로 DRAFT로 전환**되고, 반려 이력(반려일·반려자·사유)은 `notes` 상단에 prepend되어 보존된다. 이후 submit으로 재상신 가능. (결정대기 #4-보류2 A안 확정 / 2026-04-24)
 
 ### 결재선 지정 규칙 (2026-04-22 확정, `_결정대기.md` #3)
 
